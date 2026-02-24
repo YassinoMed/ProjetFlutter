@@ -1,0 +1,127 @@
+/// GoRouter Configuration
+/// CDC: Navigation with role-based redirects (Patient / Médecin)
+library;
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../features/auth/presentation/pages/login_page.dart';
+import '../../features/auth/presentation/pages/register_page.dart';
+import '../../features/auth/presentation/providers/auth_provider.dart';
+import '../../features/onboarding/presentation/pages/onboarding_page.dart';
+import '../../features/splash/presentation/pages/splash_page.dart';
+import '../../features/appointments/presentation/pages/booking_page.dart';
+import '../../features/chat/presentation/pages/chat_detail_page.dart';
+import '../../features/video_call/presentation/pages/video_call_page.dart';
+import '../../features/medical_records/presentation/pages/medical_records_page.dart';
+import '../constants/app_constants.dart';
+import 'app_routes.dart';
+import 'shell_routes.dart';
+
+/// Global navigator keys
+final rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
+final shellNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
+
+final appRouterProvider = Provider<GoRouter>((ref) {
+  final authState = ref.watch(authNotifierProvider);
+
+  return GoRouter(
+    navigatorKey: rootNavigatorKey,
+    debugLogDiagnostics: true,
+    initialLocation: AppRoutes.splash,
+    redirect: (context, state) {
+      final isAuth = authState.valueOrNull?.isAuthenticated ?? false;
+      final isOnSplash = state.matchedLocation == AppRoutes.splash;
+      final isOnAuth = state.matchedLocation == AppRoutes.login ||
+          state.matchedLocation == AppRoutes.register ||
+          state.matchedLocation == AppRoutes.onboarding;
+
+      if (isOnSplash) return null;
+      if (!isAuth && !isOnAuth) return AppRoutes.login;
+
+      if (isAuth && isOnAuth) {
+        final role = authState.valueOrNull?.user?.role;
+        if (role == AppConstants.roleDoctor) {
+          return AppRoutes.doctorHome;
+        }
+        return AppRoutes.patientHome;
+      }
+
+      return null;
+    },
+    routes: [
+      GoRoute(
+        path: AppRoutes.splash,
+        name: 'splash',
+        builder: (context, state) => const SplashPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.onboarding,
+        name: 'onboarding',
+        builder: (context, state) => const OnboardingPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.login,
+        name: 'login',
+        builder: (context, state) => const LoginPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.register,
+        name: 'register',
+        builder: (context, state) => const RegisterPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.bookAppointment,
+        name: 'book-appointment',
+        builder: (context, state) {
+          final doctorId = state.pathParameters['doctorId']!;
+          return BookingPage(doctorId: doctorId);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.chatDetail,
+        name: 'chat-detail',
+        builder: (context, state) {
+          final conversationId = state.pathParameters['conversationId']!;
+          return ChatDetailPage(conversationId: conversationId);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.videoCall,
+        name: 'video-call',
+        builder: (context, state) {
+          final appointmentId = state.pathParameters['appointmentId']!;
+          return VideoCallPage(appointmentId: appointmentId);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.patientRecords,
+        name: 'medical-records',
+        builder: (context, state) => const MedicalRecordsPage(),
+      ),
+      patientShellRoute,
+      doctorShellRoute,
+    ],
+    errorBuilder: (context, state) => Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            const SizedBox(height: 16),
+            Text('Page non trouvée',
+                style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: 8),
+            Text(state.uri.toString()),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () => context.go(AppRoutes.splash),
+              child: const Text('Retour à l\'accueil'),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+});

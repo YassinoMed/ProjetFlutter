@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+npx --yes prettier -c .
+
+if [ -f ./vendor/bin/pint ]; then
+  ./vendor/bin/pint
+fi

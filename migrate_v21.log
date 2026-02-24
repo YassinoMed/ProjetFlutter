@@ -1,0 +1,185 @@
+
+./composer.json has been updated
+Running composer update beyondcode/laravel-websockets
+Loading composer repositories with package information
+Package "beyondcode/laravel-websockets" listed for update is not locked.
+Dependency laravel/framework is also a root requirement. Package has not been listed as an update argument, so keeping locked at old version. Use --with-all-dependencies (-W) to include root dependencies.
+Dependency mockery/mockery is also a root requirement. Package has not been listed as an update argument, so keeping locked at old version. Use --with-all-dependencies (-W) to include root dependencies.
+Updating dependencies
+Your requirements could not be resolved to an installable set of packages.
+
+  Problem 1
+    - Root composer.json requires knuckleswtf/scribe ^4.41, found knuckleswtf/scribe[v4.x-dev] but it does not match your minimum-stability.
+  Problem 2
+    - Root composer.json requires kreait/laravel-firebase ^6.0 -> satisfiable by kreait/laravel-firebase[6.0.0, 6.1.0, 6.2.0].
+    - kreait/firebase-php[7.13.0, ..., 7.13.1] require php ~8.1.0 || ~8.2.0 || ~8.3.0 -> your php version (8.4.4) does not satisfy that requirement.
+    - kreait/firebase-tokens 5.1.0 require php ~8.1.0 || ~8.2.0 || ~8.3.0 -> your php version (8.4.4) does not satisfy that requirement.
+    - kreait/firebase-php[7.14.0, ..., 7.16.0] require kreait/firebase-tokens ^5.1 -> satisfiable by kreait/firebase-tokens[5.1.0, 5.2.0, 5.2.1, 5.3.0].
+    - kreait/firebase-php[7.16.1, ..., 7.23.0] require kreait/firebase-tokens ^5.2 -> satisfiable by kreait/firebase-tokens[5.2.0, 5.2.1, 5.3.0].
+    - kreait/firebase-php[7.24.0, ..., 7.24.1] require lcobucci/jwt ^5.3 -> found lcobucci/jwt[5.3.0, ..., 5.6.0] but these were not loaded, likely because it conflicts with another require.
+    - kreait/firebase-tokens[5.2.0, ..., 5.3.0] require lcobucci/jwt ^5.2 -> found lcobucci/jwt[5.2.0, ..., 5.6.0] but these were not loaded, likely because it conflicts with another require.
+    - kreait/laravel-firebase 6.0.0 requires kreait/firebase-php ^7.13 -> satisfiable by kreait/firebase-php[7.13.0, ..., 7.24.1].
+    - kreait/laravel-firebase[6.1.0, ..., 6.2.0] require kreait/firebase-php ^7.19 -> satisfiable by kreait/firebase-php[7.19.0, ..., 7.24.1].
+
+Use the option --with-all-dependencies (-W) to allow upgrades, downgrades and removals for packages currently locked to specific versions.
+
+Removal failed, reverting ./composer.json to its original content.
+./composer.json has been updated
+Running composer update laravel/reverb --with-all-dependencies
+Loading composer repositories with package information
+Updating dependencies
+Your requirements could not be resolved to an installable set of packages.
+
+  Problem 1
+    - Root composer.json requires beyondcode/laravel-websockets ^1.15, found beyondcode/laravel-websockets[1.x-dev] but it does not match your minimum-stability.
+  Problem 2
+    - Root composer.json requires knuckleswtf/scribe ^4.41, found knuckleswtf/scribe[v4.x-dev] but it does not match your minimum-stability.
+  Problem 3
+    - Root composer.json requires kreait/laravel-firebase ^6.0 -> satisfiable by kreait/laravel-firebase[6.0.0, 6.1.0, 6.2.0].
+    - kreait/firebase-php[7.13.0, ..., 7.13.1] require php ~8.1.0 || ~8.2.0 || ~8.3.0 -> your php version (8.4.4) does not satisfy that requirement.
+    - kreait/firebase-tokens 5.1.0 require php ~8.1.0 || ~8.2.0 || ~8.3.0 -> your php version (8.4.4) does not satisfy that requirement.
+    - kreait/firebase-php[7.14.0, ..., 7.16.0] require kreait/firebase-tokens ^5.1 -> satisfiable by kreait/firebase-tokens[5.1.0, 5.2.0, 5.2.1, 5.3.0].
+    - kreait/firebase-php[7.16.1, ..., 7.23.0] require kreait/firebase-tokens ^5.2 -> satisfiable by kreait/firebase-tokens[5.2.0, 5.2.1, 5.3.0].
+    - kreait/firebase-php[7.24.0, ..., 7.24.1] require lcobucci/jwt ^5.3 -> found lcobucci/jwt[5.3.0, ..., 5.6.0] but these were not loaded, likely because it conflicts with another require.
+    - kreait/firebase-tokens[5.2.0, ..., 5.3.0] require lcobucci/jwt ^5.2 -> found lcobucci/jwt[5.2.0, ..., 5.6.0] but these were not loaded, likely because it conflicts with another require.
+    - kreait/laravel-firebase 6.0.0 requires kreait/firebase-php ^7.13 -> satisfiable by kreait/firebase-php[7.13.0, ..., 7.24.1].
+    - kreait/laravel-firebase[6.1.0, ..., 6.2.0] require kreait/firebase-php ^7.19 -> satisfiable by kreait/firebase-php[7.19.0, ..., 7.24.1].
+
+
+Installation failed, reverting ./composer.json and ./composer.lock to their original content.
+./composer.json has been updated
+Running composer update kreait/laravel-firebase --with-all-dependencies
+Loading composer repositories with package information
+Updating dependencies
+Your requirements could not be resolved to an installable set of packages.
+
+  Problem 1
+    - Root composer.json requires beyondcode/laravel-websockets ^1.15, found beyondcode/laravel-websockets[1.x-dev] but it does not match your minimum-stability.
+  Problem 2
+    - Root composer.json requires knuckleswtf/scribe ^4.41, found knuckleswtf/scribe[v4.x-dev] but it does not match your minimum-stability.
+  Problem 3
+    - Root composer.json requires kreait/laravel-firebase ^7.0 -> satisfiable by kreait/laravel-firebase[7.0.0].
+    - kreait/firebase-php[8.0.0, ..., 8.1.0] require lcobucci/jwt ^5.3 -> found lcobucci/jwt[5.3.0, ..., 5.6.0] but these were not loaded, likely because it conflicts with another require.
+    - kreait/laravel-firebase 7.0.0 requires kreait/firebase-php ^8.0 -> satisfiable by kreait/firebase-php[8.0.0, 8.1.0].
+
+
+Installation failed, reverting ./composer.json and ./composer.lock to their original content.
+./composer.json has been updated
+Running composer update kreait/laravel-firebase --with-all-dependencies
+Loading composer repositories with package information
+Updating dependencies
+Your requirements could not be resolved to an installable set of packages.
+
+  Problem 1
+    - Root composer.json requires beyondcode/laravel-websockets ^1.15, found beyondcode/laravel-websockets[1.x-dev] but it does not match your minimum-stability.
+  Problem 2
+    - Root composer.json requires knuckleswtf/scribe ^4.41, found knuckleswtf/scribe[v4.x-dev] but it does not match your minimum-stability.
+  Problem 3
+    - Root composer.json requires kreait/laravel-firebase ^6.0 -> satisfiable by kreait/laravel-firebase[6.0.0, 6.1.0, 6.2.0].
+    - kreait/firebase-php[7.13.0, ..., 7.13.1] require php ~8.1.0 || ~8.2.0 || ~8.3.0 -> your php version (8.4.4) does not satisfy that requirement.
+    - kreait/firebase-tokens 5.1.0 require php ~8.1.0 || ~8.2.0 || ~8.3.0 -> your php version (8.4.4) does not satisfy that requirement.
+    - kreait/firebase-php[7.14.0, ..., 7.16.0] require kreait/firebase-tokens ^5.1 -> satisfiable by kreait/firebase-tokens[5.1.0, 5.2.0, 5.2.1, 5.3.0].
+    - kreait/firebase-php[7.16.1, ..., 7.23.0] require kreait/firebase-tokens ^5.2 -> satisfiable by kreait/firebase-tokens[5.2.0, 5.2.1, 5.3.0].
+    - kreait/firebase-php[7.24.0, ..., 7.24.1] require lcobucci/jwt ^5.3 -> found lcobucci/jwt[5.3.0, ..., 5.6.0] but these were not loaded, likely because it conflicts with another require.
+    - kreait/firebase-tokens[5.2.0, ..., 5.3.0] require lcobucci/jwt ^5.2 -> found lcobucci/jwt[5.2.0, ..., 5.6.0] but these were not loaded, likely because it conflicts with another require.
+    - kreait/laravel-firebase 6.0.0 requires kreait/firebase-php ^7.13 -> satisfiable by kreait/firebase-php[7.13.0, ..., 7.24.1].
+    - kreait/laravel-firebase[6.1.0, ..., 6.2.0] require kreait/firebase-php ^7.19 -> satisfiable by kreait/firebase-php[7.19.0, ..., 7.24.1].
+
+
+Installation failed, reverting ./composer.json and ./composer.lock to their original content.
+laravel/horizon is currently present in the require-dev key and you ran the command without the --dev flag, which will move it to the require key.
+./composer.json has been updated
+Running composer update laravel/horizon spatie/laravel-activitylog --with-all-dependencies
+Loading composer repositories with package information
+Updating dependencies
+Your requirements could not be resolved to an installable set of packages.
+
+  Problem 1
+    - Root composer.json requires beyondcode/laravel-websockets ^1.15, found beyondcode/laravel-websockets[1.x-dev] but it does not match your minimum-stability.
+  Problem 2
+    - Root composer.json requires knuckleswtf/scribe ^4.41, found knuckleswtf/scribe[v4.x-dev] but it does not match your minimum-stability.
+  Problem 3
+    - Root composer.json requires kreait/laravel-firebase ^6.0 -> satisfiable by kreait/laravel-firebase[6.0.0, 6.1.0, 6.2.0].
+    - kreait/firebase-php[7.13.0, ..., 7.13.1] require php ~8.1.0 || ~8.2.0 || ~8.3.0 -> your php version (8.4.4) does not satisfy that requirement.
+    - kreait/firebase-tokens 5.1.0 require php ~8.1.0 || ~8.2.0 || ~8.3.0 -> your php version (8.4.4) does not satisfy that requirement.
+    - kreait/firebase-php[7.14.0, ..., 7.16.0] require kreait/firebase-tokens ^5.1 -> satisfiable by kreait/firebase-tokens[5.1.0, 5.2.0, 5.2.1, 5.3.0].
+    - kreait/firebase-php[7.16.1, ..., 7.23.0] require kreait/firebase-tokens ^5.2 -> satisfiable by kreait/firebase-tokens[5.2.0, 5.2.1, 5.3.0].
+    - kreait/firebase-php[7.24.0, ..., 7.24.1] require lcobucci/jwt ^5.3 -> found lcobucci/jwt[5.3.0, ..., 5.6.0] but these were not loaded, likely because it conflicts with another require.
+    - kreait/firebase-tokens[5.2.0, ..., 5.3.0] require lcobucci/jwt ^5.2 -> found lcobucci/jwt[5.2.0, ..., 5.6.0] but these were not loaded, likely because it conflicts with another require.
+    - kreait/laravel-firebase 6.0.0 requires kreait/firebase-php ^7.13 -> satisfiable by kreait/firebase-php[7.13.0, ..., 7.24.1].
+    - kreait/laravel-firebase[6.1.0, ..., 6.2.0] require kreait/firebase-php ^7.19 -> satisfiable by kreait/firebase-php[7.19.0, ..., 7.24.1].
+
+You can also try re-running composer require with an explicit version constraint, e.g. "composer require laravel/horizon:*" to figure out if any version is installable, or "composer require laravel/horizon:^2.1" if you know which you need.
+
+Installation failed, reverting ./composer.json and ./composer.lock to their original content.
+Loading composer repositories with package information
+Updating dependencies
+Your requirements could not be resolved to an installable set of packages.
+
+  Problem 1
+    - Root composer.json requires beyondcode/laravel-websockets ^1.15, found beyondcode/laravel-websockets[1.x-dev] but it does not match your minimum-stability.
+  Problem 2
+    - Root composer.json requires knuckleswtf/scribe ^4.41, found knuckleswtf/scribe[v4.x-dev] but it does not match your minimum-stability.
+  Problem 3
+    - Root composer.json requires kreait/laravel-firebase ^6.0 -> satisfiable by kreait/laravel-firebase[6.0.0, 6.1.0, 6.2.0].
+    - Root composer.json requires laravel/framework ^11.31 -> satisfiable by laravel/framework[v11.31.0, ..., v11.48.0].
+    - Root composer.json requires tymon/jwt-auth ^2.0 -> satisfiable by tymon/jwt-auth[2.0.0, ..., 2.2.1].
+    - tymon/jwt-auth 2.0.0 requires illuminate/contracts ^9.0|^10.0 -> satisfiable by illuminate/contracts[v9.0.0, ..., v9.52.16, v10.0.0, ..., v10.49.0].
+    - Conclusion: don't install illuminate/contracts v10.49.0 (conflict analysis result)
+    - Conclusion: don't install tymon/jwt-auth 2.1.0 (conflict analysis result)
+    - Conclusion: don't install tymon/jwt-auth 2.1.1 (conflict analysis result)
+    - Conclusion: don't install tymon/jwt-auth 2.2.1 (conflict analysis result)
+    - Conclusion: don't install one of tymon/jwt-auth[2.0.0], laravel/framework[v11.48.0] (conflict analysis result)
+    - Only one of these can be installed: illuminate/contracts[v6.0.0, ..., v6.20.44, v7.0.0, ..., v7.30.6, v8.0.0, ..., v8.83.27, v9.0.0, ..., v9.52.16, v10.0.0, ..., v10.49.0, v11.0.0, ..., v11.47.0, v12.0.0, ..., v12.52.0], laravel/framework[v11.31.0, ..., v11.48.0]. laravel/framework replaces illuminate/contracts and thus cannot coexist with it.
+
+
+   Error 
+
+  Class "Pusher\Pusher" not found
+
+  at vendor/laravel/framework/src/Illuminate/Broadcasting/BroadcastManager.php:341
+    337▕                 $config['client_options'] ?? [],
+    338▕             ),
+    339▕         );
+    340▕ 
+  ➜ 341▕         $pusher = new Pusher(
+    342▕             $config['key'],
+    343▕             $config['secret'],
+    344▕             $config['app_id'],
+    345▕             $config['options'] ?? [],
+
+      [2m+7 vendor frames [22m
+
+  8   routes/channels.php:10
+      Illuminate\Support\Facades\Facade::__callStatic("channel")
+      [2m+8 vendor frames [22m
+
+  17  artisan:13
+      Illuminate\Foundation\Application::handleCommand(Object(Symfony\Component\Console\Input\ArgvInput))
+
+
+   Error 
+
+  Class "Pusher\Pusher" not found
+
+  at vendor/laravel/framework/src/Illuminate/Broadcasting/BroadcastManager.php:341
+    337▕                 $config['client_options'] ?? [],
+    338▕             ),
+    339▕         );
+    340▕ 
+  ➜ 341▕         $pusher = new Pusher(
+    342▕             $config['key'],
+    343▕             $config['secret'],
+    344▕             $config['app_id'],
+    345▕             $config['options'] ?? [],
+
+      [2m+7 vendor frames [22m
+
+  8   routes/channels.php:10
+      Illuminate\Support\Facades\Facade::__callStatic("channel")
+      [2m+8 vendor frames [22m
+
+  17  artisan:13
+      Illuminate\Foundation\Application::handleCommand(Object(Symfony\Component\Console\Input\ArgvInput))
+
+./scripts/migrate_v21.sh: line 165: flutter: command not found

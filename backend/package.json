@@ -1,0 +1,13 @@
+{
+  "name": "mediconnect-pro-backend",
+  "private": true,
+  "scripts": {
+    "format": "prettier -w .",
+    "format:check": "prettier -c .",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.0.11",
+    "prettier": "^3.2.5"
+  }
+}
