@@ -6,15 +6,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/appointments/presentation/pages/booking_page.dart';
+import '../../features/appointments/presentation/pages/doctor_detail_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
-import '../../features/onboarding/presentation/pages/onboarding_page.dart';
-import '../../features/splash/presentation/pages/splash_page.dart';
-import '../../features/appointments/presentation/pages/booking_page.dart';
 import '../../features/chat/presentation/pages/chat_detail_page.dart';
-import '../../features/video_call/presentation/pages/video_call_page.dart';
+import '../../features/medical_records/presentation/pages/add_record_page.dart';
 import '../../features/medical_records/presentation/pages/medical_records_page.dart';
+import '../../features/onboarding/presentation/pages/onboarding_page.dart';
+import '../../features/profile/presentation/pages/change_password_page.dart';
+import '../../features/profile/presentation/pages/edit_profile_page.dart';
+import '../../features/profile/presentation/pages/gdpr_settings_page.dart';
+import '../../features/splash/presentation/pages/splash_page.dart';
+import '../../features/video_call/presentation/pages/video_call_page.dart';
 import '../constants/app_constants.dart';
 import 'app_routes.dart';
 import 'shell_routes.dart';
@@ -80,6 +85,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+        path: AppRoutes.doctorDetail,
+        name: 'doctor-detail',
+        builder: (context, state) {
+          final doctorId = state.pathParameters['id']!;
+          return DoctorDetailPage(doctorId: doctorId);
+        },
+      ),
+      GoRoute(
         path: AppRoutes.chatDetail,
         name: 'chat-detail',
         builder: (context, state) {
@@ -99,6 +112,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.patientRecords,
         name: 'medical-records',
         builder: (context, state) => const MedicalRecordsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.addRecord,
+        name: 'add-record',
+        builder: (context, state) => const AddRecordPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.gdprSettings,
+        name: 'gdpr-settings',
+        builder: (context, state) => const GdprSettingsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.editProfile,
+        name: 'edit-profile',
+        builder: (context, state) => const EditProfilePage(),
+      ),
+      GoRoute(
+        path: AppRoutes.changePassword,
+        name: 'change-password',
+        builder: (context, state) => const ChangePasswordPage(),
       ),
       patientShellRoute,
       doctorShellRoute,

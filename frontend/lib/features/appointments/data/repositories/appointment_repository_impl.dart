@@ -11,7 +11,8 @@ class AppointmentRepositoryImpl implements AppointmentRepository {
   AppointmentRepositoryImpl({required this.remoteDataSource});
 
   @override
-  Future<List<Doctor>> searchDoctors({String? query, String? speciality}) {
+  Future<List<DoctorEntity>> searchDoctors(
+      {String? query, String? speciality}) {
     return remoteDataSource.searchDoctors(query: query, speciality: speciality);
   }
 

@@ -118,9 +118,8 @@ class MockInterceptor extends Interceptor {
         ));
       }
 
-      // Handle Conversations
-      if (path.endsWith(ApiConstants.conversations) ||
-          path.contains('/conversations?')) {
+      // Handle Conversations (same as appointments in our architecture)
+      if (path.contains('/consultations')) {
         return handler.resolve(Response(
           requestOptions: err.requestOptions,
           statusCode: 200,
@@ -195,9 +194,9 @@ class MockInterceptor extends Interceptor {
             'Impossible de contacter le serveur. Est-il en cours d\'exécution?';
       case DioExceptionType.badResponse:
         final status = err.response?.statusCode;
-        if (status == 404)
+        if (status == 404) {
           message = 'Le service demandé est introuvable (404).';
-        else if (status == 500)
+        } else if (status == 500)
           message = 'Erreur interne du serveur (500).';
         else
           message = 'Erreur du serveur (Code: $status).';

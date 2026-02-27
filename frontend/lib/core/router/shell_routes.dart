@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/appointments/presentation/pages/appointments_page.dart';
 import '../../features/appointments/presentation/pages/doctor_search_page.dart';
 import '../../features/chat/presentation/pages/conversations_page.dart';
+import '../../features/home/presentation/pages/doctor_home_page.dart';
 import '../../features/home/presentation/pages/patient_home_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../shared/widgets/bottom_nav_scaffold.dart';
@@ -67,7 +68,7 @@ final doctorShellRoute = ShellRoute(
     GoRoute(
       path: AppRoutes.doctorHome,
       name: 'doctor-home',
-      builder: (context, state) => const DoctorHomePlaceholder(),
+      builder: (context, state) => const DoctorHomePage(),
     ),
     GoRoute(
       path: AppRoutes.doctorAppointments,
@@ -96,17 +97,6 @@ class PatientHomePlaceholder extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Scaffold(
       body: Center(child: Text('Patient Home - Coming Soon')),
-    );
-  }
-}
-
-class DoctorHomePlaceholder extends StatelessWidget {
-  const DoctorHomePlaceholder({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Doctor Home - Coming Soon')),
     );
   }
 }

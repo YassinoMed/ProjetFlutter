@@ -1,45 +1,70 @@
 import '../../domain/entities/doctor_entity.dart';
 
-class DoctorModel extends Doctor {
+class DoctorModel extends DoctorEntity {
   const DoctorModel({
-    required super.id,
+    required super.userId,
     required super.firstName,
     required super.lastName,
-    required super.speciality,
+    super.email,
+    super.phone,
+    super.rpps,
+    super.specialty,
+    super.bio,
+    super.consultationFee,
+    super.city,
+    super.address,
+    super.latitude,
+    super.longitude,
     super.avatarUrl,
     super.rating,
-    super.address,
-    super.phone,
-    super.isAvailable,
+    super.totalReviews,
+    super.isAvailableForVideo,
+    super.schedules,
   });
 
   factory DoctorModel.fromJson(Map<String, dynamic> json) {
+    final entity = DoctorEntity.fromJson(json);
     return DoctorModel(
-      id: json['id']?.toString() ?? '',
-      firstName:
-          (json['first_name'] ?? json['user']?['first_name']) as String? ?? '',
-      lastName:
-          (json['last_name'] ?? json['user']?['last_name']) as String? ?? '',
-      speciality: json['speciality'] as String? ?? 'Généraliste',
-      avatarUrl: json['avatar_url'] as String?,
-      rating: (json['rating'] as num?)?.toDouble(),
-      address: json['address'] as String?,
-      phone: json['phone'] as String?,
-      isAvailable: json['is_available'] as bool? ?? true,
+      userId: entity.userId,
+      firstName: entity.firstName,
+      lastName: entity.lastName,
+      email: entity.email,
+      phone: entity.phone,
+      rpps: entity.rpps,
+      specialty: entity.specialty,
+      bio: entity.bio,
+      consultationFee: entity.consultationFee,
+      city: entity.city,
+      address: entity.address,
+      latitude: entity.latitude,
+      longitude: entity.longitude,
+      avatarUrl: entity.avatarUrl,
+      rating: entity.rating,
+      totalReviews: entity.totalReviews,
+      isAvailableForVideo: entity.isAvailableForVideo,
+      schedules: entity.schedules,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      'user_id': userId,
       'first_name': firstName,
       'last_name': lastName,
-      'speciality': speciality,
+      'email': email,
+      'phone': phone,
+      'rpps': rpps,
+      'specialty': specialty,
+      'bio': bio,
+      'consultation_fee': consultationFee,
+      'city': city,
+      'address': address,
+      'latitude': latitude,
+      'longitude': longitude,
       'avatar_url': avatarUrl,
       'rating': rating,
-      'address': address,
-      'phone': phone,
-      'is_available': isAvailable,
+      'total_reviews': totalReviews,
+      'is_available_for_video': isAvailableForVideo,
     };
   }
 }

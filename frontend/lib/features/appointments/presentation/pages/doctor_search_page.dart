@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/router/app_routes.dart';
-import '../providers/appointment_providers.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../domain/entities/doctor_entity.dart';
+import '../providers/appointment_providers.dart';
 
 class DoctorSearchPage extends ConsumerWidget {
   const DoctorSearchPage({super.key});
@@ -59,7 +59,7 @@ class DoctorSearchPage extends ConsumerWidget {
 }
 
 class _DoctorCard extends StatelessWidget {
-  final Doctor doctor;
+  final DoctorEntity doctor;
 
   const _DoctorCard({required this.doctor});
 
@@ -75,12 +75,12 @@ class _DoctorCard extends StatelessWidget {
               : null,
         ),
         title: Text(doctor.fullName, style: AppTheme.titleMedium),
-        subtitle: Text(doctor.speciality, style: AppTheme.bodySmall),
+        subtitle:
+            Text(doctor.specialty ?? 'Généraliste', style: AppTheme.bodySmall),
         trailing: const Icon(Icons.chevron_right_rounded),
         onTap: () {
-          // TODO: Navigate to doctor detail or booking
-          context.push(
-              AppRoutes.bookAppointment.replaceFirst(':doctorId', doctor.id));
+          context
+              .push(AppRoutes.doctorDetail.replaceFirst(':id', doctor.userId));
         },
       ),
     );

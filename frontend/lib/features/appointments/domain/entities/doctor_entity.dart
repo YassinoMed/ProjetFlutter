@@ -1,40 +1,146 @@
 import 'package:equatable/equatable.dart';
 
-class Doctor extends Equatable {
-  final String id;
+class DoctorEntity extends Equatable {
+  final String userId;
   final String firstName;
   final String lastName;
-  final String speciality;
-  final String? avatarUrl;
-  final double? rating;
-  final String? address;
+  final String? email;
   final String? phone;
-  final bool isAvailable;
+  final String? rpps;
+  final String? specialty;
+  final String? bio;
+  final String? consultationFee;
+  final String? city;
+  final String? address;
+  final double? latitude;
+  final double? longitude;
+  final String? avatarUrl;
+  final double rating;
+  final int totalReviews;
+  final bool isAvailableForVideo;
+  final List<ScheduleSlot> schedules;
 
-  const Doctor({
-    required this.id,
+  const DoctorEntity({
+    required this.userId,
     required this.firstName,
     required this.lastName,
-    required this.speciality,
-    this.avatarUrl,
-    this.rating,
-    this.address,
+    this.email,
     this.phone,
-    this.isAvailable = true,
+    this.rpps,
+    this.specialty,
+    this.bio,
+    this.consultationFee,
+    this.city,
+    this.address,
+    this.latitude,
+    this.longitude,
+    this.avatarUrl,
+    this.rating = 0.0,
+    this.totalReviews = 0,
+    this.isAvailableForVideo = true,
+    this.schedules = const [],
   });
 
-  String get fullName => '$firstName $lastName';
+  String get fullName => 'Dr. $firstName $lastName';
 
   @override
-  List<Object?> get props => [
-        id,
-        firstName,
-        lastName,
-        speciality,
-        avatarUrl,
-        rating,
-        address,
-        phone,
-        isAvailable
-      ];
+  List<Object?> get props => [userId, firstName, lastName, specialty, city];
+
+  factory DoctorEntity.fromJson(Map<String, dynamic> json) {
+    final schedulesList = (json['schedules'] as List<dynamic>?)
+            ?.map((s) => ScheduleSlot.fromJson(s as Map<String, dynamic>))
+            .toList() ??
+        [];
+
+    return DoctorEntity(
+      userId: json['user_id']?.toString() ?? '',
+      firstName: json['first_name']?.toString() ?? '',
+      lastName: json['last_name']?.toString() ?? '',
+      email: json['email']?.toString(),
+      phone: json['phone']?.toString(),
+      rpps: json['rpps']?.toString(),
+      specialty: json['specialty']?.toString(),
+      bio: json['bio']?.toString(),
+      consultationFee: json['consultation_fee']?.toString(),
+      city: json['city']?.toString(),
+      address: json['address']?.toString(),
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+      avatarUrl: json['avatar_url']?.toString(),
+      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
+      totalReviews: (json['total_reviews'] as num?)?.toInt() ?? 0,
+      isAvailableForVideo: json['is_available_for_video'] as bool? ?? true,
+      schedules: schedulesList,
+    );
+  }
+}
+
+class ScheduleSlot extends Equatable {
+  final String id;
+  final int dayOfWeek;
+  final String startTime;
+  final String endTime;
+  final int slotDurationMinutes;
+  final bool isActive;
+
+  const ScheduleSlot({
+    required this.id,
+    required this.dayOfWeek,
+    required this.startTime,
+    required this.endTime,
+    this.slotDurationMinutes = 30,
+    this.isActive = true,
+  });
+
+  String get dayLabel => switch (dayOfWeek) {
+        0 => 'Dimanche',
+        1 => 'Lundi',
+        2 => 'Mardi',
+        3 => 'Mercredi',
+        4 => 'Jeudi',
+        5 => 'Vendredi',
+        6 => 'Samedi',
+        _ => '',
+      };
+
+  @override
+  List<Object?> get props => [id, dayOfWeek, startTime, endTime];
+
+  factory ScheduleSlot.fromJson(Map<String, dynamic> json) {
+    return ScheduleSlot(
+      id: json['id']?.toString() ?? '',
+      dayOfWeek: (json['day_of_week'] as num?)?.toInt() ?? 0,
+      startTime: json['start_time']?.toString() ?? '',
+      endTime: json['end_time']?.toString() ?? '',
+      slotDurationMinutes:
+          (json['slot_duration_minutes'] as num?)?.toInt() ?? 30,
+      isActive: json['is_active'] as bool? ?? true,
+    );
+  }
+}
+
+class TimeSlot extends Equatable {
+  final DateTime startsAtUtc;
+  final DateTime endsAtUtc;
+  final int durationMinutes;
+  final bool isAvailable;
+
+  const TimeSlot({
+    required this.startsAtUtc,
+    required this.endsAtUtc,
+    required this.durationMinutes,
+    required this.isAvailable,
+  });
+
+  @override
+  List<Object?> get props => [startsAtUtc, endsAtUtc, isAvailable];
+
+  factory TimeSlot.fromJson(Map<String, dynamic> json) {
+    return TimeSlot(
+      startsAtUtc: DateTime.parse(json['starts_at_utc']),
+      endsAtUtc: DateTime.parse(json['ends_at_utc']),
+      durationMinutes: (json['duration_minutes'] as num?)?.toInt() ?? 30,
+      isAvailable: json['is_available'] as bool? ?? false,
+    );
+  }
 }

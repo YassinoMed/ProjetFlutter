@@ -1,13 +1,11 @@
 <?php
 
-use App\Jobs\PurgeExpiredDataJob;
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
+use App\Jobs\PurgeExpiredData;
+use App\Jobs\SendAppointmentReminders;
 use Illuminate\Support\Facades\Schedule;
 
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote')->hourly();
+// ── Appointment Reminders (every 15 min) ──────────────────
+Schedule::job(new SendAppointmentReminders)->everyFifteenMinutes();
 
-// ── RGPD Data Minimization: purge expired data daily at 3 AM UTC ──
-Schedule::job(new PurgeExpiredDataJob)->dailyAt('03:00')->withoutOverlapping();
+// ── RGPD Data Minimization (daily at 3 AM) ────────────────
+Schedule::job(new PurgeExpiredData)->dailyAt('03:00');

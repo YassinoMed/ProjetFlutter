@@ -79,4 +79,19 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->hasMany(MedicalRecordMetadata::class, 'patient_user_id');
     }
+
+    public function appointmentsAsPatient(): HasMany
+    {
+        return $this->hasMany(Appointment::class, 'patient_user_id');
+    }
+
+    public function appointmentsAsDoctor(): HasMany
+    {
+        return $this->hasMany(Appointment::class, 'doctor_user_id');
+    }
+
+    public function consents(): HasMany
+    {
+        return $this->hasMany(UserConsent::class);
+    }
 }

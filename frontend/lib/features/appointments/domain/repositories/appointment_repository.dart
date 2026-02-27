@@ -1,8 +1,8 @@
-import '../entities/doctor_entity.dart';
 import '../entities/appointment_entity.dart';
+import '../entities/doctor_entity.dart';
 
 abstract class AppointmentRepository {
-  Future<List<Doctor>> searchDoctors({String? query, String? speciality});
+  Future<List<DoctorEntity>> searchDoctors({String? query, String? speciality});
   Future<List<Appointment>> getMyAppointments();
   Future<Appointment> bookAppointment({
     required String doctorId,

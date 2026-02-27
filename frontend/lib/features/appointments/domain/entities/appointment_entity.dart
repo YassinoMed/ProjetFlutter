@@ -23,7 +23,7 @@ class Appointment extends Equatable {
   final DateTime dateTime;
   final AppointmentStatus status;
   final String? notes;
-  final Doctor? doctor;
+  final DoctorEntity? doctor;
 
   const Appointment({
     required this.id,

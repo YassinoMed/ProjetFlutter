@@ -1,289 +1,267 @@
-# MediConnect Pro – Backend (Laravel 11)
+# MediConnect Pro v2.0
 
-Backend API + WebSocket pour MediConnect Pro (v2.1 – Février 2026).
+> Application médicale sécurisée conforme RGPD — Flutter + Laravel 11
 
-Guide pas-à-pas (sans Docker) : voir [RUNBOOK.md](file:///Users/mohamedyassine/Desktop/PFE/dsir/flutter/ProjetV0/RUNBOOK.md)
+## 🏗️ Architecture
 
-## Démarrage (dev)
+```
+ProjetV0/
+├── backend/          # Laravel 11 (PHP 8.3+) API
+├── frontend/         # Flutter 3.24+ (Clean Architecture)
+├── docker/           # Docker configs (PHP-FPM, Nginx)
+├── docker-compose.yml
+└── README.md
+```
 
-### Option A — Avec Docker (recommandé)
+## 📋 Stack Technique
 
-Si vous voyez `zsh: command not found: docker`, installez d'abord Docker Desktop (ou OrbStack).
+### Backend
+| Tech | Version | Usage |
+|------|---------|-------|
+| Laravel | 11.x | Framework API REST |
+| PHP | 8.3+ | Runtime |
+| MySQL | 8.0 | Base de données |
+| Redis | 7.x | Cache, Queue, Sessions |
+| Laravel Reverb | 1.x | WebSocket (chat, WebRTC signaling) |
+| tymon/jwt-auth | 2.x | Authentification JWT |
+| Laravel Horizon | 5.x | Queue monitoring |
+| Spatie Activity Log | 4.x | Audit trail RGPD |
+| Laravel Telescope | 5.x | Debug (dev only) |
 
-1. Copier la configuration Docker
+### Frontend (Flutter)
+| Tech | Usage |
+|------|-------|
+| Riverpod 2.x | State management |
+| GoRouter | Navigation |
+| Drift + SQLCipher | Base locale chiffrée AES-256 |
+| Dio | Client HTTP |
+| flutter_webrtc | Visioconsultation |
+| pointycastle | Chiffrement E2E (ECDH + AES-256-GCM) |
+| firebase_messaging | Notifications push |
+| flutter_secure_storage | Stockage sécurisé |
+
+---
+
+## 🚀 Installation rapide (Docker)
+
+### Prérequis
+- Docker Desktop (avec Docker Compose)
+- Flutter SDK 3.24+
+- PHP 8.3+ (pour les commandes artisan locales)
+- Node.js 18+ (pour les assets Vite)
+
+### 1. Cloner et configurer
 
 ```bash
+git clone <repo-url> ProjetV0
+cd ProjetV0
+
+# Copier les fichiers d'environnement
 cp .env.example .env
+cp backend/.env.example backend/.env
+cp frontend/.env frontend/.env
 ```
 
-2. Démarrer les services
+### 2. Lancer les services Docker
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 ```
 
-3. Logs (optionnel)
+Services démarrés :
+| Service | Port | URL |
+|---------|------|-----|
+| API (Nginx) | 8080 | http://localhost:8080 |
+| MySQL | 3306 | - |
+| Redis | 6379 | - |
+| phpMyAdmin | 8081 | http://localhost:8081 |
+| Mailpit (SMTP) | 1025 | - |
+| Mailpit (UI) | 8025 | http://localhost:8025 |
+
+### 3. Setup Backend
 
 ```bash
-docker compose logs -f app
+# Installer les dépendances PHP
+docker compose exec app composer install
+
+# Générer la clé d'application et le secret JWT
+docker compose exec app php artisan key:generate
+docker compose exec app php artisan jwt:secret
+
+# Lancer les migrations
+docker compose exec app php artisan migrate
+
+# Seeder la base de données (10 médecins, 6 patients, RDV)
+docker compose exec app php artisan db:seed
+
+# Démarrer le serveur WebSocket Reverb
+docker compose exec -d app php artisan reverb:start
+
+# Démarrer le worker de queue
+docker compose exec -d app php artisan queue:work
 ```
 
-### Option B — Sans Docker (macOS)
-
-Pré-requis (macOS) :
-- PHP 8.2–8.4 + extensions (pdo_mysql, mbstring, intl, zip)
-- Composer 2
-- MySQL 8
-- Redis 7
-- Un SMTP local (Mailpit recommandé)
-
-Installation (via Homebrew) :
+### 4. Setup Flutter
 
 ```bash
-brew install php composer mysql redis mailpit
-brew services start mysql
-brew services start redis
-brew services start mailpit
+cd frontend
+
+# Installer les dépendances
+flutter pub get
+
+# Générer les fichiers Drift
+dart run build_runner build --delete-conflicting-outputs
+
+# Lancer sur iOS Simulator
+flutter run -d ios
+
+# Ou sur Android Emulator
+flutter run -d android
 ```
 
-Initialisation automatique du backend Laravel :
+---
+
+## 🔐 Comptes de test
+
+| Email | Mot de passe | Rôle |
+|-------|-------------|------|
+| patient@mediconnect.local | password | Patient |
+| dr.0@mediconnect.local | password | Médecin (Cardiologie) |
+| dr.1@mediconnect.local | password | Médecin (Dermatologie) |
+| admin@mediconnect.local | password | Admin |
+
+---
+
+## 📡 API Endpoints
+
+### Auth
+```
+POST   /api/auth/register          # Inscription
+POST   /api/auth/login             # Connexion
+POST   /api/auth/refresh           # Rotation refresh token
+POST   /api/auth/logout            # Déconnexion
+GET    /api/auth/me                # Profil courant
+```
+
+### Doctors
+```
+GET    /api/doctors                 # Recherche médecins (?specialty=&city=&q=)
+GET    /api/doctors/specialties     # Liste des spécialités
+GET    /api/doctors/{id}            # Détail médecin
+GET    /api/doctors/{id}/slots      # Créneaux disponibles (?date=)
+```
+
+### Appointments
+```
+GET    /api/appointments            # Liste RDV
+POST   /api/appointments            # Créer RDV (atomic booking)
+GET    /api/appointments/{id}       # Détail RDV
+POST   /api/appointments/{id}/cancel    # Annuler RDV
+POST   /api/appointments/{id}/confirm   # Confirmer RDV
+```
+
+### Chat (E2E chiffré)
+```
+GET    /api/consultations/{id}/messages           # Messages
+POST   /api/consultations/{id}/messages           # Envoyer message
+POST   /api/consultations/{id}/messages/{msgId}/ack  # Accusé
+```
+
+### WebRTC Signaling
+```
+POST   /api/consultations/{id}/webrtc/join    # Rejoindre la room
+POST   /api/consultations/{id}/webrtc/offer   # Envoyer SDP offer
+POST   /api/consultations/{id}/webrtc/answer  # Envoyer SDP answer
+POST   /api/consultations/{id}/webrtc/ice     # Envoyer ICE candidate
+```
+
+### Medical Records
+```
+GET    /api/medical-records          # Liste dossiers médicaux
+POST   /api/medical-records          # Créer entrée
+GET    /api/medical-records/{id}     # Détail
+```
+
+### RGPD
+```
+GET    /api/rgpd/export    # Export données (Article 20)
+POST   /api/rgpd/consent   # Gestion consentement (Article 7)
+DELETE /api/rgpd/forget     # Droit à l'oubli (Article 17)
+```
+
+---
+
+## 🧪 Tests
+
+### Backend (PHPUnit)
+```bash
+docker compose exec app php artisan test
+```
+
+### Load Tests (k6)
+```bash
+# Full API load test (200 concurrent users)
+k6 run backend/tests/k6/full_api_load.js --env BASE_URL=http://localhost:8080/api
+
+# Chat & WebRTC specific
+k6 run backend/tests/k6/chat_webrtc_load.js --env BASE_URL=http://localhost:8080/api
+```
+
+### Flutter Tests
+```bash
+cd frontend
+flutter test
+```
+
+---
+
+## 🔒 Sécurité (CDC)
+
+| Exigence | Implémentation |
+|----------|----------------|
+| JWT Rotation | Access token 15min + Refresh 7j + rotation automatique |
+| Chiffrement E2E | ECDH secp256r1 + AES-256-GCM (pointycastle) |
+| Base locale chiffrée | SQLCipher (AES-256) via Drift |
+| Stockage sécurisé | flutter_secure_storage (Keychain/Keystore) |
+| Headers de sécurité | HSTS, CSP, X-Frame-Options, X-Content-Type |
+| Rate limiting | Throttle sur auth, chat, webrtc, RGPD |
+| Audit trail | Spatie Activity Log (immutable) |
+| Data minimization | TTL sur messages (730j) et dossiers (3650j) |
+
+---
+
+## 📊 WebSocket Events (Reverb)
+
+Canal : `private-consultations.{appointmentId}`
+
+| Event | Payload |
+|-------|---------|
+| `ChatMessageSent` | `{message_id, sender_user_id, ciphertext, nonce, algorithm, sent_at_utc}` |
+| `ChatMessageAcknowledged` | `{message_id, user_id, status, status_at_utc}` |
+| `ConsultationJoined` | `{appointment_id, user_id, joined_at_utc}` |
+| `WebRtcOfferSent` | `{appointment_id, user_id, sdp, sdp_type}` |
+| `WebRtcAnswerSent` | `{appointment_id, user_id, sdp, sdp_type}` |
+| `WebRtcIceCandidateSent` | `{appointment_id, user_id, candidate, sdp_mid, sdp_mline_index}` |
+
+---
+
+## 📅 Scheduled Jobs
+
+| Job | Fréquence | Description |
+|-----|-----------|-------------|
+| `SendAppointmentReminders` | Toutes les 15 min | Rappels RDV 24h et 1h avant |
+| `PurgeExpiredData` | Quotidien 03:00 | Purge RGPD des données expirées |
+
+---
+
+## 🐳 Docker Compose (Production)
 
 ```bash
-chmod +x ./scripts/setup_local_macos.sh ./scripts/run_local_macos.sh
-./scripts/setup_local_macos.sh
+docker compose -f docker-compose.prod.yml up -d
 ```
 
-Lancer l'API :
+---
 
-```bash
-./scripts/run_local_macos.sh
-```
+## 📄 Licence
 
-Tests API (Feature) :
-
-```bash
-chmod +x ./scripts/test_api_local_macos.sh
-./scripts/test_api_local_macos.sh
-```
-
-Configuration manuelle (si vous préférez) :
-
-```bash
-cd backend
-cp .env.example .env
-composer install
-php artisan key:generate
-php artisan migrate
-php artisan serve --host=127.0.0.1 --port=8080
-```
-
-Notes sans Docker :
-- Adaptez `.env` : `DB_HOST=127.0.0.1`, `REDIS_HOST=127.0.0.1`, `MAIL_HOST=127.0.0.1`
-- Mailpit UI : http://localhost:8025
-
-## Services
-
-- API (Nginx) : http://localhost:8080
-- phpMyAdmin : http://localhost:8081
-- Mailpit UI : http://localhost:8025
-
-## Endpoints (v2.1)
-
-- Auth
-  - POST `/api/auth/register`
-  - POST `/api/auth/login`
-  - POST `/api/auth/refresh`
-  - POST `/api/auth/logout`
-  - GET `/api/auth/me`
-- Rendez-vous
-  - GET `/api/appointments` (cursor pagination)
-  - POST `/api/appointments`
-  - GET `/api/appointments/{appointmentId}`
-  - POST `/api/appointments/{appointmentId}/confirm`
-  - POST `/api/appointments/{appointmentId}/cancel`
-- Chat sécurisé
-  - GET `/api/consultations/{appointmentId}/messages`
-  - POST `/api/consultations/{appointmentId}/messages`
-  - POST `/api/consultations/{appointmentId}/messages/{messageId}/ack`
-- WebRTC (signalisation)
-  - POST `/api/consultations/{appointmentId}/webrtc/join`
-  - POST `/api/consultations/{appointmentId}/webrtc/offer`
-  - POST `/api/consultations/{appointmentId}/webrtc/answer`
-  - POST `/api/consultations/{appointmentId}/webrtc/ice`
-- **E2EE Encrypted Attachments (v2.1)** 🔒
-  - POST `/api/attachments/upload` – Upload encrypted file
-  - GET `/api/attachments/{id}` – Get attachment metadata
-  - GET `/api/attachments/{id}/download` – Download encrypted blob
-  - DELETE `/api/attachments/{id}` – Delete attachment (RGPD)
-- FCM tokens
-  - POST `/api/fcm/tokens`
-  - DELETE `/api/fcm/tokens`
-  - POST `/api/fcm/tokens/heartbeat`
-- RGPD
-  - GET `/api/rgpd/export`
-  - POST `/api/rgpd/consent`
-  - DELETE `/api/rgpd/forget`
-
-## Étape 2 — Sécurité & Authentification
-
-- JWT access + refresh avec rotation et blacklist
-- Rate limiting (Redis) + anti-brute-force par IP/email
-- Roles (PATIENT, DOCTOR, ADMIN) via Gates et Policies
-- Explication certificate pinning (côté backend)
-
-Commandes :
-
-```bash
-composer require tymon/jwt-auth:^2.0
-php artisan vendor:publish --provider="Tymon\JWTAuth\Providers\LaravelServiceProvider"
-php artisan jwt:secret
-php artisan migrate
-```
-
-Certificate pinning :
-
-- Le pinning se fait côté client mobile, pas côté backend.
-- Le backend garantit HTTPS, des certificats valides et une stabilité du hostname.
-- Les pins (SHA-256 SPKI) doivent être configurés dans l'app Flutter.
-- En cas de rotation cert, publier les nouveaux pins avant la mise en production.
-
-## Étape 3 — Module Rendez-vous
-
-- Ressource complète (Model, Resource, Requests, Policies)
-- Machine à états via Enum + service de transition
-- Règles RDV (création patient/admin, dates futures, chevauchements patient/doctor)
-- Vérification atomique des chevauchements (lock + transaction)
-- Notifications push automatiques (confirmation, rappel J-1, H-1, annulation)
-- Pagination cursor-based + filtres + recherche basique
-
-Tests :
-
-```bash
-php ./vendor/bin/phpunit
-```
-
-## Étape 4 — Chat sécurisé (E2E, WebSockets)
-
-### v2.0 : beyondcode/laravel-websockets (deprecated)
-
-### v2.1 : Migration vers Laravel Reverb (natif) ✅
-
-Commandes :
-
-```bash
-composer require laravel/reverb
-php artisan reverb:install
-php artisan reverb:start
-```
-
-WebSocket (dev) :
-
-- URL : `ws://localhost:8080/app/{REVERB_APP_KEY}`
-- Auth : `POST /broadcasting/auth` avec JWT `Bearer`
-- Format message : `type=CHAT_MESSAGE` + payload chiffré (ciphertext, nonce, algorithm, key_id)
-- Format ack : `type=CHAT_ACK` (DELIVERED/READ) avec `status_at_utc`
-- Historique : pagination cursor-based, 50 messages max par page
-
-## Étape 5 — Signalisation WebRTC
-
-- Événements diffusés : `JOIN_CONSULTATION`, `WEBRTC_OFFER`, `WEBRTC_ANSWER`, `ICE_CANDIDATE`
-- Channels privés : `consultations.{consultationId}`
-- Endpoints REST authentifiés JWT (join/offer/answer/ice) + rate limit
-
-## Étape 6 — Notifications Push (FCM)
-
-Commandes :
-
-```bash
-composer require kreait/laravel-firebase:^6.0
-php artisan vendor:publish --provider="Kreait\Laravel\Firebase\ServiceProvider" --tag=config
-```
-
-Catalogue principal :
-
-- Rendez-vous : confirmed, cancelled, reminder_j1, reminder_h1
-- Chat : nouveau message sécurisé
-
-### v2.1 : Rich Push Notifications ✅
-
-- **Images** dans les notifications (Notification Service Extension iOS)
-- **Boutons d'action** (Voir RDV, Annuler, Répondre inline, Accepter/Refuser appel)
-- **Canaux Android** par type (appointments, messages, calls, medical_records)
-- **Catégories iOS** avec actions contextuelles
-- **Deep links** pour navigation directe
-- **Live Activities** iOS 16+ pour rappel RDV en cours
-
-## Étape 7 — Sécurité globale & RGPD
-
-Commandes :
-
-```bash
-composer require spatie/laravel-activitylog:^4.8
-php artisan vendor:publish --provider="Spatie\Activitylog\ActivitylogServiceProvider" --tag="activitylog-migrations"
-```
-
-RGPD :
-
-- Export JSON : `/api/rgpd/export`
-- Consentements : `/api/rgpd/consent`
-- Droit à l'oubli : `/api/rgpd/forget`
-
-### v2.1 : Data Minimization ✅
-
-- **TTL automatique** sur les messages chat (2 ans) et dossiers médicaux (10 ans)
-- **Purge automatique** via `PurgeExpiredDataJob` (scheduler quotidien 03:00 UTC)
-- **Audit trail** complet des purges (spatie/laravel-activitylog)
-- **Notification** aux patients avant suppression (J-30)
-
-### v2.1 : E2EE Encrypted Attachments ✅
-
-- **Chiffrement AES-256-GCM côté client** avant upload
-- **Stockage du blob chiffré** (le serveur ne voit jamais les données en clair)
-- **Polymorphic** : attachable à ChatMessage ou MedicalRecord
-- **Intégrité SHA-256** vérifiée au téléchargement
-- **Expiration automatique** (TTL)
-- **Droit à l'effacement** (DELETE endpoint)
-
-## Étape 8 — Tests & Qualité
-
-Unit + Feature :
-
-```bash
-php artisan test
-```
-
-Charge k6 :
-
-```bash
-k6 run backend/tests/k6/chat_webrtc_load.js
-```
-
-## v2.1 — OpenTelemetry & Distributed Tracing ✅
-
-- **TraceRequestMiddleware** : W3C Trace Context sur chaque requête API
-- **Span logging** : trace_id, span_id, duration, HTTP method/status
-- **Alertes** pour requêtes lentes (>2s)
-- **Export OTLP** optionnel vers Jaeger / Grafana Tempo
-- **Propagation** Flutter ↔ Laravel via `traceparent` header
-
-## v2.1 — Voice Chat ✅ (Flutter)
-
-- **Speech-to-Text** on-device (RGPD-friendly)
-- **Text-to-Speech** pour lecture des messages
-- **Hold-to-speak** interface dans le chat
-- **Transcription automatique** in-app
-
-## Swagger / OpenAPI (Scribe)
-
-```bash
-composer require knuckleswtf/scribe:^4.41
-php artisan scribe:generate
-```
-
-Docs : http://localhost:8080/docs
-
-## Notes
-
-- Le conteneur `app` initialise automatiquement un projet Laravel 11 dans `./backend` lors du premier démarrage.
-- Les migrations et prérequis (Sanctum + JWT) sont appliqués via `backend/_overlay`.
-- Config Firebase: `FIREBASE_CREDENTIALS=storage/app/firebase-service-account.json` (à fournir).
+Projet PFE — Tous droits réservés © 2026

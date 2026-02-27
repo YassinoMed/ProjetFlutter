@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/router/app_routes.dart';
-import '../providers/appointment_providers.dart';
-import '../../domain/entities/appointment_entity.dart';
-
+import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/error_display.dart';
+import '../../domain/entities/appointment_entity.dart';
+import '../providers/appointment_providers.dart';
 
 class AppointmentsPage extends ConsumerWidget {
   const AppointmentsPage({super.key});
@@ -143,7 +142,7 @@ class _AppointmentCard extends StatelessWidget {
                       style: AppTheme.titleMedium,
                     ),
                     Text(
-                      doctor?.speciality ?? 'Généraliste',
+                      doctor?.specialty ?? 'Généraliste',
                       style: AppTheme.bodySmall
                           .copyWith(color: AppTheme.neutralGray500),
                     ),
