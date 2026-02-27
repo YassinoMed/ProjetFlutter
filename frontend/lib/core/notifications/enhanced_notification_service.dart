@@ -150,7 +150,7 @@ class EnhancedNotificationService {
     }
 
     // ── Get FCM Token ────────────────────────────────────
-    String? token = await _fcm.getToken();
+    final String? token = await _fcm.getToken();
     _logger.i('FCM Token: $token');
 
     _logger

@@ -74,6 +74,7 @@ class ApiConstants {
 
   // ── Profile ───────────────────────────────────────────────
   static const String profile = '/profile';
+  static const String profilePassword = '/profile/password';
 
   // ── RGPD ──────────────────────────────────────────────────
   static const String rgpdExport = '/rgpd/export';

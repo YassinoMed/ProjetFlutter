@@ -35,6 +35,12 @@ abstract class AuthRemoteDataSource {
 
   Future<UserModel> updateProfile(Map<String, dynamic> data);
 
+  Future<void> updatePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmPassword,
+  });
+
   Future<void> forgotPassword(String email);
 
   Future<void> resetPassword({
@@ -64,8 +70,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       if (response.statusCode == 200) {
         final Map<String, dynamic> data =
             (response.data is Map && response.data.containsKey('data'))
-            ? response.data['data'] as Map<String, dynamic>
-            : response.data as Map<String, dynamic>;
+                ? response.data['data'] as Map<String, dynamic>
+                : response.data as Map<String, dynamic>;
 
         return LoginResponseModel.fromJson(data);
       }
@@ -108,9 +114,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     try {
       final parts = name.trim().split(' ');
       final firstName = parts.isNotEmpty ? parts.first : 'Utilisateur';
-      final lastName = parts.length > 1
-          ? parts.sublist(1).join(' ')
-          : 'Sans Nom';
+      final lastName =
+          parts.length > 1 ? parts.sublist(1).join(' ') : 'Sans Nom';
 
       final data = {
         'first_name': firstName,
@@ -129,8 +134,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       if (response.statusCode == 201 || response.statusCode == 200) {
         final Map<String, dynamic> data =
             (response.data is Map && response.data.containsKey('data'))
-            ? response.data['data'] as Map<String, dynamic>
-            : response.data as Map<String, dynamic>;
+                ? response.data['data'] as Map<String, dynamic>
+                : response.data as Map<String, dynamic>;
 
         return LoginResponseModel.fromJson(data);
       }
@@ -227,6 +232,35 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         statusCode: response.statusCode,
       );
     } on DioException catch (e) {
+      throw ServerException(
+        message: e.message ?? 'Erreur réseau',
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  @override
+  Future<void> updatePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    try {
+      await dio.put(
+        ApiConstants.profilePassword,
+        data: {
+          'current_password': currentPassword,
+          'password': newPassword,
+          'password_confirmation': confirmPassword,
+        },
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 422) {
+        throw ServerException(
+          message: _extractValidationError(e.response?.data),
+          statusCode: 422,
+        );
+      }
       throw ServerException(
         message: e.message ?? 'Erreur réseau',
         statusCode: e.response?.statusCode,

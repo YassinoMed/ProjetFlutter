@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../providers/appointment_providers.dart';
 import '../../data/repositories/appointment_repository_impl.dart';
+import '../providers/appointment_providers.dart';
 
 class BookingPage extends ConsumerStatefulWidget {
   final String doctorId;

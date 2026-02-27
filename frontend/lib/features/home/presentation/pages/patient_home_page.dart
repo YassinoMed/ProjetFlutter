@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/router/app_routes.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../../appointments/presentation/providers/appointment_providers.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/error_display.dart';
+import '../../../appointments/presentation/providers/appointment_providers.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 
 class PatientHomePage extends ConsumerWidget {
   const PatientHomePage({super.key});

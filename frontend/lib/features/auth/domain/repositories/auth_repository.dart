@@ -10,12 +10,15 @@ import '../entities/user_entity.dart';
 abstract class AuthRepository {
   /// Login with email and password
   /// Returns JWT tokens + User on success
-  Future<Either<Failure, ({User user, String accessToken, String refreshToken})>>
-      login({required String email, required String password});
+  Future<
+      Either<Failure,
+          ({User user, String accessToken, String refreshToken})>> login(
+      {required String email, required String password});
 
   /// Register a new user (Patient or Doctor)
-  Future<Either<Failure, ({User user, String accessToken, String refreshToken})>>
-      register({
+  Future<
+      Either<Failure,
+          ({User user, String accessToken, String refreshToken})>> register({
     required String name,
     required String email,
     required String password,
@@ -42,6 +45,13 @@ abstract class AuthRepository {
     String? phone,
     String? avatarUrl,
     String? address,
+  });
+
+  /// Update password
+  Future<Either<Failure, void>> updatePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmPassword,
   });
 
   /// Check if user has valid tokens stored

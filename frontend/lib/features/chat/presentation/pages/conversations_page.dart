@@ -51,14 +51,14 @@ class ConversationsPage extends ConsumerWidget {
   }
 
   Widget _buildEmptyState() {
-    return Center(
+    return const Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.chat_bubble_outline_rounded,
+          Icon(Icons.chat_bubble_outline_rounded,
               size: 64, color: AppTheme.neutralGray300),
-          const SizedBox(height: 16),
-          const Text('Aucune conversation'),
+          SizedBox(height: 16),
+          Text('Aucune conversation'),
         ],
       ),
     );

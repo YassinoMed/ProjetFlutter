@@ -2,7 +2,10 @@
 /// CDC: AuthNotifier with JWT handling, role redirect
 library;
 
+import 'package:dartz/dartz.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../core/errors/failures.dart';
 
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/network_info.dart';
@@ -151,6 +154,48 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
           state = AsyncValue.data(current.copyWith(user: user));
         }
       },
+    );
+  }
+
+  /// Update Profile
+  Future<Either<Failure, User>> updateProfile({
+    String? name,
+    String? phone,
+    String? avatarUrl,
+    String? address,
+  }) async {
+    final repository = ref.read(authRepositoryProvider);
+    final result = await repository.updateProfile(
+      name: name,
+      phone: phone,
+      avatarUrl: avatarUrl,
+      address: address,
+    );
+
+    result.fold(
+      (failure) {},
+      (user) {
+        final current = state.valueOrNull;
+        if (current != null) {
+          state = AsyncValue.data(current.copyWith(user: user));
+        }
+      },
+    );
+
+    return result;
+  }
+
+  /// Update Password
+  Future<Either<Failure, void>> updatePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    final repository = ref.read(authRepositoryProvider);
+    return await repository.updatePassword(
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+      confirmPassword: confirmPassword,
     );
   }
 }

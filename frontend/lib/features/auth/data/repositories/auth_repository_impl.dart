@@ -28,8 +28,10 @@ class AuthRepositoryImpl implements AuthRepository {
   });
 
   @override
-  Future<Either<Failure, ({User user, String accessToken, String refreshToken})>>
-      login({required String email, required String password}) async {
+  Future<
+      Either<Failure,
+          ({User user, String accessToken, String refreshToken})>> login(
+      {required String email, required String password}) async {
     if (!await networkInfo.isConnected) {
       return const Left(NetworkFailure());
     }
@@ -58,8 +60,9 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<Failure, ({User user, String accessToken, String refreshToken})>>
-      register({
+  Future<
+      Either<Failure,
+          ({User user, String accessToken, String refreshToken})>> register({
     required String name,
     required String email,
     required String password,
@@ -194,6 +197,28 @@ class AuthRepositoryImpl implements AuthRepository {
         value: jsonEncode(userModel.toJson()),
       );
       return Right(userModel.toEntity());
+    } on ServerException catch (e) {
+      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> updatePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    if (!await networkInfo.isConnected) {
+      return const Left(NetworkFailure());
+    }
+
+    try {
+      await remoteDataSource.updatePassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+        confirmPassword: confirmPassword,
+      );
+      return const Right(null);
     } on ServerException catch (e) {
       return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
     }

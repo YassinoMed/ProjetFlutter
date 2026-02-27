@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Profiles\UpdatePasswordRequest;
 use App\Http\Requests\Profiles\UpdateProfileRequest;
 use App\Http\Resources\DoctorProfileResource;
 use App\Http\Resources\PatientProfileResource;
@@ -81,6 +82,19 @@ class ProfileController extends Controller
             'user' => new UserResource($user->refresh()),
             'patient_profile' => $patientProfile ? new PatientProfileResource($patientProfile) : null,
             'doctor_profile' => $doctorProfile ? new DoctorProfileResource($doctorProfile) : null,
+        ]);
+    }
+
+    public function updatePassword(UpdatePasswordRequest $request): JsonResponse
+    {
+        $user = $request->user();
+        
+        $user->update([
+            'password' => $request->validated('password'),
+        ]);
+
+        return response()->json([
+            'message' => 'Password updated successfully.',
         ]);
     }
 }

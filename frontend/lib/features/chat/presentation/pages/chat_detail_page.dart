@@ -244,12 +244,12 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
                     : TextField(
                         key: const ValueKey('text'),
                         controller: _controller,
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           hintText: 'Tapez votre message...',
                           border: InputBorder.none,
                           enabledBorder: InputBorder.none,
                           focusedBorder: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
+                          contentPadding: EdgeInsets.symmetric(
                             horizontal: 12,
                             vertical: 8,
                           ),
@@ -490,7 +490,7 @@ class _MessageBubble extends StatelessWidget {
                   ),
                   if (message.isMe) ...[
                     const SizedBox(width: 4),
-                    Icon(
+                    const Icon(
                       Icons.done_all_rounded,
                       size: 14,
                       color: Colors.white60,
@@ -501,7 +501,7 @@ class _MessageBubble extends StatelessWidget {
                     const SizedBox(width: 6),
                     GestureDetector(
                       onTap: onSpeak,
-                      child: Icon(
+                      child: const Icon(
                         Icons.volume_up_rounded,
                         size: 14,
                         color: Colors.black38,

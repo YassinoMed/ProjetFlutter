@@ -1,9 +1,11 @@
-import 'dart:io' show Platform;
 import 'dart:convert';
+import 'dart:io' show Platform;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logger/logger.dart';
 import 'package:pusher_channels_flutter/pusher_channels_flutter.dart';
+
 import '../constants/api_constants.dart';
 import '../security/secure_storage_service.dart';
 

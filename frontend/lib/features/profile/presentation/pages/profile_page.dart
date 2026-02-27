@@ -97,7 +97,9 @@ class ProfilePage extends ConsumerWidget {
             _buildMenuItem(
               icon: Icons.person_outline_rounded,
               title: 'Informations personnelles',
-              onTap: () {},
+              onTap: () {
+                context.push(AppRoutes.editProfile);
+              },
             ),
             _buildMenuItem(
               icon: Icons.folder_open_rounded,
@@ -112,7 +114,16 @@ class ProfilePage extends ConsumerWidget {
             _buildMenuItem(
               icon: Icons.shield_outlined,
               title: 'Confidentialité & RGPD',
-              onTap: () {},
+              onTap: () {
+                context.push(AppRoutes.gdprSettings);
+              },
+            ),
+            _buildMenuItem(
+              icon: Icons.lock_outline_rounded,
+              title: 'Sécurité & Mot de passe',
+              onTap: () {
+                context.push(AppRoutes.changePassword);
+              },
             ),
             _buildMenuItem(
               icon: Icons.dark_mode_outlined,

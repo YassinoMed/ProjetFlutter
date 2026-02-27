@@ -29,7 +29,7 @@ class NotificationService {
     FirebaseMessaging.onMessage.listen(_handleMessage);
 
     // Get Token
-    String? token = await _fcm.getToken();
+    final String? token = await _fcm.getToken();
     print('FCM Token: $token');
   }
 

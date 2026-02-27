@@ -85,6 +85,7 @@ Route::middleware('auth:api')->group(function (): void {
     // ── Profile ──────────────────────────────────────────
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::put('/profile', [ProfileController::class, 'update']);
+    Route::put('/profile/password', [ProfileController::class, 'updatePassword']);
 
     // ── Medical Records ──────────────────────────────────
     Route::get('/medical-records', [MedicalRecordMetadataController::class, 'index']);
