@@ -1,267 +1,162 @@
-# MediConnect Pro v2.0
+<div align="center">
+  
+  <img src="https://img.icons8.com/color/144/flutter.png" alt="Flutter Logo" width="80" />
+  <img src="https://img.icons8.com/color/144/laravel.png" alt="Laravel Logo" width="80" />
+  
+  <h1>🏥 Medical ERP & Telehealth SaaS</h1>
+  <p><strong>A Next-Generation Multi-Tenant Healthcare Solution</strong></p>
 
-> Application médicale sécurisée conforme RGPD — Flutter + Laravel 11
+  <!-- Badges -->
+  <p>
+    <img src="https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter" />
+    <img src="https://img.shields.io/badge/Laravel-FF2D20?style=for-the-badge&logo=laravel&logoColor=white" alt="Laravel" />
+    <img src="https://img.shields.io/badge/Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white" alt="Dart" />
+    <img src="https://img.shields.io/badge/PHP-777BB4?style=for-the-badge&logo=php&logoColor=white" alt="PHP" />
+    <img src="https://img.shields.io/badge/WebSockets-25D366?style=for-the-badge&logo=whatsapp&logoColor=white" alt="WebSockets" />
+    <img src="https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white" alt="MySQL" />
+  </p>
+
+  <p>
+    <a href="#-architecture">Architecture</a> •
+    <a href="#-features">Features</a> •
+    <a href="#-getting-started">Getting Started</a>
+  </p>
+</div>
+
+---
+
+## � Overview
+
+This project is a high-performance **Healthcare SaaS and ERP platform** built with **Flutter** (Frontend) and **Laravel** (Backend API). It is designed to modernize clinic operations, enhance patient-doctor communication, and provide absolute data security through an advanced **Database-per-Tenant** architecture.
+
+---
+
+## ✨ Features
+
+- **🛡️ Multi-Tenant Architecture:** Total data isolation with a dynamic "Database per Tenant" approach, ensuring the highest level of security and API performance.
+- **👨‍⚕️ Doctor & Patient Portals:** Dedicated UI/UX for both patients (booking, medical records) and healthcare providers (schedule management, consultations).
+- **💬 Real-Time Chat & Telehealth:** Integrated instant messaging using WebSockets and real-time medical consultations via Video Calls.
+- **📁 Digital Medical Records (EMR):** Secure, structured, and easily accessible patient history and prescriptions.
+- **⚙️ Admin Dashboard (Livewire):** Powerful backend administration panel to manage clinics, profiles, subscriptions, and system metrics.
+
+---
 
 ## 🏗️ Architecture
 
-```
-ProjetV0/
-├── backend/          # Laravel 11 (PHP 8.3+) API
-├── frontend/         # Flutter 3.24+ (Clean Architecture)
-├── docker/           # Docker configs (PHP-FPM, Nginx)
-├── docker-compose.yml
-└── README.md
-```
+The system follows a strict Clean Architecture pattern on the frontend, decoupling presentation, domain, and data layers. The backend utilizes Laravel to securely hand-off requests to the appropriate tenant database.
 
-## 📋 Stack Technique
+### High-Level System Design
 
-### Backend
-| Tech | Version | Usage |
-|------|---------|-------|
-| Laravel | 11.x | Framework API REST |
-| PHP | 8.3+ | Runtime |
-| MySQL | 8.0 | Base de données |
-| Redis | 7.x | Cache, Queue, Sessions |
-| Laravel Reverb | 1.x | WebSocket (chat, WebRTC signaling) |
-| tymon/jwt-auth | 2.x | Authentification JWT |
-| Laravel Horizon | 5.x | Queue monitoring |
-| Spatie Activity Log | 4.x | Audit trail RGPD |
-| Laravel Telescope | 5.x | Debug (dev only) |
+```mermaid
+graph TD
+    classDef mobile fill:#02569B,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef backend fill:#FF2D20,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef db fill:#4479A1,stroke:#fff,stroke-width:2px,color:#fff;
 
-### Frontend (Flutter)
-| Tech | Usage |
-|------|-------|
-| Riverpod 2.x | State management |
-| GoRouter | Navigation |
-| Drift + SQLCipher | Base locale chiffrée AES-256 |
-| Dio | Client HTTP |
-| flutter_webrtc | Visioconsultation |
-| pointycastle | Chiffrement E2E (ECDH + AES-256-GCM) |
-| firebase_messaging | Notifications push |
-| flutter_secure_storage | Stockage sécurisé |
-
----
-
-## 🚀 Installation rapide (Docker)
-
-### Prérequis
-- Docker Desktop (avec Docker Compose)
-- Flutter SDK 3.24+
-- PHP 8.3+ (pour les commandes artisan locales)
-- Node.js 18+ (pour les assets Vite)
-
-### 1. Cloner et configurer
-
-```bash
-git clone <repo-url> ProjetV0
-cd ProjetV0
-
-# Copier les fichiers d'environnement
-cp .env.example .env
-cp backend/.env.example backend/.env
-cp frontend/.env frontend/.env
-```
-
-### 2. Lancer les services Docker
-
-```bash
-docker compose up -d
-```
-
-Services démarrés :
-| Service | Port | URL |
-|---------|------|-----|
-| API (Nginx) | 8080 | http://localhost:8080 |
-| MySQL | 3306 | - |
-| Redis | 6379 | - |
-| phpMyAdmin | 8081 | http://localhost:8081 |
-| Mailpit (SMTP) | 1025 | - |
-| Mailpit (UI) | 8025 | http://localhost:8025 |
-
-### 3. Setup Backend
-
-```bash
-# Installer les dépendances PHP
-docker compose exec app composer install
-
-# Générer la clé d'application et le secret JWT
-docker compose exec app php artisan key:generate
-docker compose exec app php artisan jwt:secret
-
-# Lancer les migrations
-docker compose exec app php artisan migrate
-
-# Seeder la base de données (10 médecins, 6 patients, RDV)
-docker compose exec app php artisan db:seed
-
-# Démarrer le serveur WebSocket Reverb
-docker compose exec -d app php artisan reverb:start
-
-# Démarrer le worker de queue
-docker compose exec -d app php artisan queue:work
-```
-
-### 4. Setup Flutter
-
-```bash
-cd frontend
-
-# Installer les dépendances
-flutter pub get
-
-# Générer les fichiers Drift
-dart run build_runner build --delete-conflicting-outputs
-
-# Lancer sur iOS Simulator
-flutter run -d ios
-
-# Ou sur Android Emulator
-flutter run -d android
+    subgraph "Frontend (Flutter)"
+        P[📱 Patient App]:::mobile
+        D[👨‍⚕️ Doctor Panel]:::mobile
+    end
+    
+    subgraph "Backend System (Laravel)"
+        API[🌐 RESTful API]:::backend
+        WS[⚡ WebSocket Server]:::backend
+        Admin[⚙️ Admin Dashboard]:::backend
+    end
+    
+    subgraph "Data Storage"
+        DB1[(Tenant DB: Clinic A)]:::db
+        DB2[(Tenant DB: Clinic B)]:::db
+        DB3[(Tenant DB: Clinic C)]:::db
+    end
+    
+    P <-->|HTTP / Sanctum| API
+    P <-->|Real-time| WS
+    D <-->|HTTP / Sanctum| API
+    D <-->|Real-time| WS
+    Admin <-->|Manage| API
+    
+    API <-->|Dynamic Connection| DB1
+    API <-->|Dynamic Connection| DB2
+    API <-->|Dynamic Connection| DB3
 ```
 
 ---
 
-## 🔐 Comptes de test
+## 📱 Screenshots
 
-| Email | Mot de passe | Rôle |
-|-------|-------------|------|
-| patient@mediconnect.local | password | Patient |
-| dr.0@mediconnect.local | password | Médecin (Cardiologie) |
-| dr.1@mediconnect.local | password | Médecin (Dermatologie) |
-| admin@mediconnect.local | password | Admin |
+> *(Add screenshots of your brilliant UI here)*
 
----
-
-## 📡 API Endpoints
-
-### Auth
-```
-POST   /api/auth/register          # Inscription
-POST   /api/auth/login             # Connexion
-POST   /api/auth/refresh           # Rotation refresh token
-POST   /api/auth/logout            # Déconnexion
-GET    /api/auth/me                # Profil courant
-```
-
-### Doctors
-```
-GET    /api/doctors                 # Recherche médecins (?specialty=&city=&q=)
-GET    /api/doctors/specialties     # Liste des spécialités
-GET    /api/doctors/{id}            # Détail médecin
-GET    /api/doctors/{id}/slots      # Créneaux disponibles (?date=)
-```
-
-### Appointments
-```
-GET    /api/appointments            # Liste RDV
-POST   /api/appointments            # Créer RDV (atomic booking)
-GET    /api/appointments/{id}       # Détail RDV
-POST   /api/appointments/{id}/cancel    # Annuler RDV
-POST   /api/appointments/{id}/confirm   # Confirmer RDV
-```
-
-### Chat (E2E chiffré)
-```
-GET    /api/consultations/{id}/messages           # Messages
-POST   /api/consultations/{id}/messages           # Envoyer message
-POST   /api/consultations/{id}/messages/{msgId}/ack  # Accusé
-```
-
-### WebRTC Signaling
-```
-POST   /api/consultations/{id}/webrtc/join    # Rejoindre la room
-POST   /api/consultations/{id}/webrtc/offer   # Envoyer SDP offer
-POST   /api/consultations/{id}/webrtc/answer  # Envoyer SDP answer
-POST   /api/consultations/{id}/webrtc/ice     # Envoyer ICE candidate
-```
-
-### Medical Records
-```
-GET    /api/medical-records          # Liste dossiers médicaux
-POST   /api/medical-records          # Créer entrée
-GET    /api/medical-records/{id}     # Détail
-```
-
-### RGPD
-```
-GET    /api/rgpd/export    # Export données (Article 20)
-POST   /api/rgpd/consent   # Gestion consentement (Article 7)
-DELETE /api/rgpd/forget     # Droit à l'oubli (Article 17)
-```
+| Patient Dashboard | Doctor Appointments | Real-Time Chat | Telehealth Video |
+| :---: | :---: | :---: | :---: |
+| <img src="https://placehold.co/200x400/eee/999?text=Patient+Home" width="200"/> | <img src="https://placehold.co/200x400/eee/999?text=Booking" width="200"/> | <img src="https://placehold.co/200x400/eee/999?text=Chat/WebSockets" width="200"/> | <img src="https://placehold.co/200x400/eee/999?text=Video+Call" width="200"/> |
 
 ---
 
-## 🧪 Tests
+## 🚀 Getting Started
 
-### Backend (PHPUnit)
-```bash
-docker compose exec app php artisan test
-```
+### Prerequisites
 
-### Load Tests (k6)
-```bash
-# Full API load test (200 concurrent users)
-k6 run backend/tests/k6/full_api_load.js --env BASE_URL=http://localhost:8080/api
+- **Flutter SDK** (`>= 3.0.0`)
+- **PHP** (`>= 8.2`) & **Composer**
+- **MySQL / PostgreSQL** (for Tenant databases)
+- **Node.js** & **NPM** (for WebSockets/Broadcasting, if local)
 
-# Chat & WebRTC specific
-k6 run backend/tests/k6/chat_webrtc_load.js --env BASE_URL=http://localhost:8080/api
-```
+### Backend Setup (Laravel)
 
-### Flutter Tests
-```bash
-cd frontend
-flutter test
-```
+1. **Clone & Navigate:**
+   ```bash
+   cd backend
+   ```
+2. **Install Dependencies:**
+   ```bash
+   composer install
+   npm install
+   ```
+3. **Environment setup:**
+   ```bash
+   cp .env.example .env
+   php artisan key:generate
+   ```
+4. **Database & Migrations:**
+   *Set up a central DB in `.env`, then run migrations for the main and tenant databases.*
+   ```bash
+   php artisan migrate --seed
+   ```
+5. **Serve Application:**
+   ```bash
+   php artisan serve
+   ```
 
----
+### Frontend Setup (Flutter)
 
-## 🔒 Sécurité (CDC)
-
-| Exigence | Implémentation |
-|----------|----------------|
-| JWT Rotation | Access token 15min + Refresh 7j + rotation automatique |
-| Chiffrement E2E | ECDH secp256r1 + AES-256-GCM (pointycastle) |
-| Base locale chiffrée | SQLCipher (AES-256) via Drift |
-| Stockage sécurisé | flutter_secure_storage (Keychain/Keystore) |
-| Headers de sécurité | HSTS, CSP, X-Frame-Options, X-Content-Type |
-| Rate limiting | Throttle sur auth, chat, webrtc, RGPD |
-| Audit trail | Spatie Activity Log (immutable) |
-| Data minimization | TTL sur messages (730j) et dossiers (3650j) |
-
----
-
-## 📊 WebSocket Events (Reverb)
-
-Canal : `private-consultations.{appointmentId}`
-
-| Event | Payload |
-|-------|---------|
-| `ChatMessageSent` | `{message_id, sender_user_id, ciphertext, nonce, algorithm, sent_at_utc}` |
-| `ChatMessageAcknowledged` | `{message_id, user_id, status, status_at_utc}` |
-| `ConsultationJoined` | `{appointment_id, user_id, joined_at_utc}` |
-| `WebRtcOfferSent` | `{appointment_id, user_id, sdp, sdp_type}` |
-| `WebRtcAnswerSent` | `{appointment_id, user_id, sdp, sdp_type}` |
-| `WebRtcIceCandidateSent` | `{appointment_id, user_id, candidate, sdp_mid, sdp_mline_index}` |
-
----
-
-## 📅 Scheduled Jobs
-
-| Job | Fréquence | Description |
-|-----|-----------|-------------|
-| `SendAppointmentReminders` | Toutes les 15 min | Rappels RDV 24h et 1h avant |
-| `PurgeExpiredData` | Quotidien 03:00 | Purge RGPD des données expirées |
+1. **Navigate to Frontend:**
+   ```bash
+   cd frontend
+   ```
+2. **Get Dependencies:**
+   ```bash
+   flutter pub get
+   ```
+3. **Configure API:**
+   Ensure `lib/core/constants/api_constants.dart` points to your local or deployed backend IP.
+4. **Run the App:**
+   ```bash
+   flutter run
+   ```
 
 ---
 
-## 🐳 Docker Compose (Production)
+## 🤝 Contributing
 
-```bash
-docker compose -f docker-compose.prod.yml up -d
-```
+Contributions, issues, and feature requests are welcome!  
+Feel free to check [issues page](#).
+
+## � License
+
+This project is licensed under the [MIT License](LICENSE).
 
 ---
-
-## 📄 Licence
-
-Projet PFE — Tous droits réservés © 2026
+<div align="center">
+  <b>Built with ❤️ by Yassino</b>
+</div>
