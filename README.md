@@ -25,7 +25,7 @@
 
 ---
 
-## � Overview
+## 🌟 Overview
 
 This project is a high-performance **Healthcare SaaS and ERP platform** built with **Flutter** (Frontend) and **Laravel** (Backend API). It is designed to modernize clinic operations, enhance patient-doctor communication, and provide absolute data security through an advanced **Database-per-Tenant** architecture.
 
@@ -41,9 +41,14 @@ This project is a high-performance **Healthcare SaaS and ERP platform** built wi
 
 ---
 
-## 🏗️ Architecture
+# Project Architecture Documentation
 
+## Comprehensive Architecture Diagrams
+
+### System Architecture
 The system follows a strict Clean Architecture pattern on the frontend, decoupling presentation, domain, and data layers. The backend utilizes Laravel to securely hand-off requests to the appropriate tenant database.
+
+![System Architecture Diagram](link-to-system-architecture-diagram)
 
 ### High-Level System Design
 
@@ -80,6 +85,30 @@ graph TD
     API <-->|Dynamic Connection| DB2
     API <-->|Dynamic Connection| DB3
 ```
+
+### Data Flow
+- Explanation of how data moves through the system.
+- Key data sources and sinks.
+
+![Data Flow Diagram](link-to-data-flow-diagram)
+
+### User Flow
+- Description of the user journey through the application.
+- Key user interactions and use cases.
+
+![User Flow Diagram](link-to-user-flow-diagram)
+
+### Database Schema
+- Overview of the database structure.
+- Explanation of key tables, relationships, and specifications.
+
+![Database Schema Diagram](link-to-database-schema-diagram)
+
+### Security Layers
+- Description of the security architecture.
+- Layers of security mechanisms designed to protect data and resources.
+
+![Security Layers Diagram](link-to-security-layers-diagram)
 
 ---
 
@@ -152,7 +181,7 @@ graph TD
 Contributions, issues, and feature requests are welcome!  
 Feel free to check [issues page](#).
 
-## � License
+## 📄 License
 
 This project is licensed under the [MIT License](LICENSE).
 
