@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr" data-theme="light">
+<html lang="fr" data-theme="corporate">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,192 +7,250 @@
 
     <title>MediConnect Pro - Administration</title>
 
-    <!-- Tailwind CSS (via CDN for simplicity, or compile with Vite if configured) -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind CSS & DaisyUI (CDN) -->
     <link href="https://cdn.jsdelivr.net/npm/daisyui@4.10.1/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- AlpineJS for UI toggles -->
+    <!-- AlpineJS v3 -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.8/dist/cdn.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
-    <!-- Icons Material -->
+    <!-- Material Icons -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 
     <style>
         .material-symbols-rounded {
             font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
         }
-        body { font-family: 'Inter', sans-serif; }
+        body { font-family: 'Inter', system-ui, sans-serif; }
     </style>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        medical: {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            900: '#134e4a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
 
     @livewireStyles
 </head>
-<body class="bg-base-200 min-h-screen">
+<body class="bg-base-200 text-base-content min-h-screen flex">
     
     @auth('web')
         <!-- Navbar -->
-        <div class="navbar bg-base-100 shadow-sm sticky top-0 z-50 px-4">
-            <div class="flex-none lg:hidden">
-                <label for="my-drawer-2" class="btn btn-square btn-ghost">
-                    <span class="material-symbols-rounded">menu</span>
-                </label>
-            </div>
-            
-            <div class="flex-1">
-                <a class="btn btn-ghost text-xl text-primary font-bold">
-                    <span class="material-symbols-rounded text-primary">medical_services</span>
-                    MediConnect Admin
-                </a>
-            </div>
-
-            <div class="flex-none gap-2">
-                <!-- Notifications -->
-                <div class="dropdown dropdown-end">
-                    <div tabindex="0" role="button" class="btn btn-ghost btn-circle">
-                        <div class="indicator">
-                            <span class="material-symbols-rounded">notifications</span>
-                            <span class="badge badge-error badge-sm indicator-item text-white">3</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Theme Toggle -->
-                <label class="swap swap-rotate btn btn-ghost btn-circle">
-                    <input type="checkbox" class="theme-controller" value="dark" />
-                    <span class="material-symbols-rounded swap-off">light_mode</span>
-                    <span class="material-symbols-rounded swap-on">dark_mode</span>
-                </label>
-
-                <!-- Profile Dropdown -->
-                <div class="dropdown dropdown-end">
-                    <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar">
-                        <div class="w-10 rounded-full bg-primary text-primary-content flex items-center justify-center">
-                            <span class="text-xl font-bold">{{ substr(auth()->user()->first_name ?? 'A', 0, 1) }}</span>
-                        </div>
-                    </div>
-                    <ul tabindex="0" class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52">
-                        <li>
-                            <a class="justify-between">
-                                Profile
-                                <span class="badge">New</span>
-                            </a>
-                        </li>
-                        <li><a>Settings</a></li>
-                        <li>
-                            <form method="POST" action="{{ route('admin.logout') }}" class="w-full">
-                                @csrf
-                                <button type="submit" class="w-full text-left text-error">Logout</button>
-                            </form>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
         <div class="drawer lg:drawer-open flex-1">
-            <input id="my-drawer-2" type="checkbox" class="drawer-toggle" />
+            <input id="admin-drawer" type="checkbox" class="drawer-toggle" />
             
-            <!-- PAGE CONTENT -->
-            <div class="drawer-content p-6 max-w-7xl mx-auto w-full">
-                @if(session('success'))
-                    <div class="alert alert-success shadow-lg mb-6">
-                        <span class="material-symbols-rounded">check_circle</span>
-                        <span>{{ session('success') }}</span>
-                    </div>
-                @endif
+            <div class="drawer-content flex flex-col items-center justify-start min-h-screen">
                 
-                @if($errors->any())
-                    <div class="alert alert-error shadow-lg mb-6">
-                        <span class="material-symbols-rounded">error</span>
-                        <ul>
-                            @foreach($errors->all() as $error)
-                                <li>{{ $error }}</li>
-                            @endforeach
-                        </ul>
+                <!-- Navbar Superieure -->
+                <div class="w-full navbar bg-base-100 shadow-sm z-50 px-4">
+                    <div class="flex-none lg:hidden">
+                        <label for="admin-drawer" class="btn btn-square btn-ghost">
+                            <span class="material-symbols-rounded">menu</span>
+                        </label>
                     </div>
-                @endif
+                    
+                    <div class="flex-1 lg:hidden">
+                        <span class="text-xl font-bold text-primary">MediConnect Pro</span>
+                    </div>
+                    <div class="flex-1 hidden lg:block">
+                        <!-- Breadcrumbs or page title could go here -->
+                        <span class="text-sm text-gray-400">Pôle d'administration système</span>
+                    </div>
 
-                @yield('content')
+                    <div class="flex-none gap-4">
+                        <!-- Notifications -->
+                        <div class="dropdown dropdown-end">
+                            <div tabindex="0" role="button" class="btn btn-ghost btn-circle">
+                                <div class="indicator">
+                                    <span class="material-symbols-rounded">notifications</span>
+                                    <span class="badge badge-error badge-xs indicator-item"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Theme Toggle (Alpine) -->
+                        <label class="swap swap-rotate btn btn-ghost btn-circle">
+                            <input type="checkbox" class="theme-controller" value="dark" />
+                            <span class="material-symbols-rounded swap-off">light_mode</span>
+                            <span class="material-symbols-rounded swap-on">dark_mode</span>
+                        </label>
+
+                        <!-- Profile -->
+                        <div class="dropdown dropdown-end">
+                            <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar">
+                                <div class="w-10 rounded-full bg-primary text-primary-content flex items-center justify-center">
+                                    <span class="font-bold">{{ substr(auth()->user()->first_name ?? 'A', 0, 1) }}</span>
+                                </div>
+                            </div>
+                            <ul tabindex="0" class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52 border border-base-200">
+                                <li>
+                                    <a class="py-3">
+                                        <span class="material-symbols-rounded text-lg">admin_panel_settings</span>
+                                        Mon Profil Admin
+                                    </a>
+                                </li>
+                                <div class="divider my-0"></div>
+                                <li>
+                                    <form method="POST" action="{{ route('admin.logout') }}" class="w-full m-0 p-0">
+                                        @csrf
+                                        <button type="submit" class="w-full text-left text-error hover:bg-error/10 py-3 flex items-center gap-2">
+                                            <span class="material-symbols-rounded text-lg">logout</span>
+                                            Déconnexion
+                                        </button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Page Content -->
+                <main class="p-6 w-full max-w-[1400px] mx-auto bg-base-200">
+                    <!-- Flash Messages -->
+                    @if(session('success'))
+                        <div x-data="{ show: true }" x-show="show" class="alert alert-success shadow-sm mb-6 rounded-lg">
+                            <span class="material-symbols-rounded">check_circle</span>
+                            <span>{{ session('success') }}</span>
+                            <button @click="show = false" class="btn btn-ghost btn-sm btn-circle absolute right-2"><span class="material-symbols-rounded text-sm">close</span></button>
+                        </div>
+                    @endif
+                    
+                    @if(session('error'))
+                        <div x-data="{ show: true }" x-show="show" class="alert alert-error shadow-sm mb-6 rounded-lg">
+                            <span class="material-symbols-rounded">error</span>
+                            <span>{{ session('error') }}</span>
+                            <button @click="show = false" class="btn btn-ghost btn-sm btn-circle absolute right-2"><span class="material-symbols-rounded text-sm">close</span></button>
+                        </div>
+                    @endif
+
+                    @yield('content')
+                </main>
             </div> 
 
-            <!-- SIDEBAR -->
-            <div class="drawer-side z-40">
-                <label for="my-drawer-2" class="drawer-overlay"></label> 
-                <ul class="menu p-4 w-72 h-full bg-base-100 text-base-content border-r border-base-200">
-                    <li class="menu-title mt-4">Menu Principal</li>
+            <!-- Sidebar Drawer -->
+            <div class="drawer-side z-40 shadow-xl border-r border-base-200">
+                <label for="admin-drawer" class="drawer-overlay"></label> 
+                <div class="menu p-4 w-72 h-full bg-base-100 text-base-content flex flex-col">
                     
-                    <li>
-                        <a href="{{ route('admin.dashboard') }}" class="{{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
-                            <span class="material-symbols-rounded">dashboard</span>
-                            Tableau de bord
-                        </a>
-                    </li>
-                    
-                    <li>
-                        <a href="#">
-                            <span class="material-symbols-rounded">group</span>
-                            Utilisateurs
-                        </a>
-                    </li>
-                    
-                    <li>
-                        <a href="#">
-                            <span class="material-symbols-rounded">medical_information</span>
-                            Médecins & Approbations
-                            <span class="badge badge-sm badge-warning">2</span>
-                        </a>
-                    </li>
-                    
-                    <li>
-                        <a href="#">
-                            <span class="material-symbols-rounded">calendar_month</span>
-                            Rendez-vous
-                        </a>
-                    </li>
+                    <!-- Logo Area -->
+                    <div class="flex items-center gap-3 px-2 mb-8 mt-2">
+                        <div class="bg-primary text-primary-content p-2 rounded-xl flex items-center justify-center">
+                            <span class="material-symbols-rounded text-2xl">health_and_safety</span>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-extrabold text-primary">MediConnect</h2>
+                            <p class="text-xs uppercase font-semibold text-gray-400 tracking-wider">Administration</p>
+                        </div>
+                    </div>
 
-                    <li class="menu-title mt-6">Supervision & Outils</li>
+                    <ul class="flex-1 space-y-1">
+                        <!-- 1. Dashboard -->
+                        <li>
+                            <a href="{{ route('admin.dashboard') }}" class="{{ request()->routeIs('admin.dashboard') ? 'active bg-primary/10 text-primary font-bold' : 'hover:bg-base-200' }}">
+                                <span class="material-symbols-rounded">view_dashboard</span>
+                                Vue d'ensemble
+                            </a>
+                        </li>
 
-                    <li>
-                        <a href="#">
-                            <span class="material-symbols-rounded">forum</span>
-                            Logs Conversations
-                        </a>
-                    </li>
-                    
-                    <li>
-                        <a href="#">
-                            <span class="material-symbols-rounded">folder_supervised</span>
-                            Droit à l'oubli (RGPD)
-                        </a>
-                    </li>
+                        <div class="divider mt-6 mb-2 text-xs font-bold uppercase text-gray-400">Gestion</div>
+                        
+                        <!-- 2. Utilisateurs -->
+                        <li>
+                            <a href="#" class="hover:bg-base-200">
+                                <span class="material-symbols-rounded">manage_accounts</span>
+                                Utilisateurs / Patients
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" class="hover:bg-base-200">
+                                <span class="material-symbols-rounded">stethoscope</span>
+                                Approbations Médecins
+                                <span class="badge badge-sm badge-warning">5</span>
+                            </a>
+                        </li>
 
-                    <li class="menu-title mt-6">Système</li>
+                        <!-- 3. Rendez-vous -->
+                        <li>
+                            <a href="#" class="hover:bg-base-200">
+                                <span class="material-symbols-rounded">event</span>
+                                Litiges & Créneaux
+                            </a>
+                        </li>
+
+                        <div class="divider mt-6 mb-2 text-xs font-bold uppercase text-gray-400">Supervision</div>
+
+                        <!-- 4. Chat & Messages -->
+                        <li>
+                            <a href="#" class="hover:bg-base-200">
+                                <span class="material-symbols-rounded">forum</span>
+                                Messages & Signalements
+                            </a>
+                        </li>
+
+                        <!-- 5. Médical & RGPD -->
+                        <li>
+                            <a href="#" class="hover:bg-base-200">
+                                <span class="material-symbols-rounded">shield_person</span>
+                                Droit à l'oubli / RGPD
+                            </a>
+                        </li>
+                        
+                        <!-- 6. Notifications -->
+                        <li>
+                            <a href="#" class="hover:bg-base-200">
+                                <span class="material-symbols-rounded">campaign</span>
+                                Push Notifications
+                            </a>
+                        </li>
+
+                        <div class="divider mt-6 mb-2 text-xs font-bold uppercase text-gray-400">Système</div>
+
+                        <!-- 7. Rapports -->
+                        <li>
+                            <a href="#" class="hover:bg-base-200">
+                                <span class="material-symbols-rounded">monitoring</span>
+                                Rapports analytiques
+                            </a>
+                        </li>
+
+                        <!-- 8. Paramètres -->
+                        <li>
+                            <a href="#" class="hover:bg-base-200">
+                                <span class="material-symbols-rounded">settings</span>
+                                Configuration API
+                            </a>
+                        </li>
+                    </ul>
                     
-                    <li>
-                        <a href="#">
-                            <span class="material-symbols-rounded">monitoring</span>
-                            Rapports & Logs
-                        </a>
-                    </li>
-                    
-                    <li>
-                        <a href="#">
-                            <span class="material-symbols-rounded">settings</span>
-                            Paramètres API
-                        </a>
-                    </li>
-                </ul>
+                    <div class="mt-auto px-2 py-4 text-xs text-center text-gray-400">
+                        MediConnect Pro v1.0<br>
+                        Système SaaS Multi-Tenant
+                    </div>
+                </div>
             </div>
         </div>
     @else
-        <!-- Guest view (Login) -->
-        <div class="flex items-center justify-center min-h-screen p-4">
+        <!-- Guest Login View -->
+        <main class="w-full flex items-center justify-center p-4">
             @yield('content')
-        </div>
+        </main>
     @endauth
 
-    <!-- ChartJS for dashboard -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
     @livewireScripts
     @stack('scripts')
 </body>

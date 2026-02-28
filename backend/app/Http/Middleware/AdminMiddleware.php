@@ -16,12 +16,14 @@ class AdminMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
+        // Require authentication
         if (!auth()->check()) {
             return redirect()->route('admin.login');
         }
 
+        // Require ADMIN role
         if (auth()->user()->role !== UserRole::ADMIN) {
-            abort(403, 'Unauthorized. Admin access only.');
+            abort(403, 'Accès non autorisé. Réservé aux administrateurs.');
         }
 
         return $next($request);
