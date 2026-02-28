@@ -299,6 +299,12 @@ class AuthRepositoryImpl implements AuthRepository {
       key: AppConstants.keyUserRole,
       value: response.user.role,
     );
+    if (response.user.tenantId != null && response.user.tenantId!.isNotEmpty) {
+      await secureStorage.write(
+        key: AppConstants.keyTenantId,
+        value: response.user.tenantId!,
+      );
+    }
     await secureStorage.write(
       key: 'cached_user',
       value: jsonEncode(response.user.toJson()),

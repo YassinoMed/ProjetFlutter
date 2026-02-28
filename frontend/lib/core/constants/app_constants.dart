@@ -37,6 +37,7 @@ class AppConstants {
   // ── Storage Keys ──────────────────────────────────────────
   static const String keyAccessToken = 'access_token';
   static const String keyRefreshToken = 'refresh_token';
+  static const String keyTenantId = 'tenant_id';
   static const String keyUserId = 'user_id';
   static const String keyUserRole = 'user_role';
   static const String keyBiometricEnabled = 'biometric_enabled';

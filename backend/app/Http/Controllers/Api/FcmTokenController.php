@@ -24,10 +24,9 @@ class FcmTokenController extends Controller
             ],
         );
 
-        return response()->json([
-            'ok' => true,
+        return $this->respondSuccess([
             'id' => $token->id,
-        ]);
+        ], 'Token upserted successfully');
     }
 
     public function destroy(Request $request): JsonResponse
@@ -41,10 +40,9 @@ class FcmTokenController extends Controller
             ->where('token', $request->string('token'))
             ->delete();
 
-        return response()->json([
-            'ok' => true,
+        return $this->respondSuccess([
             'deleted' => $deleted,
-        ]);
+        ], 'Token deleted successfully');
     }
 
     public function heartbeat(Request $request): JsonResponse
@@ -58,9 +56,8 @@ class FcmTokenController extends Controller
             ->where('token', $request->string('token'))
             ->update(['last_seen_at_utc' => now('UTC')]);
 
-        return response()->json([
-            'ok' => true,
+        return $this->respondSuccess([
             'updated' => $updated,
-        ]);
+        ], 'Heartbeat updated successfully');
     }
 }

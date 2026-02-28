@@ -69,10 +69,12 @@ class DoctorController extends Controller
             ->orderByDesc('doctors.rating')
             ->cursorPaginate($perPage);
 
-        return response()->json([
-            'data' => DoctorSearchResource::collection(collect($doctors->items())),
-            'next_cursor' => $doctors->nextCursor()?->encode(),
-        ]);
+        return $this->respondSuccess(
+            DoctorSearchResource::collection(collect($doctors->items())),
+            'Doctors retrieved successfully',
+            200,
+            ['next_cursor' => $doctors->nextCursor()?->encode()]
+        );
     }
 
     /**
@@ -87,7 +89,7 @@ class DoctorController extends Controller
             ->where('user_id', $doctorUserId)
             ->firstOrFail();
 
-        return response()->json([
+        return $this->respondSuccess([
             'doctor' => new DoctorSearchResource($doctor),
         ]);
     }
@@ -114,7 +116,7 @@ class DoctorController extends Controller
             ->get();
 
         if ($schedules->isEmpty()) {
-            return response()->json(['slots' => []]);
+            return $this->respondSuccess(['slots' => []]);
         }
 
         // Get existing appointments for this date
@@ -156,7 +158,7 @@ class DoctorController extends Controller
             }
         }
 
-        return response()->json([
+        return $this->respondSuccess([
             'date' => $date->toDateString(),
             'doctor_user_id' => $doctorUserId,
             'slots' => $slots,
@@ -177,7 +179,7 @@ class DoctorController extends Controller
             ->sort()
             ->values();
 
-        return response()->json([
+        return $this->respondSuccess([
             'specialties' => $specialties,
         ]);
     }

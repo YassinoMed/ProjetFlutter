@@ -40,10 +40,12 @@ class MedicalRecordMetadataController extends Controller
             ->orderByDesc('recorded_at_utc')
             ->cursorPaginate($perPage);
 
-        return response()->json([
-            'data' => MedicalRecordMetadataResource::collection(collect($records->items())),
-            'next_cursor' => $records->nextCursor()?->encode(),
-        ]);
+        return $this->respondSuccess(
+            MedicalRecordMetadataResource::collection(collect($records->items())),
+            'Medical records retrieved successfully',
+            200,
+            ['next_cursor' => $records->nextCursor()?->encode()]
+        );
     }
 
     public function show(string $recordId, Request $request): JsonResponse
@@ -52,9 +54,9 @@ class MedicalRecordMetadataController extends Controller
 
         $this->assertCanView($request->user(), $record);
 
-        return response()->json([
+        return $this->respondSuccess([
             'record' => new MedicalRecordMetadataResource($record),
-        ]);
+        ], 'Medical record details retrieved');
     }
 
     public function store(StoreMedicalRecordMetadataRequest $request): JsonResponse
@@ -81,9 +83,9 @@ class MedicalRecordMetadataController extends Controller
             'recorded_at_utc' => Carbon::parse($data['recorded_at_utc'], 'UTC'),
         ]);
 
-        return response()->json([
+        return $this->respondSuccess([
             'record' => new MedicalRecordMetadataResource($record),
-        ], 201);
+        ], 'Medical record created successfully', 201);
     }
 
     private function assertCanView($user, MedicalRecordMetadata $record): void

@@ -26,9 +26,7 @@ class ScheduleController extends Controller
             ->orderBy('start_time')
             ->get();
 
-        return response()->json([
-            'data' => ScheduleSlotResource::collection($schedules),
-        ]);
+        return $this->respondSuccess(ScheduleSlotResource::collection($schedules), 'Schedule retrieved successfully');
     }
 
     /**
@@ -60,9 +58,9 @@ class ScheduleController extends Controller
             ],
         );
 
-        return response()->json([
+        return $this->respondSuccess([
             'schedule' => new ScheduleSlotResource($schedule),
-        ], 201);
+        ], 'Schedule created successfully', 201);
     }
 
     /**
@@ -80,7 +78,7 @@ class ScheduleController extends Controller
 
         $schedule->delete();
 
-        return response()->json(['ok' => true]);
+        return $this->respondSuccess(null, 'Schedule slot deleted successfully');
     }
 
     /**
@@ -117,9 +115,7 @@ class ScheduleController extends Controller
             ]);
         });
 
-        return response()->json([
-            'data' => ScheduleSlotResource::collection($createdSlots),
-        ]);
+        return $this->respondSuccess(ScheduleSlotResource::collection($createdSlots), 'Bulk schedule updated successfully');
     }
 
     private function assertIsDoctor($user): void

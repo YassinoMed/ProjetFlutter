@@ -44,10 +44,12 @@ class AppointmentController extends Controller
             ->orderBy('starts_at_utc')
             ->cursorPaginate(min(max((int) $request->query('per_page', 20), 1), 50));
 
-        return response()->json([
-            'data' => AppointmentResource::collection(collect($appointments->items())),
-            'next_cursor' => $appointments->nextCursor()?->encode(),
-        ]);
+        return $this->respondSuccess(
+            AppointmentResource::collection(collect($appointments->items())),
+            'Appointments retrieved successfully',
+            200,
+            ['next_cursor' => $appointments->nextCursor()?->encode()]
+        );
     }
 
     public function store(CreateAppointmentRequest $request): JsonResponse
@@ -68,9 +70,9 @@ class AppointmentController extends Controller
             metadataEncrypted: $data['metadata_encrypted'] ?? null,
         );
 
-        return response()->json([
+        return $this->respondSuccess([
             'appointment' => new AppointmentResource($appointment),
-        ], 201);
+        ], 'Appointment created successfully', 201);
     }
 
     public function show(string $appointmentId, Request $request): JsonResponse
@@ -79,9 +81,9 @@ class AppointmentController extends Controller
 
         $this->authorize('view', $appointment);
 
-        return response()->json([
+        return $this->respondSuccess([
             'appointment' => new AppointmentResource($appointment),
-        ]);
+        ], 'Appointment details retrieved');
     }
 
     public function cancel(string $appointmentId, CancelAppointmentRequest $request): JsonResponse
@@ -98,9 +100,9 @@ class AppointmentController extends Controller
             cancelReason: $request->validated()['cancel_reason'] ?? null,
         );
 
-        return response()->json([
+        return $this->respondSuccess([
             'appointment' => new AppointmentResource($appointment),
-        ]);
+        ], 'Appointment cancelled successfully');
     }
 
     public function confirm(string $appointmentId, Request $request): JsonResponse
@@ -115,8 +117,8 @@ class AppointmentController extends Controller
             actorUserId: $request->user()->id,
         );
 
-        return response()->json([
+        return $this->respondSuccess([
             'appointment' => new AppointmentResource($appointment),
-        ]);
+        ], 'Appointment confirmed successfully');
     }
 }

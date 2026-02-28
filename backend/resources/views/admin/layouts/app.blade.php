@@ -99,7 +99,7 @@
                             </div>
                             <ul tabindex="0" class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52 border border-base-200">
                                 <li>
-                                    <a class="py-3">
+                                    <a href="{{ route('admin.profile.index') }}" class="py-3">
                                         <span class="material-symbols-rounded text-lg">admin_panel_settings</span>
                                         Mon Profil Admin
                                     </a>
@@ -171,22 +171,21 @@
                         
                         <!-- 2. Utilisateurs -->
                         <li>
-                            <a href="#" class="hover:bg-base-200">
+                            <a href="{{ route('admin.users.index') }}" class="{{ request()->routeIs('admin.users.*') ? 'active bg-primary/10 text-primary font-bold' : 'hover:bg-base-200' }}">
                                 <span class="material-symbols-rounded">manage_accounts</span>
                                 Utilisateurs / Patients
                             </a>
                         </li>
                         <li>
-                            <a href="#" class="hover:bg-base-200">
+                            <a href="{{ route('admin.doctors.index', ['status' => 'pending']) }}" class="{{ request()->routeIs('admin.doctors.*') ? 'active bg-primary/10 text-primary font-bold' : 'hover:bg-base-200' }}">
                                 <span class="material-symbols-rounded">stethoscope</span>
                                 Approbations Médecins
-                                <span class="badge badge-sm badge-warning">5</span>
                             </a>
                         </li>
 
                         <!-- 3. Rendez-vous -->
                         <li>
-                            <a href="#" class="hover:bg-base-200">
+                            <a href="{{ route('admin.appointments.index') }}" class="{{ request()->routeIs('admin.appointments.*') ? 'active bg-primary/10 text-primary font-bold' : 'hover:bg-base-200' }}">
                                 <span class="material-symbols-rounded">event</span>
                                 Litiges & Créneaux
                             </a>
@@ -196,23 +195,31 @@
 
                         <!-- 4. Chat & Messages -->
                         <li>
-                            <a href="#" class="hover:bg-base-200">
+                            <a href="{{ route('admin.chat.index') }}" class="{{ request()->routeIs('admin.chat.*') ? 'active bg-primary/10 text-primary font-bold' : 'hover:bg-base-200' }}">
                                 <span class="material-symbols-rounded">forum</span>
                                 Messages & Signalements
                             </a>
                         </li>
 
-                        <!-- 5. Médical & RGPD -->
+                        <!-- 5. Dossiers Médicaux -->
                         <li>
-                            <a href="#" class="hover:bg-base-200">
+                            <a href="{{ route('admin.medical-records.index') }}" class="{{ request()->routeIs('admin.medical-records.*') ? 'active bg-primary/10 text-primary font-bold' : 'hover:bg-base-200' }}">
+                                <span class="material-symbols-rounded">folder_shared</span>
+                                Dossiers Médicaux
+                            </a>
+                        </li>
+
+                        <!-- 6. RGPD -->
+                        <li>
+                            <a href="{{ route('admin.rgpd.index') }}" class="{{ request()->routeIs('admin.rgpd.*') ? 'active bg-primary/10 text-primary font-bold' : 'hover:bg-base-200' }}">
                                 <span class="material-symbols-rounded">shield_person</span>
                                 Droit à l'oubli / RGPD
                             </a>
                         </li>
                         
-                        <!-- 6. Notifications -->
+                        <!-- 7. Notifications -->
                         <li>
-                            <a href="#" class="hover:bg-base-200">
+                            <a href="{{ route('admin.notifications.index') }}" class="{{ request()->routeIs('admin.notifications.*') ? 'active bg-primary/10 text-primary font-bold' : 'hover:bg-base-200' }}">
                                 <span class="material-symbols-rounded">campaign</span>
                                 Push Notifications
                             </a>
@@ -220,17 +227,25 @@
 
                         <div class="divider mt-6 mb-2 text-xs font-bold uppercase text-gray-400">Système</div>
 
-                        <!-- 7. Rapports -->
+                        <!-- 8. Rapports -->
                         <li>
-                            <a href="#" class="hover:bg-base-200">
+                            <a href="{{ route('admin.reports.index') }}" class="{{ request()->routeIs('admin.reports.*') ? 'active bg-primary/10 text-primary font-bold' : 'hover:bg-base-200' }}">
                                 <span class="material-symbols-rounded">monitoring</span>
                                 Rapports analytiques
                             </a>
                         </li>
 
-                        <!-- 8. Paramètres -->
+                        <!-- 9. Audit Log -->
                         <li>
-                            <a href="#" class="hover:bg-base-200">
+                            <a href="{{ route('admin.activity-log.index') }}" class="{{ request()->routeIs('admin.activity-log.*') ? 'active bg-primary/10 text-primary font-bold' : 'hover:bg-base-200' }}">
+                                <span class="material-symbols-rounded">receipt_long</span>
+                                Journal d'Activité
+                            </a>
+                        </li>
+
+                        <!-- 10. Paramètres -->
+                        <li>
+                            <a href="{{ route('admin.settings.index') }}" class="{{ request()->routeIs('admin.settings.*') ? 'active bg-primary/10 text-primary font-bold' : 'hover:bg-base-200' }}">
                                 <span class="material-symbols-rounded">settings</span>
                                 Configuration API
                             </a>

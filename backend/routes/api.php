@@ -13,6 +13,17 @@ use App\Http\Controllers\Api\ScheduleController;
 use App\Http\Controllers\Api\WebRtcController;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
+use App\Models\Tenant;
+
+Route::get('/tenants', function () {
+    return response()->json([
+        'success' => true,
+        'message' => 'Tenants retrieved successfully',
+        'data' => Tenant::where('is_active', true)->get(['id', 'name']),
+        'error' => null,
+        'meta' => null,
+    ]);
+});
 
 Route::prefix('auth')->group(function (): void {
     Route::get('/register', function () {
@@ -43,7 +54,7 @@ if (! app()->environment('testing')) {
 }
 
 // ── Public (but authenticated) Doctor Search ──────────────────
-Route::middleware('auth:api')->group(function (): void {
+Route::middleware(['auth:api', 'throttle:api'])->group(function (): void {
 
     // ── Doctors ──────────────────────────────────────────
     Route::get('/doctors/specialties', [DoctorController::class, 'specialties']);

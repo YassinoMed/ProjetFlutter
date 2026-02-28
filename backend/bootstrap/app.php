@@ -20,9 +20,50 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->append(\App\Http\Middleware\SecurityHeadersMiddleware::class);
+        $middleware->append(\App\Http\Middleware\SanitizeInputMiddleware::class);
         $middleware->append(\App\Http\Middleware\TraceRequestMiddleware::class);
+        $middleware->append(\App\Http\Middleware\TenantMiddleware::class);
         $middleware->alias([
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
         ]);
     })
-    ->withExceptions(function (Exceptions $exceptions) {})->create();
+    ->withExceptions(function (Exceptions $exceptions) {
+        $exceptions->render(function (\Throwable $e, \Illuminate\Http\Request $request) {
+            if ($request->is('api/*') || $request->wantsJson()) {
+                $statusCode = $e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface ? $e->getStatusCode() : 500;
+                $message = $e->getMessage() ?: 'Server Error';
+                $errors = null;
+
+                if ($e instanceof \Illuminate\Validation\ValidationException) {
+                    $statusCode = 422;
+                    $errors = $e->errors();
+                    $message = $e->getMessage();
+                } elseif ($e instanceof \Illuminate\Auth\AuthenticationException) {
+                    $statusCode = 401;
+                    $message = 'Unauthenticated';
+                } elseif ($e instanceof \Illuminate\Database\Eloquent\ModelNotFoundException) {
+                    $statusCode = 404;
+                    $message = 'Resource not found';
+                }
+
+                $formattedErrors = null;
+                if (is_array($errors)) {
+                    $formattedErrors = collect($errors)->mapWithKeys(function ($value, $key) {
+                        return [$key => is_array($value) ? $value : [$value]];
+                    })->toArray();
+                }
+
+                return response()->json([
+                    'success' => false,
+                    'message' => $message,
+                    'data' => null,
+                    'error' => [
+                        'message' => $message,
+                        'code' => $statusCode,
+                        'errors' => $formattedErrors,
+                    ],
+                    'meta' => null,
+                ], $statusCode);
+            }
+        });
+    })->create();

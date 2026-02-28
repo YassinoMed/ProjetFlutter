@@ -15,6 +15,7 @@ class UserModel {
   final String? licenseNumber;
   final double? rating;
   final String? address;
+  final String? tenantId;
   final bool isAvailable;
   final bool isVerified;
   final String? createdAt;
@@ -31,6 +32,7 @@ class UserModel {
     this.licenseNumber,
     this.rating,
     this.address,
+    this.tenantId,
     this.isAvailable = true,
     this.isVerified = false,
     this.createdAt,
@@ -57,6 +59,7 @@ class UserModel {
       licenseNumber: json['license_number'] as String?,
       rating: (json['rating'] as num?)?.toDouble(),
       address: json['address'] as String?,
+      tenantId: json['tenant_id'] as String?,
       isAvailable: json['is_available'] as bool? ?? true,
       isVerified: json['is_verified'] as bool? ?? false,
       createdAt: (json['created_at'] ?? json['created_at_utc']) as String?,
@@ -76,6 +79,7 @@ class UserModel {
       'license_number': licenseNumber,
       'rating': rating,
       'address': address,
+      'tenant_id': tenantId,
       'is_available': isAvailable,
       'is_verified': isVerified,
       'created_at': createdAt,
@@ -95,6 +99,7 @@ class UserModel {
       licenseNumber: licenseNumber,
       rating: rating,
       address: address,
+      tenantId: tenantId,
       emailVerified: isVerified,
     );
   }

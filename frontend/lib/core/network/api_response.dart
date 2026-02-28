@@ -2,6 +2,28 @@
 /// CDC: Modèles de réponse API standard Laravel
 library;
 
+Map<String, dynamic> extractPayloadMap(dynamic payload) {
+  return payload is Map<String, dynamic> ? payload : <String, dynamic>{};
+}
+
+Map<String, dynamic> extractDataMap(dynamic payload) {
+  final map = extractPayloadMap(payload);
+  final data = map['data'];
+  return data is Map<String, dynamic> ? data : map;
+}
+
+Map<String, dynamic> extractTokensMap(dynamic payload) {
+  final data = extractDataMap(payload);
+  final tokens = data['tokens'];
+  return tokens is Map<String, dynamic> ? tokens : data;
+}
+
+Map<String, dynamic> extractUserMap(dynamic payload) {
+  final data = extractDataMap(payload);
+  final user = data['user'];
+  return user is Map<String, dynamic> ? user : data;
+}
+
 class ApiResponse<T> {
   final bool success;
   final String? message;
