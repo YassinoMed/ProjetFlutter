@@ -2,42 +2,39 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Enums\UserRole;
+use App\Http\Controllers\Admin\Concerns\LogsAdminActivity;
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ExportController extends Controller
 {
+    use LogsAdminActivity;
+
     /**
      * Export users as CSV.
      */
     public function users(Request $request): StreamedResponse
     {
-        Log::channel('security')->info('admin_export_users', [
-            'admin_id' => auth('web')->id(),
-            'ip' => $request->ip(),
-        ]);
+        // Refactored: uses LogsAdminActivity trait
+        $this->logAdminAction('admin_export_users');
 
-        $users = User::orderBy('created_at', 'desc')->get();
+        $users = User::orderByDesc('created_at')->get();
 
         return $this->streamCsv(
             "users_export_" . now()->format('Y-m-d_His') . ".csv",
             ['ID', 'Prénom', 'Nom', 'Email', 'Rôle', 'Téléphone', 'Inscrit le'],
-            $users->map(function ($user) {
-                return [
-                    $user->id,
-                    $user->first_name,
-                    $user->last_name,
-                    $user->email,
-                    $user->role?->value ?? $user->role,
-                    $user->phone ?? '',
-                    $user->created_at?->format('d/m/Y H:i') ?? '',
-                ];
-            })->toArray()
+            $users->map(fn ($user) => [
+                $user->id,
+                $user->first_name,
+                $user->last_name,
+                $user->email,
+                $user->role?->value ?? $user->role,
+                $user->phone ?? '',
+                $user->created_at?->format('d/m/Y H:i') ?? '',
+            ])->toArray()
         );
     }
 
@@ -46,10 +43,8 @@ class ExportController extends Controller
      */
     public function appointments(Request $request): StreamedResponse
     {
-        Log::channel('security')->info('admin_export_appointments', [
-            'admin_id' => auth('web')->id(),
-            'ip' => $request->ip(),
-        ]);
+        // Refactored: uses LogsAdminActivity trait
+        $this->logAdminAction('admin_export_appointments');
 
         $appointments = Appointment::with(['patient', 'doctor'])
             ->orderByDesc('starts_at_utc')
@@ -58,17 +53,15 @@ class ExportController extends Controller
         return $this->streamCsv(
             "appointments_export_" . now()->format('Y-m-d_His') . ".csv",
             ['ID', 'Patient', 'Médecin', 'Date Début', 'Date Fin', 'Statut', 'Créé le'],
-            $appointments->map(function ($a) {
-                return [
-                    $a->id,
-                    ($a->patient?->first_name ?? '') . ' ' . ($a->patient?->last_name ?? ''),
-                    'Dr. ' . ($a->doctor?->first_name ?? '') . ' ' . ($a->doctor?->last_name ?? ''),
-                    $a->starts_at_utc?->format('d/m/Y H:i') ?? '',
-                    $a->ends_at_utc?->format('d/m/Y H:i') ?? '',
-                    $a->status?->value ?? $a->status,
-                    $a->created_at?->format('d/m/Y H:i') ?? '',
-                ];
-            })->toArray()
+            $appointments->map(fn ($a) => [
+                $a->id,
+                trim(($a->patient?->first_name ?? '') . ' ' . ($a->patient?->last_name ?? '')),
+                'Dr. ' . trim(($a->doctor?->first_name ?? '') . ' ' . ($a->doctor?->last_name ?? '')),
+                $a->starts_at_utc?->format('d/m/Y H:i') ?? '',
+                $a->ends_at_utc?->format('d/m/Y H:i') ?? '',
+                $a->status?->value ?? $a->status,
+                $a->created_at?->format('d/m/Y H:i') ?? '',
+            ])->toArray()
         );
     }
 

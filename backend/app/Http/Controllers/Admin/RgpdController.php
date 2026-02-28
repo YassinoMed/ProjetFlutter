@@ -2,16 +2,23 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Admin\Concerns\LogsAdminActivity;
+use App\Http\Controllers\Admin\Concerns\SearchesUsers;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\UserConsent;
+use App\Services\UserAnonymizationService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class RgpdController extends Controller
 {
+    use SearchesUsers;
+    use LogsAdminActivity;
+
+    public function __construct(
+        private readonly UserAnonymizationService $anonymization,
+    ) {}
+
     public function index(Request $request)
     {
         $query = UserConsent::with('user');
@@ -20,20 +27,16 @@ class RgpdController extends Controller
             $query->where('consent_type', $request->input('consent_type'));
         }
 
+        // Refactored: use shared trait instead of duplicated search
         if ($request->filled('search')) {
-            $search = e($request->input('search'));
-            $query->whereHas('user', function ($q) use ($search) {
-                $q->where('first_name', 'LIKE', "%{$search}%")
-                  ->orWhere('last_name', 'LIKE', "%{$search}%")
-                  ->orWhere('email', 'LIKE', "%{$search}%");
-            });
+            $this->applyRelatedUserSearch($query, 'user', $request->input('search'));
         }
 
         $consents = $query->orderByDesc('updated_at')->paginate(15);
 
         $stats = [
-            'total_consents' => UserConsent::where('consented', true)->count(),
-            'total_revoked'  => UserConsent::where('consented', false)->count(),
+            'total_consents'            => UserConsent::where('consented', true)->count(),
+            'total_revoked'             => UserConsent::where('consented', false)->count(),
             'pending_deletion_requests' => User::where('email', 'LIKE', 'deleted+%')->count(),
         ];
 
@@ -48,23 +51,12 @@ class RgpdController extends Controller
 
         $user = User::findOrFail($userId);
 
-        DB::transaction(function () use ($user) {
-            $user->update([
-                'email' => 'anonymized+' . $user->id . '@mediconnect.local',
-                'first_name' => 'Anonyme',
-                'last_name' => 'Utilisateur',
-                'phone' => null,
-                'password' => Str::random(32),
-            ]);
-
-            UserConsent::where('user_id', $user->id)->delete();
-        });
-
-        Log::channel('security')->info('rgpd_admin_anonymize', [
-            'admin_id' => auth()->id(),
-            'user_id' => $user->id,
-            'reason' => $request->input('reason'),
-        ]);
+        // Refactored: uses shared UserAnonymizationService (was duplicated in Api\RgpdController)
+        $this->anonymization->anonymize(
+            user: $user,
+            actorId: auth('web')->id(),
+            reason: $request->input('reason'),
+        );
 
         return redirect()->route('admin.rgpd.index')
             ->with('success', "Les données de l'utilisateur ont été anonymisées conformément au RGPD.");

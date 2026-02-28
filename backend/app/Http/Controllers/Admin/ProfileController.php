@@ -2,14 +2,16 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Admin\Concerns\LogsAdminActivity;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules\Password;
 
 class ProfileController extends Controller
 {
+    use LogsAdminActivity;
+
     public function index()
     {
         $admin = auth('web')->user();
@@ -22,16 +24,14 @@ class ProfileController extends Controller
 
         $validated = $request->validate([
             'first_name' => ['required', 'string', 'max:100'],
-            'last_name' => ['required', 'string', 'max:100'],
-            'phone' => ['nullable', 'string', 'max:20'],
+            'last_name'  => ['required', 'string', 'max:100'],
+            'phone'      => ['nullable', 'string', 'max:20'],
         ]);
 
         $admin->update($validated);
 
-        Log::channel('security')->info('admin_profile_updated', [
-            'admin_id' => $admin->id,
-            'ip' => $request->ip(),
-        ]);
+        // Refactored: uses LogsAdminActivity trait
+        $this->logAdminAction('admin_profile_updated');
 
         return redirect()->route('admin.profile.index')
             ->with('success', 'Profil mis à jour avec succès.');
@@ -53,10 +53,8 @@ class ProfileController extends Controller
             'password' => Hash::make($request->input('password')),
         ]);
 
-        Log::channel('security')->info('admin_password_changed', [
-            'admin_id' => $admin->id,
-            'ip' => $request->ip(),
-        ]);
+        // Refactored: uses LogsAdminActivity trait
+        $this->logAdminAction('admin_password_changed');
 
         return redirect()->route('admin.profile.index')
             ->with('success', 'Mot de passe modifié avec succès.');

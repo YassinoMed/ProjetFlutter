@@ -3,22 +3,23 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\AppointmentStatus;
+use App\Http\Controllers\Admin\Concerns\LogsAdminActivity;
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use Illuminate\Http\Request;
 
 class AppointmentController extends Controller
 {
+    use LogsAdminActivity;
+
     public function index(Request $request)
     {
         $query = Appointment::with(['patient', 'doctor']);
 
-        // Filter by status
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
         }
 
-        // Filter by date range
         if ($request->filled('from')) {
             $query->whereDate('starts_at_utc', '>=', $request->input('from'));
         }
@@ -26,9 +27,8 @@ class AppointmentController extends Controller
             $query->whereDate('starts_at_utc', '<=', $request->input('to'));
         }
 
-        // Search by patient or doctor name
         if ($request->filled('search')) {
-            $search = e($request->input('search'));
+            $search = $request->input('search');
             $query->where(function ($q) use ($search) {
                 $q->whereHas('patient', function ($pq) use ($search) {
                     $pq->where('first_name', 'LIKE', "%{$search}%")
@@ -40,11 +40,11 @@ class AppointmentController extends Controller
             });
         }
 
-        $appointments = $query->orderBy('starts_at_utc', 'desc')->paginate(15);
+        $appointments = $query->orderByDesc('starts_at_utc')->paginate(15);
 
         $stats = [
-            'today' => Appointment::whereDate('starts_at_utc', today())->count(),
-            'pending' => Appointment::where('status', AppointmentStatus::REQUESTED)->count(),
+            'today'     => Appointment::whereDate('starts_at_utc', today())->count(),
+            'pending'   => Appointment::where('status', AppointmentStatus::REQUESTED)->count(),
             'confirmed' => Appointment::where('status', AppointmentStatus::CONFIRMED)->count(),
             'cancelled' => Appointment::where('status', AppointmentStatus::CANCELLED)->count(),
         ];
@@ -73,8 +73,14 @@ class AppointmentController extends Controller
         }
 
         $appointment->update([
-            'status' => AppointmentStatus::CANCELLED,
+            'status'        => AppointmentStatus::CANCELLED,
             'cancel_reason' => '[ADMIN] ' . $request->input('cancel_reason'),
+        ]);
+
+        // Refactored: added missing audit log for force cancel
+        $this->logAdminAction('appointment_force_cancelled', [
+            'appointment_id' => $appointmentId,
+            'reason'         => $request->input('cancel_reason'),
         ]);
 
         return redirect()->route('admin.appointments.index')

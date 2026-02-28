@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\UserRole;
+use App\Http\Controllers\Admin\Concerns\LogsAdminActivity;
+use App\Http\Controllers\Admin\Concerns\SearchesUsers;
 use App\Http\Controllers\Controller;
 use App\Models\Doctor;
 use App\Models\Patient;
@@ -11,26 +13,23 @@ use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
+    use SearchesUsers;
+    use LogsAdminActivity;
+
     public function index(Request $request)
     {
         $query = User::query();
 
-        // Filter by role
         if ($request->filled('role')) {
             $query->where('role', $request->input('role'));
         }
 
-        // Search by name or email
+        // Refactored: use shared trait instead of duplicated search logic
         if ($request->filled('search')) {
-            $search = e($request->input('search'));
-            $query->where(function ($q) use ($search) {
-                $q->where('first_name', 'LIKE', "%{$search}%")
-                  ->orWhere('last_name', 'LIKE', "%{$search}%")
-                  ->orWhere('email', 'LIKE', "%{$search}%");
-            });
+            $this->applyUserSearch($query, $request->input('search'));
         }
 
-        $users = $query->orderBy('created_at', 'desc')->paginate(15);
+        $users = $query->orderByDesc('created_at')->paginate(15);
 
         return view('admin.users.index', compact('users'));
     }
@@ -58,6 +57,12 @@ class UserController extends Controller
         ]);
 
         $status = $user->is_active ? 'activé' : 'désactivé';
+
+        // Refactored: now logs the action (was missing before – P2 #8)
+        $this->logAdminAction('user_status_toggled', [
+            'target_user_id' => $userId,
+            'new_status'     => $status,
+        ]);
 
         return redirect()->route('admin.users.index')
             ->with('success', "L'utilisateur {$user->first_name} {$user->last_name} a été {$status}.");

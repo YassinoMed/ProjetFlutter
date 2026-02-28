@@ -41,12 +41,11 @@ class DashboardStats extends Component
 
     public function loadStats()
     {
+        $today = Carbon::today();
+
         // 1. Statistiques principales
         $this->totalPatients = Patient::count();
         $this->totalDoctors = Doctor::count();
-
-        $today = Carbon::today();
-
         $this->appointmentsToday = Appointment::whereDate('starts_at_utc', $today)->count();
 
         // Active conversations: consultations with messages in last 24h
@@ -54,35 +53,28 @@ class DashboardStats extends Component
             ->distinct('consultation_id')
             ->count('consultation_id');
 
-        // 2. Growth percentages (real calculation)
-        $patientsThisMonth = User::where('role', UserRole::PATIENT)
-            ->where('created_at', '>=', now()->startOfMonth())->count();
-        $patientsLastMonth = User::where('role', UserRole::PATIENT)
-            ->whereBetween('created_at', [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()])
-            ->count();
-        $this->patientsGrowth = $patientsLastMonth > 0
-            ? '+' . round(($patientsThisMonth - $patientsLastMonth) / $patientsLastMonth * 100) . '%'
-            : '+' . $patientsThisMonth;
-
-        $doctorsThisMonth = User::where('role', UserRole::DOCTOR)
-            ->where('created_at', '>=', now()->startOfMonth())->count();
-        $doctorsLastMonth = User::where('role', UserRole::DOCTOR)
-            ->whereBetween('created_at', [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()])
-            ->count();
-        $this->doctorsGrowth = $doctorsLastMonth > 0
-            ? '+' . round(($doctorsThisMonth - $doctorsLastMonth) / $doctorsLastMonth * 100) . '%'
-            : '+' . $doctorsThisMonth;
+        // 2. Growth percentages (refactored: extracted to helper method)
+        $this->patientsGrowth = $this->calculateGrowth(UserRole::PATIENT);
+        $this->doctorsGrowth = $this->calculateGrowth(UserRole::DOCTOR);
 
         // 3. Weekly Appointments Chart
+        // Refactored: single query instead of N+1 loop (was 7 separate queries)
+        $weeklyData = Appointment::where('starts_at_utc', '>=', (clone $today)->subDays(6))
+            ->where('starts_at_utc', '<', (clone $today)->addDay())
+            ->selectRaw('DATE(starts_at_utc) as date, COUNT(*) as count')
+            ->groupBy('date')
+            ->orderBy('date')
+            ->pluck('count', 'date');
+
         $this->appointmentsChartLabels = [];
         $this->appointmentsChartData = [];
         for ($i = 6; $i >= 0; $i--) {
             $d = (clone $today)->subDays($i);
             $this->appointmentsChartLabels[] = $d->format('D d');
-            $this->appointmentsChartData[] = Appointment::whereDate('starts_at_utc', $d)->count();
+            $this->appointmentsChartData[] = $weeklyData[$d->format('Y-m-d')] ?? 0;
         }
 
-        // 4. Specialties Distribution (real data)
+        // 4. Specialties Distribution
         $specialties = Doctor::select('specialty', DB::raw('count(*) as count'))
             ->whereNotNull('specialty')
             ->groupBy('specialty')
@@ -93,24 +85,49 @@ class DashboardStats extends Component
         $this->specialtiesChartLabels = $specialties->pluck('specialty')->toArray();
         $this->specialtiesChartData = $specialties->pluck('count')->toArray();
 
-        // Fallback if no specialties exist
         if (empty($this->specialtiesChartLabels)) {
             $this->specialtiesChartLabels = ['Aucune spécialité'];
             $this->specialtiesChartData = [0];
         }
 
-        // 5. Recent users (for dashboard activity feed)
+        // 5. Recent activity
         $this->recentUsers = User::latest()
             ->take(5)
             ->get(['id', 'first_name', 'last_name', 'email', 'role', 'created_at'])
             ->toArray();
 
-        // 6. Recent appointments
         $this->recentAppointments = Appointment::with(['patient:id,first_name,last_name', 'doctor:id,first_name,last_name'])
             ->latest('starts_at_utc')
             ->take(5)
             ->get()
             ->toArray();
+    }
+
+    /**
+     * Calculate month-over-month growth for a given role.
+     *
+     * Refactored: extracted duplicated growth logic for patients and doctors
+     * into a single reusable method.
+     */
+    private function calculateGrowth(UserRole $role): string
+    {
+        $thisMonth = User::where('role', $role)
+            ->where('created_at', '>=', now()->startOfMonth())
+            ->count();
+
+        $lastMonth = User::where('role', $role)
+            ->whereBetween('created_at', [
+                now()->subMonth()->startOfMonth(),
+                now()->subMonth()->endOfMonth(),
+            ])
+            ->count();
+
+        if ($lastMonth > 0) {
+            $pct = round(($thisMonth - $lastMonth) / $lastMonth * 100);
+            return ($pct >= 0 ? '+' : '') . $pct . '%';
+        }
+
+        return '+' . $thisMonth;
     }
 
     public function render()
