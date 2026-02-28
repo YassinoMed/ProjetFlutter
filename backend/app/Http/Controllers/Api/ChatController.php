@@ -32,10 +32,12 @@ class ChatController extends Controller
             ])
             ->cursorPaginate($perPage);
 
-        return response()->json([
-            'data' => ChatMessageResource::collection(collect($messages->items())),
-            'next_cursor' => $messages->nextCursor()?->encode(),
-        ]);
+        return $this->respondSuccess(
+            ChatMessageResource::collection(collect($messages->items())),
+            'Chat messages retrieved successfully',
+            200,
+            ['next_cursor' => $messages->nextCursor()?->encode()]
+        );
     }
 
     public function store(string $appointmentId, StoreChatMessageRequest $request): JsonResponse
@@ -48,9 +50,9 @@ class ChatController extends Controller
 
         $message->load(['statuses' => fn ($q) => $q->where('user_id', $request->user()->id)]);
 
-        return response()->json([
+        return $this->respondSuccess([
             'message' => new ChatMessageResource($message),
-        ], 201);
+        ], 'Message sent successfully', 201);
     }
 
     public function ack(string $appointmentId, string $messageId, AckChatMessageRequest $request): JsonResponse
@@ -66,10 +68,9 @@ class ChatController extends Controller
 
         $entry = $this->service->acknowledge($message, $request->user(), $request->validated()['status']);
 
-        return response()->json([
-            'ok' => true,
+        return $this->respondSuccess([
             'status' => $entry->status->value,
             'status_at_utc' => $entry->status_at_utc->setTimezone('UTC')->toISOString(),
-        ]);
+        ], 'Message acknowledged successfully');
     }
 }

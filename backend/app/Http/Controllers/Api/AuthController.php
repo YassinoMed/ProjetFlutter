@@ -33,10 +33,10 @@ class AuthController extends Controller
 
         $tokens = $this->tokens->issueForUser($user, $request);
 
-        return response()->json([
+        return $this->respondSuccess([
             'user' => new UserResource($user),
             'tokens' => $tokens,
-        ], 201);
+        ], 'Registration successful', 201);
     }
 
     public function login(LoginRequest $request): JsonResponse
@@ -53,10 +53,10 @@ class AuthController extends Controller
 
         $tokens = $this->tokens->issueForUser($user, $request);
 
-        return response()->json([
+        return $this->respondSuccess([
             'user' => new UserResource($user),
             'tokens' => $tokens,
-        ]);
+        ], 'Login successful');
     }
 
     public function refresh(RefreshRequest $request): JsonResponse
@@ -65,18 +65,16 @@ class AuthController extends Controller
 
         $tokens = $this->tokens->rotateRefresh($data['refresh_token'], $request);
 
-        return response()->json([
+        return $this->respondSuccess([
             'tokens' => $tokens,
-        ]);
+        ], 'Token refreshed');
     }
 
     public function logout(): JsonResponse
     {
         $this->tokens->logout(request());
 
-        return response()->json([
-            'ok' => true,
-        ]);
+        return $this->respondSuccess(null, 'Logged out completely');
     }
 
     public function me(): JsonResponse
@@ -84,8 +82,8 @@ class AuthController extends Controller
         /** @var \App\Models\User $user */
         $user = request()->user();
 
-        return response()->json([
+        return $this->respondSuccess([
             'user' => new UserResource($user),
-        ]);
+        ], 'User profile retrieved');
     }
 }

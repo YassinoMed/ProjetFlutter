@@ -15,6 +15,7 @@ class User extends Equatable {
   final String? licenseNumber; // For doctors
   final double? rating;
   final String? address;
+  final String? tenantId;
   final bool emailVerified;
   final DateTime? createdAt;
 
@@ -29,6 +30,7 @@ class User extends Equatable {
     this.licenseNumber,
     this.rating,
     this.address,
+    this.tenantId,
     this.emailVerified = false,
     this.createdAt,
   });
@@ -47,6 +49,7 @@ class User extends Equatable {
     String? licenseNumber,
     double? rating,
     String? address,
+    String? tenantId,
     bool? emailVerified,
     DateTime? createdAt,
   }) {
@@ -61,6 +64,7 @@ class User extends Equatable {
       licenseNumber: licenseNumber ?? this.licenseNumber,
       rating: rating ?? this.rating,
       address: address ?? this.address,
+      tenantId: tenantId ?? this.tenantId,
       emailVerified: emailVerified ?? this.emailVerified,
       createdAt: createdAt ?? this.createdAt,
     );
@@ -68,17 +72,18 @@ class User extends Equatable {
 
   @override
   List<Object?> get props => [
-    id,
-    name,
-    email,
-    role,
-    phone,
-    avatarUrl,
-    speciality,
-    licenseNumber,
-    rating,
-    address,
-    emailVerified,
-    createdAt,
-  ];
+        id,
+        name,
+        email,
+        role,
+        phone,
+        avatarUrl,
+        speciality,
+        licenseNumber,
+        rating,
+        address,
+        tenantId,
+        emailVerified,
+        createdAt,
+      ];
 }

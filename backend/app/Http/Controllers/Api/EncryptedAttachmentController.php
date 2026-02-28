@@ -74,9 +74,9 @@ class EncryptedAttachmentController extends Controller
             ->withProperties(['action' => 'upload', 'file_size' => $file->getSize()])
             ->log('E2EE attachment uploaded');
 
-        return response()->json([
+        return $this->respondSuccess([
             'attachment' => new EncryptedAttachmentResource($attachment),
-        ], 201);
+        ], 'Attachment uploaded successfully', 201);
     }
 
     /**
@@ -125,9 +125,9 @@ class EncryptedAttachmentController extends Controller
 
         $this->assertCanAccess($request->user(), $attachment);
 
-        return response()->json([
+        return $this->respondSuccess([
             'attachment' => new EncryptedAttachmentResource($attachment),
-        ]);
+        ], 'Attachment metadata retrieved');
     }
 
     /**
@@ -153,7 +153,7 @@ class EncryptedAttachmentController extends Controller
 
         $attachment->delete();
 
-        return response()->json(['ok' => true]);
+        return $this->respondSuccess(null, 'Attachment deleted successfully');
     }
 
     /**

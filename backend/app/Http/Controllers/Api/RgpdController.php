@@ -48,7 +48,7 @@ class RgpdController extends Controller
             'messages'     => $messages->count(),
         ]);
 
-        return response()->json([
+        return $this->respondSuccess([
             'user' => [
                 'id'             => $user->id,
                 'email'          => $user->email,
@@ -63,7 +63,7 @@ class RgpdController extends Controller
             'fcm_tokens'     => $tokens,
             'consents'       => $consents,
             'exported_at_utc' => now('UTC')->toISOString(),
-        ]);
+        ], 'RGPD Export successful');
     }
 
     public function consent(ConsentRequest $request): JsonResponse
@@ -92,10 +92,9 @@ class RgpdController extends Controller
             'consented'    => $data['consented'],
         ]);
 
-        return response()->json([
-            'ok'      => true,
+        return $this->respondSuccess([
             'consent' => $consent,
-        ]);
+        ], 'Consent processed successfully');
     }
 
     /**
@@ -116,9 +115,7 @@ class RgpdController extends Controller
             deleteFcmTokens: true,
         );
 
-        return response()->json([
-            'ok' => true,
-        ]);
+        return $this->respondSuccess(null, 'User forgotten successfully');
     }
 
     private function logAudit(string $event, array $properties): void

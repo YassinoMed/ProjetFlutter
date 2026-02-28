@@ -31,7 +31,7 @@ class ProfileController extends Controller
             $doctorProfile = $user->doctorProfile;
         }
 
-        return response()->json([
+        return $this->respondSuccess([
             'user' => new UserResource($user),
             'patient_profile' => $patientProfile ? new PatientProfileResource($patientProfile) : null,
             'doctor_profile' => $doctorProfile ? new DoctorProfileResource($doctorProfile) : null,
@@ -78,11 +78,11 @@ class ProfileController extends Controller
             }
         }
 
-        return response()->json([
+        return $this->respondSuccess([
             'user' => new UserResource($user->refresh()),
             'patient_profile' => $patientProfile ? new PatientProfileResource($patientProfile) : null,
             'doctor_profile' => $doctorProfile ? new DoctorProfileResource($doctorProfile) : null,
-        ]);
+        ], 'Profile updated successfully');
     }
 
     public function updatePassword(UpdatePasswordRequest $request): JsonResponse
@@ -93,8 +93,6 @@ class ProfileController extends Controller
             'password' => $request->validated('password'),
         ]);
 
-        return response()->json([
-            'message' => 'Password updated successfully.',
-        ]);
+        return $this->respondSuccess(null, 'Password updated successfully.');
     }
 }

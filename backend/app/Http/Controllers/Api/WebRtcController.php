@@ -30,9 +30,7 @@ class WebRtcController extends Controller
 
         event($event);
 
-        return response()->json([
-            'ok' => true,
-        ]);
+        return $this->respondSuccess(null, 'Joined successfully');
     }
 
     public function offer(string $appointmentId, WebRtcOfferRequest $request): JsonResponse
@@ -51,9 +49,7 @@ class WebRtcController extends Controller
             now('UTC')->toISOString(),
         ));
 
-        return response()->json([
-            'ok' => true,
-        ]);
+        return $this->respondSuccess(null, 'Offer sent successfully');
     }
 
     public function answer(string $appointmentId, WebRtcAnswerRequest $request): JsonResponse
@@ -72,9 +68,7 @@ class WebRtcController extends Controller
             now('UTC')->toISOString(),
         ));
 
-        return response()->json([
-            'ok' => true,
-        ]);
+        return $this->respondSuccess(null, 'Answer sent successfully');
     }
 
     public function ice(string $appointmentId, WebRtcIceCandidateRequest $request): JsonResponse
@@ -94,8 +88,6 @@ class WebRtcController extends Controller
             now('UTC')->toISOString(),
         ));
 
-        return response()->json([
-            'ok' => true,
-        ]);
+        return $this->respondSuccess(null, 'ICE candidate sent successfully');
     }
 }

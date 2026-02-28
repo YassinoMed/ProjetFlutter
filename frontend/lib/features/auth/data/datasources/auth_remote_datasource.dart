@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/errors/exceptions.dart';
+import '../../../../core/network/api_response.dart';
 import '../models/user_model.dart';
 
 abstract class AuthRemoteDataSource {
@@ -181,9 +182,15 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       );
 
       if (response.statusCode == 200) {
+        final tokens = extractTokensMap(response.data);
+        final accessToken = tokens['access_token'] as String?;
+        final refreshToken = tokens['refresh_token'] as String?;
+        if (accessToken == null || refreshToken == null) {
+          throw const TokenExpiredException();
+        }
         return (
-          accessToken: response.data['access_token'] as String,
-          refreshToken: response.data['refresh_token'] as String,
+          accessToken: accessToken,
+          refreshToken: refreshToken,
         );
       }
 
@@ -199,9 +206,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final response = await dio.get(ApiConstants.profile);
 
       if (response.statusCode == 200) {
-        return UserModel.fromJson(
-          response.data['data'] as Map<String, dynamic>,
-        );
+        final userJson = extractUserMap(response.data);
+        return UserModel.fromJson(userJson);
       }
 
       throw ServerException(
@@ -222,9 +228,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final response = await dio.put(ApiConstants.profile, data: data);
 
       if (response.statusCode == 200) {
-        return UserModel.fromJson(
-          response.data['data'] as Map<String, dynamic>,
-        );
+        final userJson = extractUserMap(response.data);
+        return UserModel.fromJson(userJson);
       }
 
       throw ServerException(
