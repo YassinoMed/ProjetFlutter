@@ -1,0 +1,37 @@
+# Production overrides
+environment: "prod"
+
+replicaCount: 3
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1024Mi
+
+env:
+  APP_DEBUG: "false"
+  LOG_CHANNEL: "syslog" # for ELK/Loki
+  DB_CONNECTION: "pgsql"
+  # In production, Database coordinates come from sealed-secrets/HashiCorp Vault injected into env!
+  # PostgreSQL Bitnami should ideally be disabled here if relying on managed RDS/CloudSQL
+  DB_HOST: "mediconnect-prod-db-master.internal"
+
+ingress:
+  enabled: true
+  hostname: api.mediconnect.com
+  tls:
+    enabled: true
+    secretName: mediconnect-prod-tls
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 75
+  targetMemoryUtilizationPercentage: 80
+
+postgresql:
+  enabled: false # Use external DB in prod

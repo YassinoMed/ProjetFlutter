@@ -1,0 +1,56 @@
+# Global variables
+environment: "dev"
+
+# Image configuration
+image:
+  repository: registry.gitlab.com/yassinomed/mediconnect-pro-backend
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets:
+  - name: docker-registry-credentials
+
+# API deployment
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Env vars map
+env:
+  APP_DEBUG: "true"
+  LOG_CHANNEL: "stack"
+  DB_CONNECTION: "pgsql"
+
+# Ingress
+ingress:
+  enabled: true
+  className: "nginx"
+  hostname: api-dev.mediconnect.local
+  tls:
+    enabled: true
+    secretName: mediconnect-tls-secret
+
+# Auto-scaling
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+
+# PostgreSQL Bitnami Chart Config
+postgresql:
+  enabled: true
+  auth:
+    postgresPassword: "supersecretpostgres"
+    username: "mediconnect"
+    password: "mediconnectpassword"
+    database: "mediconnect"
+  primary:
+    persistence:
+      size: 5Gi

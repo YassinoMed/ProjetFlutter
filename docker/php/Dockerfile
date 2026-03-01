@@ -1,6 +1,6 @@
 FROM php:8.3-fpm-alpine
 
-RUN apk add --no-cache \
+RUN apk add --no-cache autoconf gcc g++ make  \
     bash \
     git \
     icu-dev \
