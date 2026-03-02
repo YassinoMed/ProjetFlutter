@@ -7,8 +7,8 @@ class ApiConstants {
   ApiConstants._();
 
   // ── Base URLs ─────────────────────────────────────────────
-  static const String baseUrl = 'http://192.168.1.173:8000/api';
-  static const String baseUrlIos = 'http://192.168.1.173:8000/api';
+  static const String baseUrl = 'http://51.210.243.30:8081/api';
+  static const String baseUrlIos = 'http://51.210.243.30:8081/api';
   static const String baseUrlProd = 'https://api.mediconnect.pro/api/v1';
 
   // ── WebSocket (Reverb – Laravel native) ───────────────────
