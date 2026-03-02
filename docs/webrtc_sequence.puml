@@ -1,0 +1,61 @@
+@startuml "Séquence d'Appel Vidéo P2P avec Laravel Reverb"
+actor "Médecin" as d
+actor "Patient" as p
+entity "WebRTC UI (Flutter)" as ui
+entity "WebRTCService (Flutter)" as rtc
+entity "Laravel API (HTTP)" as http_api
+entity "Laravel Reverb (Pusher WS)" as reverb
+entity "Coturn (STUN/TURN)" as stun
+
+==1. Initiation & Notification==
+d -> ui : Clique "Démarrer consultation"
+ui -> rtc : initialize()
+rtc -> rtc : getUserMedia (Caméra/Micro)
+rtc -> http_api : POST /consultations/{id}/webrtc/join
+http_api -> reverb : publish(ConsultationJoined)
+reverb -> p : ws_message (incoming_call / app notification)
+
+==2. Acceptation & Acquisition Média==
+p -> ui : Accepte l'appel
+ui -> rtc : initialize()
+rtc -> rtc : getUserMedia (Caméra/Micro)
+rtc -> http_api : POST /consultations/{id}/webrtc/join
+http_api -> reverb : publish(ConsultationJoined)
+reverb -> d : ws_message (patient_joined)
+
+==3. Négociation SDP (Offre/Réponse)==
+d -> rtc : createOffer()
+rtc -> http_api : POST /consultations/{id}/webrtc/offer (sdp: offer)
+http_api -> reverb : publish(WebRtcOfferSent)
+reverb -> p : ws_message (RemoteOfferReceived)
+
+p -> rtc : createAnswer() (setRemoteDescription + setLocalDescription)
+rtc -> http_api : POST /consultations/{id}/webrtc/answer (sdp: answer)
+http_api -> reverb : publish(WebRtcAnswerSent)
+reverb -> d : ws_message (RemoteAnswerReceived -> setRemoteDescription)
+
+==4. Recherche ICE (Traversée NAT)==
+d -> rtc : onIceCandidate
+rtc -> stun : Binding Request
+stun -> rtc : Public IP (Server Reflexive)
+rtc -> http_api : POST /consultations/{id}/webrtc/ice (candidate)
+http_api -> reverb : publish(WebRtcIceCandidateSent)
+reverb -> p : ws_message (RemoteIceCandidateReceived -> addCandidate)
+
+p -> rtc : onIceCandidate
+rtc -> stun : Binding Request
+stun -> rtc : Public IP (Server Reflexive)
+rtc -> http_api : POST /consultations/{id}/webrtc/ice (candidate)
+http_api -> reverb : publish(WebRtcIceCandidateSent)
+reverb -> d : ws_message (RemoteIceCandidateReceived -> addCandidate)
+
+==5. Session WebRTC Etablie==
+rtc <-> rtc : DTLS-SRTP Key Exchange (P2P direct ou relayé)
+d <-> p : Flux Audio/Vidéo Temps Réel (<150ms)
+
+==6. Fin d'appel==
+p -> ui : Clique "Raccrocher"
+ui -> rtc : dispose() (Arrêt MediaStream + PeerConnection close)
+p -> http_api : POST /consultations/{id}/messages (fin)
+reverb -> d : ws_message (call_ended)
+@enduml
