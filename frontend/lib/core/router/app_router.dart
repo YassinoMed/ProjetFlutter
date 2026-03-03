@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/appointments/presentation/pages/booking_page.dart';
 import '../../features/appointments/presentation/pages/doctor_detail_page.dart';
+import '../../features/appointments/presentation/pages/appointment_detail_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
@@ -90,6 +91,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final doctorId = state.pathParameters['id']!;
           return DoctorDetailPage(doctorId: doctorId);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.appointmentDetail,
+        name: 'appointment-detail',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return AppointmentDetailPage(appointmentId: id);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.doctorAppointmentDetail,
+        name: 'doctor-appointment-detail',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return AppointmentDetailPage(appointmentId: id);
         },
       ),
       GoRoute(

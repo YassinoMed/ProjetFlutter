@@ -9,16 +9,19 @@ class ApiConstants {
   // ── Base URLs ─────────────────────────────────────────────
   static const String baseUrl = 'http://51.210.243.30:8081/api';
   static const String baseUrlIos = 'http://51.210.243.30:8081/api';
-  static const String baseUrlProd = 'https://api.mediconnect.pro/api/v1';
+  static const String baseUrlProd = 'http://51.210.243.30:8081/api';
 
   // ── WebSocket (Reverb – Laravel native) ───────────────────
-  static const String wsUrl = 'http://192.168.1.173:8000';
-  static const String wsUrlIos = 'http://192.168.1.173:8000';
-  static const String wsUrlProd = 'wss://ws.mediconnect.pro';
+  static const String wsUrl = 'http://51.210.243.30:8081';
+  static const String wsUrlIos = 'http://51.210.243.30:8081';
+  static const String wsUrlProd = 'http://51.210.243.30:8081';
 
   // Reverb app credentials (must match backend .env)
   static const String reverbAppKey = 'mediconnect-key';
   static const String reverbAppCluster = 'mt1';
+
+  // ── Default Tenant ────────────────────────────────────────
+  static const String defaultTenantId = 'mediconnect';
 
   // ── Auth Endpoints ────────────────────────────────────────
   static const String login = '/auth/login';

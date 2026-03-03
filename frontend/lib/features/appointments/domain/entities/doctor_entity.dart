@@ -1,5 +1,28 @@
 import 'package:equatable/equatable.dart';
 
+// ── Safe JSON helpers (backend may return num OR String) ────
+double? _toDouble(dynamic v) {
+  if (v == null) return null;
+  if (v is num) return v.toDouble();
+  if (v is String) return double.tryParse(v);
+  return null;
+}
+
+int? _toInt(dynamic v) {
+  if (v == null) return null;
+  if (v is num) return v.toInt();
+  if (v is String) return int.tryParse(v);
+  return null;
+}
+
+bool _toBool(dynamic v, {bool fallback = false}) {
+  if (v == null) return fallback;
+  if (v is bool) return v;
+  if (v is num) return v != 0;
+  if (v is String) return v == '1' || v.toLowerCase() == 'true';
+  return fallback;
+}
+
 class DoctorEntity extends Equatable {
   final String userId;
   final String firstName;
@@ -64,12 +87,13 @@ class DoctorEntity extends Equatable {
       consultationFee: json['consultation_fee']?.toString(),
       city: json['city']?.toString(),
       address: json['address']?.toString(),
-      latitude: (json['latitude'] as num?)?.toDouble(),
-      longitude: (json['longitude'] as num?)?.toDouble(),
+      latitude: _toDouble(json['latitude']),
+      longitude: _toDouble(json['longitude']),
       avatarUrl: json['avatar_url']?.toString(),
-      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
-      totalReviews: (json['total_reviews'] as num?)?.toInt() ?? 0,
-      isAvailableForVideo: json['is_available_for_video'] as bool? ?? true,
+      rating: _toDouble(json['rating']) ?? 0.0,
+      totalReviews: _toInt(json['total_reviews']) ?? 0,
+      isAvailableForVideo:
+          _toBool(json['is_available_for_video'], fallback: true),
       schedules: schedulesList,
     );
   }
@@ -109,12 +133,11 @@ class ScheduleSlot extends Equatable {
   factory ScheduleSlot.fromJson(Map<String, dynamic> json) {
     return ScheduleSlot(
       id: json['id']?.toString() ?? '',
-      dayOfWeek: (json['day_of_week'] as num?)?.toInt() ?? 0,
+      dayOfWeek: _toInt(json['day_of_week']) ?? 0,
       startTime: json['start_time']?.toString() ?? '',
       endTime: json['end_time']?.toString() ?? '',
-      slotDurationMinutes:
-          (json['slot_duration_minutes'] as num?)?.toInt() ?? 30,
-      isActive: json['is_active'] as bool? ?? true,
+      slotDurationMinutes: _toInt(json['slot_duration_minutes']) ?? 30,
+      isActive: _toBool(json['is_active'], fallback: true),
     );
   }
 }
@@ -139,8 +162,8 @@ class TimeSlot extends Equatable {
     return TimeSlot(
       startsAtUtc: DateTime.parse(json['starts_at_utc']),
       endsAtUtc: DateTime.parse(json['ends_at_utc']),
-      durationMinutes: (json['duration_minutes'] as num?)?.toInt() ?? 30,
-      isAvailable: json['is_available'] as bool? ?? false,
+      durationMinutes: _toInt(json['duration_minutes']) ?? 30,
+      isAvailable: _toBool(json['is_available'], fallback: false),
     );
   }
 }

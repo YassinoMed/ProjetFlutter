@@ -4,6 +4,29 @@ library;
 
 import '../../domain/entities/user_entity.dart';
 
+// ── Safe JSON helpers (backend may return num OR String) ────
+double? _toDouble(dynamic v) {
+  if (v == null) return null;
+  if (v is num) return v.toDouble();
+  if (v is String) return double.tryParse(v);
+  return null;
+}
+
+int? _toInt(dynamic v) {
+  if (v == null) return null;
+  if (v is num) return v.toInt();
+  if (v is String) return int.tryParse(v);
+  return null;
+}
+
+bool _toBool(dynamic v, {bool fallback = false}) {
+  if (v == null) return fallback;
+  if (v is bool) return v;
+  if (v is num) return v != 0;
+  if (v is String) return v == '1' || v.toLowerCase() == 'true';
+  return fallback;
+}
+
 class UserModel {
   final String id;
   final String name;
@@ -57,11 +80,11 @@ class UserModel {
       avatarUrl: json['avatar_url'] as String?,
       speciality: json['speciality'] as String?,
       licenseNumber: json['license_number'] as String?,
-      rating: (json['rating'] as num?)?.toDouble(),
+      rating: _toDouble(json['rating']),
       address: json['address'] as String?,
-      tenantId: json['tenant_id'] as String?,
-      isAvailable: json['is_available'] as bool? ?? true,
-      isVerified: json['is_verified'] as bool? ?? false,
+      tenantId: json['tenant_id']?.toString(),
+      isAvailable: _toBool(json['is_available'], fallback: true),
+      isVerified: _toBool(json['is_verified'], fallback: false),
       createdAt: (json['created_at'] ?? json['created_at_utc']) as String?,
       updatedAt: (json['updated_at'] ?? json['updated_at_utc']) as String?,
     );
@@ -132,7 +155,7 @@ class LoginResponseModel {
           (tokens?['refresh_token'] ?? json['refresh_token']) as String?,
       tokenType:
           (tokens?['token_type'] ?? json['token_type']) as String? ?? 'Bearer',
-      expiresIn: (tokens?['expires_in'] ?? json['expires_in']) as int?,
+      expiresIn: _toInt(tokens?['expires_in'] ?? json['expires_in']),
     );
   }
 
