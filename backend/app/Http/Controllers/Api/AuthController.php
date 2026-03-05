@@ -8,6 +8,7 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RefreshRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Resources\UserResource;
+use App\Models\Doctor;
 use App\Models\User;
 use App\Services\Auth\AuthTokenService;
 use Illuminate\Http\JsonResponse;
@@ -22,14 +23,25 @@ class AuthController extends Controller
     {
         $data = $request->validated();
 
+        $role = UserRole::tryFrom($data['role'] ?? 'patient') ?? UserRole::PATIENT;
+
         $user = User::query()->create([
             'email' => strtolower($data['email']),
             'password' => $data['password'],
             'first_name' => $data['first_name'],
             'last_name' => $data['last_name'],
             'phone' => $data['phone'] ?? null,
-            'role' => UserRole::PATIENT,
+            'role' => $role,
         ]);
+
+        // Create doctor profile if registering as doctor
+        if ($role === UserRole::DOCTOR) {
+            Doctor::query()->create([
+                'user_id' => $user->id,
+                'specialty' => $data['speciality'] ?? null,
+                'rpps' => $data['license_number'] ?? null,
+            ]);
+        }
 
         $tokens = $this->tokens->issueForUser($user, $request);
 

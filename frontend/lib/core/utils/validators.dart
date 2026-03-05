@@ -62,7 +62,7 @@ class Validators {
 
   static String? phone(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Le numéro de téléphone est requis';
+      return null; // Phone is optional
     }
     final phoneRegex = RegExp(r'^(?:\+212|0)[5-7][0-9]{8}$');
     if (!phoneRegex.hasMatch(value.replaceAll(' ', ''))) {

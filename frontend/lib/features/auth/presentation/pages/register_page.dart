@@ -36,6 +36,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   int _currentStep = 0;
 
   @override
+  void initState() {
+    super.initState();
+    _passwordController.addListener(() => setState(() {}));
+    _confirmPasswordController.addListener(() => setState(() {}));
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
@@ -60,21 +67,21 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     }
 
     await ref.read(authNotifierProvider.notifier).register(
-      name: _nameController.text.trim(),
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
-      passwordConfirmation: _confirmPasswordController.text,
-      role: _selectedRole,
-      phone: _phoneController.text.isNotEmpty
-          ? _phoneController.text.trim()
-          : null,
-      speciality: _selectedRole == AppConstants.roleDoctor
-          ? _specialityController.text.trim()
-          : null,
-      licenseNumber: _selectedRole == AppConstants.roleDoctor
-          ? _licenseController.text.trim()
-          : null,
-    );
+          name: _nameController.text.trim(),
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+          passwordConfirmation: _confirmPasswordController.text,
+          role: _selectedRole,
+          phone: _phoneController.text.isNotEmpty
+              ? _phoneController.text.trim()
+              : null,
+          speciality: _selectedRole == AppConstants.roleDoctor
+              ? _specialityController.text.trim()
+              : null,
+          licenseNumber: _selectedRole == AppConstants.roleDoctor
+              ? _licenseController.text.trim()
+              : null,
+        );
 
     if (!mounted) return;
 
@@ -306,7 +313,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
           ),
         ),
         const SizedBox(height: 24),
-
         _buildRoleCard(
           role: AppConstants.rolePatient,
           icon: Icons.person_rounded,
@@ -545,8 +551,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         ),
         _buildPasswordRequirement(
           'Un caractère spécial',
-          RegExp(r'[!@#$%^&*(),.?":{}|<>]')
-              .hasMatch(_passwordController.text),
+          RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(_passwordController.text),
         ),
 
         const SizedBox(height: 16),
@@ -567,8 +572,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     : Icons.visibility_outlined,
               ),
               onPressed: () => setState(
-                () =>
-                    _obscureConfirmPassword = !_obscureConfirmPassword,
+                () => _obscureConfirmPassword = !_obscureConfirmPassword,
               ),
             ),
           ),

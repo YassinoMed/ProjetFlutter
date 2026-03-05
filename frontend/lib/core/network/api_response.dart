@@ -21,7 +21,23 @@ Map<String, dynamic> extractTokensMap(dynamic payload) {
 Map<String, dynamic> extractUserMap(dynamic payload) {
   final data = extractDataMap(payload);
   final user = data['user'];
-  return user is Map<String, dynamic> ? user : data;
+
+  if (user is Map<String, dynamic>) {
+    final Map<String, dynamic> mergedUser = Map<String, dynamic>.from(user);
+    if (data['doctor_profile'] is Map<String, dynamic>) {
+      final doc = data['doctor_profile'] as Map<String, dynamic>;
+      mergedUser['speciality'] = doc['specialty'] ?? doc['speciality'];
+      mergedUser['license_number'] = doc['rpps'] ?? doc['license_number'];
+    }
+    if (data['patient_profile'] is Map<String, dynamic>) {
+      final pat = data['patient_profile'] as Map<String, dynamic>;
+      mergedUser['date_of_birth'] = pat['date_of_birth'];
+      mergedUser['sex'] = pat['sex'];
+    }
+    return mergedUser;
+  }
+
+  return data;
 }
 
 class ApiResponse<T> {

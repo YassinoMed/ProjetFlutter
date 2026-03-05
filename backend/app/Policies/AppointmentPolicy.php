@@ -10,9 +10,9 @@ class AppointmentPolicy
 {
     public function view(User $user, Appointment $appointment): bool
     {
-        return $user->id === $appointment->patient_user_id
-            || $user->id === $appointment->doctor_user_id
-            || $user->role === UserRole::ADMIN;
+        return $user->id == $appointment->patient_user_id
+            || $user->id == $appointment->doctor_user_id
+            || $user->role == UserRole::ADMIN;
     }
 
     public function update(User $user, Appointment $appointment): bool

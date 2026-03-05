@@ -69,7 +69,7 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
       ApiConstants.consultationMessages.replaceFirst('{id}', consultationId),
       data: {
         'ciphertext': content,
-        'nonce': '',
+        'nonce': DateTime.now().millisecondsSinceEpoch.toString(),
         'algorithm': 'AES-256-GCM',
       },
     );

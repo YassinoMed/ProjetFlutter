@@ -185,11 +185,16 @@ class AuthRepositoryImpl implements AuthRepository {
 
     try {
       final data = <String, dynamic>{
-        if (name != null) 'name': name,
         if (phone != null) 'phone': phone,
         if (avatarUrl != null) 'avatar_url': avatarUrl,
         if (address != null) 'address': address,
       };
+
+      if (name != null) {
+        final parts = name.trim().split(' ');
+        data['first_name'] = parts.isNotEmpty ? parts.first : '';
+        data['last_name'] = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+      }
 
       final userModel = await remoteDataSource.updateProfile(data);
       await secureStorage.write(
