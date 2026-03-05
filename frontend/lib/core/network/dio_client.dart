@@ -39,6 +39,7 @@ Dio createDioClient(SecureStorageService secureStorage) {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        'X-Tenant-Identifier': ApiConstants.defaultTenantId,
       },
     ),
   );
@@ -88,11 +89,12 @@ class AuthInterceptor extends Interceptor {
       options.headers['Authorization'] = 'Bearer $token';
     }
 
-    // Inject the current tenant identifier if available
+    // Inject the current tenant identifier (fallback to default)
     final tenantId = await _secureStorage.read(key: AppConstants.keyTenantId);
-    if (tenantId != null && tenantId.isNotEmpty) {
-      options.headers['X-Tenant-Identifier'] = tenantId;
-    }
+    options.headers['X-Tenant-Identifier'] =
+        (tenantId != null && tenantId.isNotEmpty)
+            ? tenantId
+            : ApiConstants.defaultTenantId;
 
     handler.next(options);
   }
@@ -128,6 +130,7 @@ class AuthInterceptor extends Interceptor {
               headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
+                'X-Tenant-Identifier': ApiConstants.defaultTenantId,
               },
             ),
           );
