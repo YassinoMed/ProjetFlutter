@@ -10,7 +10,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.3",
-        "knuckleswtf/scribe": "^4.0",
+        "knuckleswtf/scribe": "^5.0",
         "kreait/laravel-firebase": "^6.0",
         "laravel/framework": "^11.31",
         "laravel/reverb": "^1.0",
@@ -20,10 +20,12 @@
         "php-open-source-saver/jwt-auth": "^2.8",
         "pusher/pusher-php-server": "^7.2",
         "spatie/laravel-activitylog": "^4.8",
+        "spatie/laravel-data": "^4.20",
         "stancl/tenancy": "^3.9"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
+        "larastan/larastan": "^3.9",
         "laravel/horizon": "^5.22",
         "laravel/pail": "^1.1",
         "laravel/pint": "^1.13",
@@ -31,7 +33,6 @@
         "laravel/telescope": "^5.0",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.1",
-        "nunomaduro/larastan": "^2.0",
         "orchestra/testbench": "^9.16",
         "pestphp/pest": "^3.8",
         "pestphp/pest-plugin-laravel": "^3.2",

@@ -12,7 +12,10 @@ return Application::configure(basePath: dirname(__DIR__))
         channels: __DIR__.'/../routes/channels.php',
         health: '/up',
         then: function () {
-            Route::middleware('web')
+            Route::middleware([
+                    'web',
+                    \Stancl\Tenancy\Middleware\InitializeTenancyByDomain::class,
+                ])
                 ->prefix('admin')
                 ->name('admin.')
                 ->group(base_path('routes/admin.php'));

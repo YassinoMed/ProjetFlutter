@@ -1,0 +1,81 @@
+pipeline {
+    agent any
+
+    environment {
+        // Définir les variables d'environnement si nécessaire
+        DB_CONNECTION = 'mysql'
+        DB_DATABASE   = 'projetflutter'
+        DB_USERNAME   = 'flutteruser'
+        DB_PASSWORD   = 'motdepasse123'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                // Récupération du code source
+                checkout scm
+            }
+        }
+
+        stage('Setup PHP & Composer') {
+            steps {
+                sh 'php -v'
+                sh 'composer --version'
+                
+                // Installation des dépendances
+                sh 'composer install --no-interaction --prefer-dist --optimize-autoloader'
+            }
+        }
+
+        stage('Configuration') {
+            steps {
+                // Préparation du fichier .env
+                sh 'cp .env.example .env'
+                
+                // Génération de la clé Laravel
+                sh 'php artisan key:generate'
+                
+                // Configuration de la base de données de test dans le fichier .env
+                sh "sed -i 's/DB_DATABASE=laravel/DB_DATABASE=${DB_DATABASE}/g' .env"
+                sh "sed -i 's/DB_USERNAME=root/DB_USERNAME=${DB_USERNAME}/g' .env"
+                sh "sed -i 's/DB_PASSWORD=/DB_PASSWORD=${DB_PASSWORD}/g' .env"
+            }
+        }
+
+        stage('Database Migration') {
+            steps {
+                // Exécution des migrations (attention en production)
+                sh 'php artisan migrate --force'
+            }
+        }
+
+        stage('Testing') {
+            steps {
+                // Lancer les tests
+                sh 'php artisan test'
+            }
+        }
+
+        stage('Build & Optimization') {
+            steps {
+                // Optimisation pour la production
+                sh 'php artisan config:cache'
+                sh 'php artisan route:cache'
+                sh 'php artisan view:cache'
+            }
+        }
+    }
+
+    post {
+        always {
+            // Nettoyage ou actions après exécution
+            echo 'Pipeline terminé.'
+        }
+        success {
+            echo 'Le build a réussi !'
+        }
+        failure {
+            echo 'Le build a échoué. Vérifiez les logs.'
+        }
+    }
+}
