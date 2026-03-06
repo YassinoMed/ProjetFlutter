@@ -3,8 +3,10 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:local_auth/local_auth.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/router/app_routes.dart';
@@ -21,12 +23,17 @@ class LoginPage extends ConsumerStatefulWidget {
 
 class _LoginPageState extends ConsumerState<LoginPage>
     with SingleTickerProviderStateMixin {
+
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+
   late AnimationController _animController;
   late Animation<double> _fadeAnimation;
+
+  /// 🔹 Biométrie
+  final LocalAuthentication _auth = LocalAuthentication();
 
   @override
   void initState() {
@@ -35,10 +42,12 @@ class _LoginPageState extends ConsumerState<LoginPage>
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
+
     _fadeAnimation = CurvedAnimation(
       parent: _animController,
       curve: Curves.easeInOut,
     );
+
     _animController.forward();
   }
 
@@ -50,6 +59,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
     super.dispose();
   }
 
+  /// 🔹 Login normal
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -61,6 +71,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
     if (!mounted) return;
 
     final authState = ref.read(authNotifierProvider);
+
     authState.when(
       data: (state) {
         if (state.isAuthenticated) {
@@ -84,8 +95,71 @@ class _LoginPageState extends ConsumerState<LoginPage>
     );
   }
 
+  /// 🔹 Authentification biométrique
+  Future<void> _authenticateWithBiometrics() async {
+    try {
+
+      final bool canCheckBiometrics = await _auth.canCheckBiometrics;
+      final bool isSupported = await _auth.isDeviceSupported();
+
+      if (!canCheckBiometrics || !isSupported) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("La biométrie n'est pas disponible sur cet appareil"),
+          ),
+        );
+        return;
+      }
+
+      final bool authenticated = await _auth.authenticate(
+        localizedReason: 'Utilisez votre empreinte pour vous connecter',
+        options: const AuthenticationOptions(
+          biometricOnly: true,
+          stickyAuth: true,
+        ),
+      );
+
+      if (!mounted) return;
+
+      if (authenticated) {
+
+        final authState = ref.read(authNotifierProvider);
+
+        authState.when(
+          data: (state) {
+            if (state.isAuthenticated) {
+              if (state.user?.role == AppConstants.roleDoctor) {
+                context.go(AppRoutes.doctorHome);
+              } else {
+                context.go(AppRoutes.patientHome);
+              }
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    "Veuillez vous connecter une première fois pour activer l'empreinte",
+                  ),
+                ),
+              );
+            }
+          },
+          loading: () {},
+          error: (error, _) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(error.toString())),
+            );
+          },
+        );
+      }
+
+    } on PlatformException catch (e) {
+      debugPrint("Erreur biométrie: $e");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+
     final authAsync = ref.watch(authNotifierProvider);
     final isLoading = authAsync.isLoading;
 
@@ -100,7 +174,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
               children: [
                 const SizedBox(height: 40),
 
-                // ── Logo & Welcome ──────────────────
+                /// Logo
                 Center(
                   child: Column(
                     children: [
@@ -136,22 +210,26 @@ class _LoginPageState extends ConsumerState<LoginPage>
                     ],
                   ),
                 ),
+
                 const SizedBox(height: 40),
 
-                // ── Form ────────────────────────────
+                /// Formulaire
                 Form(
                   key: _formKey,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Email field
+
+                      /// Email
                       Text(
                         'Adresse email',
                         style: AppTheme.labelLarge.copyWith(
                           color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
+
                       const SizedBox(height: 8),
+
                       TextFormField(
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
@@ -162,16 +240,19 @@ class _LoginPageState extends ConsumerState<LoginPage>
                           prefixIcon: Icon(Icons.email_outlined),
                         ),
                       ),
+
                       const SizedBox(height: 20),
 
-                      // Password field
+                      /// Password
                       Text(
                         'Mot de passe',
                         style: AppTheme.labelLarge.copyWith(
                           color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
+
                       const SizedBox(height: 8),
+
                       TextFormField(
                         controller: _passwordController,
                         obscureText: _obscurePassword,
@@ -200,27 +281,10 @@ class _LoginPageState extends ConsumerState<LoginPage>
                           ),
                         ),
                       ),
-                      const SizedBox(height: 12),
 
-                      // Forgot password
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () {
-                            // TODO: Navigate to forgot password
-                          },
-                          child: Text(
-                            'Mot de passe oublié ?',
-                            style: AppTheme.bodySmall.copyWith(
-                              color: AppTheme.primaryColor,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
                       const SizedBox(height: 24),
 
-                      // Login button
+                      /// Login button
                       SizedBox(
                         width: double.infinity,
                         height: 56,
@@ -232,26 +296,14 @@ class _LoginPageState extends ConsumerState<LoginPage>
                             ),
                           ),
                           child: isLoading
-                              ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : Text(
-                                  'Se connecter',
-                                  style: AppTheme.labelLarge.copyWith(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                  ),
-                                ),
+                              ? const CircularProgressIndicator(color: Colors.white)
+                              : const Text('Se connecter'),
                         ),
                       ),
+
                       const SizedBox(height: 20),
 
-                      // Biometric login
+                      /// Biométrie
                       Center(
                         child: Column(
                           children: [
@@ -266,9 +318,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                   size: 32,
                                   color: AppTheme.primaryColor,
                                 ),
-                                onPressed: () {
-                                  // TODO: Biometric auth
-                                },
+                                onPressed: _authenticateWithBiometrics,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -284,31 +334,10 @@ class _LoginPageState extends ConsumerState<LoginPage>
                     ],
                   ),
                 ),
+
                 const SizedBox(height: 32),
 
-                // ── Divider ─────────────────────────
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Divider(color: AppTheme.neutralGray300),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        'Nouveau sur MediConnect ?',
-                        style: AppTheme.bodySmall.copyWith(
-                          color: AppTheme.neutralGray500,
-                        ),
-                      ),
-                    ),
-                    const Expanded(
-                      child: Divider(color: AppTheme.neutralGray300),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                // ── Register button ─────────────────
+                /// Register
                 SizedBox(
                   width: double.infinity,
                   height: 56,
@@ -317,6 +346,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                     child: const Text('Créer un compte'),
                   ),
                 ),
+
                 const SizedBox(height: 32),
               ],
             ),
