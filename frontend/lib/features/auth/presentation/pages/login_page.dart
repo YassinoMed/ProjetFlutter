@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/router/app_routes.dart';
@@ -23,7 +24,6 @@ class LoginPage extends ConsumerStatefulWidget {
 
 class _LoginPageState extends ConsumerState<LoginPage>
     with SingleTickerProviderStateMixin {
-
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -38,6 +38,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
   @override
   void initState() {
     super.initState();
+
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -49,6 +50,17 @@ class _LoginPageState extends ConsumerState<LoginPage>
     );
 
     _animController.forward();
+
+    // Charger le dernier email
+    _loadLastEmail();
+  }
+
+  Future<void> _loadLastEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastEmail = prefs.getString('last_email');
+    if (lastEmail != null) {
+      _emailController.text = lastEmail;
+    }
   }
 
   @override
@@ -63,7 +75,8 @@ class _LoginPageState extends ConsumerState<LoginPage>
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
-    await ref.read(authNotifierProvider.notifier).login(
+    final notifier = ref.read(authNotifierProvider.notifier);
+    await notifier.login(
       email: _emailController.text.trim(),
       password: _passwordController.text,
     );
@@ -72,9 +85,14 @@ class _LoginPageState extends ConsumerState<LoginPage>
 
     final authState = ref.read(authNotifierProvider);
 
-    authState.when(
-      data: (state) {
+    authState.maybeWhen(
+      data: (state) async {
         if (state.isAuthenticated) {
+          // 🔹 Sauvegarder l’email après login réussi
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('last_email', _emailController.text.trim());
+
+          // 🔹 Redirection par rôle
           if (state.user?.role == AppConstants.roleDoctor) {
             context.go(AppRoutes.doctorHome);
           } else {
@@ -82,6 +100,10 @@ class _LoginPageState extends ConsumerState<LoginPage>
           }
         }
       },
+      orElse: () {},
+    );
+
+    authState.when(
       loading: () {},
       error: (error, _) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -92,13 +114,13 @@ class _LoginPageState extends ConsumerState<LoginPage>
           ),
         );
       },
+      data: (_) {},
     );
   }
 
   /// 🔹 Authentification biométrique
   Future<void> _authenticateWithBiometrics() async {
     try {
-
       final bool canCheckBiometrics = await _auth.canCheckBiometrics;
       final bool isSupported = await _auth.isDeviceSupported();
 
@@ -122,10 +144,9 @@ class _LoginPageState extends ConsumerState<LoginPage>
       if (!mounted) return;
 
       if (authenticated) {
-
         final authState = ref.read(authNotifierProvider);
 
-        authState.when(
+        authState.maybeWhen(
           data: (state) {
             if (state.isAuthenticated) {
               if (state.user?.role == AppConstants.roleDoctor) {
@@ -137,21 +158,24 @@ class _LoginPageState extends ConsumerState<LoginPage>
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text(
-                    "Veuillez vous connecter une première fois pour activer l'empreinte",
-                  ),
+                      "Veuillez vous connecter une première fois pour activer l'empreinte"),
                 ),
               );
             }
           },
+          orElse: () {},
+        );
+
+        authState.when(
           loading: () {},
           error: (error, _) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(error.toString())),
             );
           },
+          data: (_) {},
         );
       }
-
     } on PlatformException catch (e) {
       debugPrint("Erreur biométrie: $e");
     }
@@ -159,7 +183,6 @@ class _LoginPageState extends ConsumerState<LoginPage>
 
   @override
   Widget build(BuildContext context) {
-
     final authAsync = ref.watch(authNotifierProvider);
     final isLoading = authAsync.isLoading;
 
@@ -219,7 +242,6 @@ class _LoginPageState extends ConsumerState<LoginPage>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-
                       /// Email
                       Text(
                         'Adresse email',
@@ -296,7 +318,8 @@ class _LoginPageState extends ConsumerState<LoginPage>
                             ),
                           ),
                           child: isLoading
-                              ? const CircularProgressIndicator(color: Colors.white)
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white)
                               : const Text('Se connecter'),
                         ),
                       ),
