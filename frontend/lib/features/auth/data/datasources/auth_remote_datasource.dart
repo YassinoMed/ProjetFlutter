@@ -1,5 +1,6 @@
-/// Auth Remote Data Source
-/// Handles API communication for authentication + biometric device management
+/// Auth Remote Data Source (Sanctum)
+/// Handles API communication for authentication + biometric device management.
+/// No refresh token logic — Sanctum uses a single opaque token per session.
 library;
 
 import 'package:dio/dio.dart';
@@ -34,10 +35,6 @@ abstract class AuthRemoteDataSource {
 
   Future<void> logout();
 
-  Future<({String accessToken, String refreshToken})> refreshToken(
-    String refreshToken,
-  );
-
   Future<UserModel> getProfile();
 
   Future<UserModel> updateProfile(Map<String, dynamic> data);
@@ -59,20 +56,16 @@ abstract class AuthRemoteDataSource {
 
   // ── Biometric / Device Management ─────────────────────────
 
-  /// Enable biometric auth for a device on the server
   Future<void> enableBiometric({
     required String deviceId,
     required String deviceName,
     String? platform,
   });
 
-  /// Disable biometric auth for a device on the server
   Future<void> disableBiometric({required String deviceId});
 
-  /// List all trusted devices for the user
   Future<List<Map<String, dynamic>>> getDevices();
 
-  /// Revoke a trusted device
   Future<void> revokeDevice({required String deviceId});
 }
 
@@ -207,35 +200,6 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         message: e.message ?? 'Logout failed',
         statusCode: e.response?.statusCode,
       );
-    }
-  }
-
-  @override
-  Future<({String accessToken, String refreshToken})> refreshToken(
-    String currentRefreshToken,
-  ) async {
-    try {
-      final response = await dio.post(
-        ApiConstants.refreshToken,
-        data: {'refresh_token': currentRefreshToken},
-      );
-
-      if (response.statusCode == 200) {
-        final tokens = extractTokensMap(response.data);
-        final accessToken = tokens['access_token'] as String?;
-        final refreshToken = tokens['refresh_token'] as String?;
-        if (accessToken == null || refreshToken == null) {
-          throw const TokenExpiredException();
-        }
-        return (
-          accessToken: accessToken,
-          refreshToken: refreshToken,
-        );
-      }
-
-      throw const TokenExpiredException();
-    } on DioException {
-      throw const TokenExpiredException();
     }
   }
 

@@ -1,5 +1,5 @@
-/// Auth Repository Interface (Domain layer)
-/// Clean Architecture: abstractions in domain, implementations in data
+/// Auth Repository Interface (Domain layer) — Sanctum
+/// No refresh token concept. Single Sanctum token per session.
 library;
 
 import 'package:dartz/dartz.dart';
@@ -9,10 +9,8 @@ import '../entities/user_entity.dart';
 
 abstract class AuthRepository {
   /// Login with email and password
-  /// Returns JWT tokens + User on success
-  Future<
-      Either<Failure,
-          ({User user, String accessToken, String refreshToken})>> login({
+  /// Returns the Sanctum token + User on success
+  Future<Either<Failure, ({User user, String token})>> login({
     required String email,
     required String password,
     String? deviceId,
@@ -21,9 +19,7 @@ abstract class AuthRepository {
   });
 
   /// Register a new user (Patient or Doctor)
-  Future<
-      Either<Failure,
-          ({User user, String accessToken, String refreshToken})>> register({
+  Future<Either<Failure, ({User user, String token})>> register({
     required String name,
     required String email,
     required String password,
@@ -37,12 +33,8 @@ abstract class AuthRepository {
     String? platform,
   });
 
-  /// Logout - invalidate tokens on server
+  /// Logout - delete current Sanctum token on server
   Future<Either<Failure, void>> logout();
-
-  /// Refresh access token using refresh token
-  Future<Either<Failure, ({String accessToken, String refreshToken})>>
-      refreshToken();
 
   /// Get current user profile
   Future<Either<Failure, User>> getProfile();
@@ -62,8 +54,8 @@ abstract class AuthRepository {
     required String confirmPassword,
   });
 
-  /// Check if user has valid tokens stored
-  Future<bool> hasValidTokens();
+  /// Check if user has a stored Sanctum token
+  Future<bool> hasValidToken();
 
   /// Get stored user from cache
   Future<User?> getCachedUser();
@@ -101,6 +93,7 @@ abstract class AuthRepository {
   Future<Either<Failure, void>> revokeDevice({required String deviceId});
 
   /// Login with biometric (local auth → read stored token → validate with server)
-  /// Returns the user profile if the stored token is still valid
+  /// Returns the user profile if the stored token is still valid.
+  /// If token is expired/revoked → returns failure → user must enter password.
   Future<Either<Failure, User>> loginWithBiometric();
 }

@@ -1,5 +1,5 @@
 /// Auth Provider - Riverpod state management for authentication
-/// CDC: AuthNotifier with JWT handling, role redirect, biometric support
+/// Sanctum: Single opaque token, no refresh. Biometric = local gate.
 library;
 
 import 'package:dartz/dartz.dart';
@@ -58,9 +58,9 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
   Future<AuthStateEntity> build() async {
     try {
       final repository = ref.watch(authRepositoryProvider);
-      final hasTokens = await repository.hasValidTokens();
+      final hasToken = await repository.hasValidToken();
 
-      if (hasTokens) {
+      if (hasToken) {
         final cachedUser = await repository.getCachedUser();
         if (cachedUser != null) {
           // Check if biometric is enabled for this device
@@ -108,7 +108,6 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
       (failure) => AsyncValue.error(failure.message, StackTrace.current),
       (data) => AsyncValue.data(AuthStateEntity(
         user: data.user,
-        accessToken: data.accessToken,
         isAuthenticated: true,
         biometricEnabled: biometricEnabled,
       )),
@@ -213,7 +212,6 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
       (failure) => AsyncValue.error(failure.message, StackTrace.current),
       (data) => AsyncValue.data(AuthStateEntity(
         user: data.user,
-        accessToken: data.accessToken,
         isAuthenticated: true,
       )),
     );

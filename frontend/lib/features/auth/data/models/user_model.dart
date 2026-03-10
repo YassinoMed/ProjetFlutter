@@ -131,41 +131,35 @@ class UserModel {
 class LoginResponseModel {
   final UserModel user;
   final String accessToken;
-  final String? refreshToken;
   final String tokenType;
-  final int? expiresIn;
 
   const LoginResponseModel({
     required this.user,
     required this.accessToken,
-    this.refreshToken,
     this.tokenType = 'Bearer',
-    this.expiresIn,
   });
 
   factory LoginResponseModel.fromJson(Map<String, dynamic> json) {
-    // Handle backend returning tokens in a 'tokens' object
+    // Sanctum returns { user: {...}, token: "5|abc..." }
+    // Fallback to 'access_token' or nested tokens for compatibility
     final tokens = json['tokens'] as Map<String, dynamic>?;
 
     return LoginResponseModel(
       user: UserModel.fromJson(json['user'] as Map<String, dynamic>),
-      accessToken:
-          (tokens?['access_token'] ?? json['access_token']) as String? ?? '',
-      refreshToken:
-          (tokens?['refresh_token'] ?? json['refresh_token']) as String?,
+      accessToken: (json['token'] ??
+              tokens?['access_token'] ??
+              json['access_token']) as String? ??
+          '',
       tokenType:
-          (tokens?['token_type'] ?? json['token_type']) as String? ?? 'Bearer',
-      expiresIn: _toInt(tokens?['expires_in'] ?? json['expires_in']),
+          (json['token_type'] ?? tokens?['token_type']) as String? ?? 'Bearer',
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'user': user.toJson(),
-      'access_token': accessToken,
-      'refresh_token': refreshToken,
+      'token': accessToken,
       'token_type': tokenType,
-      'expires_in': expiresIn,
     };
   }
 }

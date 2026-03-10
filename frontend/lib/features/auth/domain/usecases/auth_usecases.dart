@@ -1,6 +1,5 @@
-/// Auth Use Cases
-/// CDC: JWT (access 15 min + refresh 7 jours avec rotation)
-/// Extended with device info for trusted device tracking
+/// Auth Use Cases — Sanctum
+/// Single Sanctum token. No refresh token. No JWT TTL.
 library;
 
 import 'package:dartz/dartz.dart';
@@ -28,16 +27,13 @@ class LoginParams {
   });
 }
 
-class LoginUseCase extends UseCase<
-    ({User user, String accessToken, String refreshToken}), LoginParams> {
+class LoginUseCase extends UseCase<({User user, String token}), LoginParams> {
   final AuthRepository repository;
 
   LoginUseCase(this.repository);
 
   @override
-  Future<
-      Either<Failure,
-          ({User user, String accessToken, String refreshToken})>> call(
+  Future<Either<Failure, ({User user, String token})>> call(
       LoginParams params) {
     return repository.login(
       email: params.email,
@@ -79,16 +75,14 @@ class RegisterParams {
   });
 }
 
-class RegisterUseCase extends UseCase<
-    ({User user, String accessToken, String refreshToken}), RegisterParams> {
+class RegisterUseCase
+    extends UseCase<({User user, String token}), RegisterParams> {
   final AuthRepository repository;
 
   RegisterUseCase(this.repository);
 
   @override
-  Future<
-      Either<Failure,
-          ({User user, String accessToken, String refreshToken})>> call(
+  Future<Either<Failure, ({User user, String token})>> call(
       RegisterParams params) {
     return repository.register(
       name: params.name,

@@ -1,4 +1,5 @@
 /// Auth State Entity - Immutable auth state for Riverpod
+/// Sanctum: No accessToken stored in state. Token lives only in SecureStorage.
 library;
 
 import 'package:equatable/equatable.dart';
@@ -7,7 +8,6 @@ import 'user_entity.dart';
 
 class AuthStateEntity extends Equatable {
   final User? user;
-  final String? accessToken;
   final bool isAuthenticated;
   final bool isLoading;
   final String? errorMessage;
@@ -15,7 +15,6 @@ class AuthStateEntity extends Equatable {
 
   const AuthStateEntity({
     this.user,
-    this.accessToken,
     this.isAuthenticated = false,
     this.isLoading = false,
     this.errorMessage,
@@ -24,7 +23,6 @@ class AuthStateEntity extends Equatable {
 
   const AuthStateEntity.initial()
       : user = null,
-        accessToken = null,
         isAuthenticated = false,
         isLoading = false,
         errorMessage = null,
@@ -32,7 +30,6 @@ class AuthStateEntity extends Equatable {
 
   const AuthStateEntity.loading()
       : user = null,
-        accessToken = null,
         isAuthenticated = false,
         isLoading = true,
         errorMessage = null,
@@ -40,7 +37,6 @@ class AuthStateEntity extends Equatable {
 
   AuthStateEntity copyWith({
     User? user,
-    String? accessToken,
     bool? isAuthenticated,
     bool? isLoading,
     String? errorMessage,
@@ -48,7 +44,6 @@ class AuthStateEntity extends Equatable {
   }) {
     return AuthStateEntity(
       user: user ?? this.user,
-      accessToken: accessToken ?? this.accessToken,
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
       isLoading: isLoading ?? this.isLoading,
       errorMessage: errorMessage,
@@ -59,7 +54,6 @@ class AuthStateEntity extends Equatable {
   @override
   List<Object?> get props => [
         user,
-        accessToken,
         isAuthenticated,
         isLoading,
         errorMessage,

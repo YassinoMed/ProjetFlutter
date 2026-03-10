@@ -27,7 +27,6 @@ class ApiConstants {
   static const String login = '/auth/login';
   static const String register = '/auth/register';
   static const String logout = '/auth/logout';
-  static const String refreshToken = '/auth/refresh';
   static const String me = '/auth/me';
   static const String forgotPassword = '/auth/forgot-password';
   static const String resetPassword = '/auth/reset-password';
@@ -94,10 +93,6 @@ class ApiConstants {
   static const Duration connectTimeout = Duration(seconds: 30);
   static const Duration receiveTimeout = Duration(seconds: 30);
   static const Duration sendTimeout = Duration(seconds: 30);
-
-  // ── JWT ───────────────────────────────────────────────────
-  static const int accessTokenExpiryMinutes = 15;
-  static const int refreshTokenExpiryDays = 7;
 
   // ── Pagination ────────────────────────────────────────────
   static const int defaultPageSize = 20;

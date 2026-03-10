@@ -1,61 +1,78 @@
-/// Device Info Helper — provides unique device identification
+/// Device Info Helper — provides a stable applicative device identifier
 ///
-/// Uses device_info_plus to generate a stable device identifier
-/// for trusted device management. This ID is NOT a fingerprint —
-/// it's a hardware identifier used to correlate login sessions
-/// with specific devices.
+/// IMPORTANT: The device_id is an applicative UUID generated once and stored
+/// in flutter_secure_storage. It is NOT a hardware ID. It persists across
+/// app restarts but NOT across reinstalls, which is the correct behavior:
+/// a reinstalled app = a new device from a trust perspective.
 library;
 
 import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
+
+import '../constants/app_constants.dart';
+import '../security/secure_storage_service.dart';
 
 class DeviceInfoHelper {
+  final SecureStorageService _secureStorage;
   final DeviceInfoPlugin _deviceInfo;
 
-  DeviceInfoHelper({DeviceInfoPlugin? deviceInfo})
-      : _deviceInfo = deviceInfo ?? DeviceInfoPlugin();
+  DeviceInfoHelper({
+    required SecureStorageService secureStorage,
+    DeviceInfoPlugin? deviceInfo,
+  })  : _secureStorage = secureStorage,
+        _deviceInfo = deviceInfo ?? DeviceInfoPlugin();
 
-  /// Get a stable, unique device identifier
+  /// Get (or generate) a stable applicative device identifier.
   ///
-  /// - iOS: identifierForVendor (resets on app reinstall)
-  /// - Android: androidId (stable across reinstalls on most devices)
+  /// This is a UUID stored in SecureStorage, not a hardware ID.
+  /// It survives app restarts but not reinstalls.
   Future<String> getDeviceId() async {
-    if (Platform.isIOS) {
-      final iosInfo = await _deviceInfo.iosInfo;
-      return iosInfo.identifierForVendor ?? 'ios-unknown';
-    } else if (Platform.isAndroid) {
-      final androidInfo = await _deviceInfo.androidInfo;
-      return androidInfo.id;
+    // Check if we already have one
+    String? deviceId = await _secureStorage.read(
+      key: AppConstants.keyBiometricDeviceId,
+    );
+
+    if (deviceId == null || deviceId.isEmpty) {
+      // Generate a new UUID
+      deviceId = const Uuid().v4();
+      await _secureStorage.write(
+        key: AppConstants.keyBiometricDeviceId,
+        value: deviceId,
+      );
     }
-    return 'unknown-device';
+
+    return deviceId;
   }
 
-  /// Get a human-readable device name
+  /// Get a human-readable device name (for display in "trusted devices" list).
   ///
-  /// Examples: "iPhone 15 Pro", "Samsung Galaxy S24"
+  /// Examples: "iPhone16,1", "Samsung Galaxy S24"
   Future<String> getDeviceName() async {
-    if (Platform.isIOS) {
-      final iosInfo = await _deviceInfo.iosInfo;
-      return iosInfo.utsname.machine; // e.g. "iPhone16,1"
-    } else if (Platform.isAndroid) {
-      final androidInfo = await _deviceInfo.androidInfo;
-      final brand = androidInfo.brand;
-      final model = androidInfo.model;
-      return '$brand $model';
-    }
+    try {
+      if (Platform.isIOS) {
+        final iosInfo = await _deviceInfo.iosInfo;
+        return iosInfo.utsname.machine; // e.g. "iPhone16,1"
+      } else if (Platform.isAndroid) {
+        final androidInfo = await _deviceInfo.androidInfo;
+        final brand = androidInfo.brand;
+        final model = androidInfo.model;
+        return '$brand $model';
+      }
+    } catch (_) {}
     return 'Unknown Device';
   }
 
-  /// Get the platform string (ios / android)
+  /// Get the platform string.
   String getPlatform() {
     if (Platform.isIOS) return 'ios';
     if (Platform.isAndroid) return 'android';
     return 'unknown';
   }
 
-  /// Get all device info in one call (reduces platform calls)
+  /// Get all device info in one call.
   Future<({String deviceId, String deviceName, String platform})>
       getDeviceInfo() async {
     return (
@@ -69,5 +86,7 @@ class DeviceInfoHelper {
 // ── Provider ────────────────────────────────────────────────
 
 final deviceInfoHelperProvider = Provider<DeviceInfoHelper>((ref) {
-  return DeviceInfoHelper();
+  return DeviceInfoHelper(
+    secureStorage: ref.watch(secureStorageProvider),
+  );
 });

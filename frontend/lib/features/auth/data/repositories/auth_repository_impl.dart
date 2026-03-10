@@ -1,5 +1,5 @@
-/// Auth Repository Implementation
-/// CDC: JWT tokens storage, offline cache, biometric device management
+/// Auth Repository Implementation — Sanctum
+/// Single opaque token. No refresh. On 401 → re-authenticate.
 library;
 
 import 'dart:convert';
@@ -28,9 +28,7 @@ class AuthRepositoryImpl implements AuthRepository {
   });
 
   @override
-  Future<
-      Either<Failure,
-          ({User user, String accessToken, String refreshToken})>> login({
+  Future<Either<Failure, ({User user, String token})>> login({
     required String email,
     required String password,
     String? deviceId,
@@ -50,13 +48,12 @@ class AuthRepositoryImpl implements AuthRepository {
         platform: platform,
       );
 
-      // Store tokens securely
+      // Store Sanctum token
       await _storeAuthData(response);
 
       return Right((
         user: response.user.toEntity(),
-        accessToken: response.accessToken,
-        refreshToken: response.refreshToken ?? '',
+        token: response.accessToken,
       ));
     } on AuthException catch (e) {
       return Left(AuthFailure(message: e.message, statusCode: e.statusCode));
@@ -68,9 +65,7 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<
-      Either<Failure,
-          ({User user, String accessToken, String refreshToken})>> register({
+  Future<Either<Failure, ({User user, String token})>> register({
     required String name,
     required String email,
     required String password,
@@ -106,8 +101,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
       return Right((
         user: response.user.toEntity(),
-        accessToken: response.accessToken,
-        refreshToken: response.refreshToken ?? '',
+        token: response.accessToken,
       ));
     } on ServerException catch (e) {
       return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
@@ -126,55 +120,21 @@ class AuthRepositoryImpl implements AuthRepository {
       // Even if server logout fails, clear local data
     }
 
-    // Clear all auth data including biometric flags
+    // Clear all auth data
     await secureStorage.delete(key: AppConstants.keyAccessToken);
-    await secureStorage.delete(key: AppConstants.keyRefreshToken);
     await secureStorage.delete(key: AppConstants.keyUserId);
     await secureStorage.delete(key: AppConstants.keyUserRole);
     await secureStorage.delete(key: AppConstants.keyTenantId);
     await secureStorage.delete(key: AppConstants.keyBiometricEnabled);
-    await secureStorage.delete(key: AppConstants.keyBiometricDeviceId);
     await secureStorage.delete(key: 'cached_user');
+    // NOTE: We keep keyBiometricDeviceId — it's the device's identity, not a secret.
 
     return const Right(null);
   }
 
   @override
-  Future<Either<Failure, ({String accessToken, String refreshToken})>>
-      refreshToken() async {
-    try {
-      final storedRefreshToken = await secureStorage.read(
-        key: AppConstants.keyRefreshToken,
-      );
-
-      if (storedRefreshToken == null) {
-        return const Left(TokenExpiredFailure());
-      }
-
-      final result = await remoteDataSource.refreshToken(storedRefreshToken);
-
-      await secureStorage.write(
-        key: AppConstants.keyAccessToken,
-        value: result.accessToken,
-      );
-      await secureStorage.write(
-        key: AppConstants.keyRefreshToken,
-        value: result.refreshToken,
-      );
-
-      return Right(result);
-    } on TokenExpiredException {
-      await secureStorage.deleteAll();
-      return const Left(TokenExpiredFailure());
-    } catch (e) {
-      return Left(ServerFailure(message: e.toString()));
-    }
-  }
-
-  @override
   Future<Either<Failure, User>> getProfile() async {
     if (!await networkInfo.isConnected) {
-      // Try cached user
       final cachedUser = await getCachedUser();
       if (cachedUser != null) {
         return Right(cachedUser);
@@ -184,7 +144,6 @@ class AuthRepositoryImpl implements AuthRepository {
 
     try {
       final userModel = await remoteDataSource.getProfile();
-      // Cache user data
       await secureStorage.write(
         key: 'cached_user',
         value: jsonEncode(userModel.toJson()),
@@ -253,9 +212,9 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<bool> hasValidTokens() async {
+  Future<bool> hasValidToken() async {
     final token = await secureStorage.read(key: AppConstants.keyAccessToken);
-    return token != null;
+    return token != null && token.isNotEmpty;
   }
 
   @override
@@ -335,14 +294,9 @@ class AuthRepositoryImpl implements AuthRepository {
         platform: platform,
       );
 
-      // Save biometric flag locally
       await secureStorage.write(
         key: AppConstants.keyBiometricEnabled,
         value: 'true',
-      );
-      await secureStorage.write(
-        key: AppConstants.keyBiometricDeviceId,
-        value: deviceId,
       );
 
       return const Right(null);
@@ -362,9 +316,7 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       await remoteDataSource.disableBiometric(deviceId: deviceId);
 
-      // Clear biometric flag locally
       await secureStorage.delete(key: AppConstants.keyBiometricEnabled);
-      await secureStorage.delete(key: AppConstants.keyBiometricDeviceId);
 
       return const Right(null);
     } on ServerException catch (e) {
@@ -412,16 +364,16 @@ class AuthRepositoryImpl implements AuthRepository {
       ));
     }
 
-    // Step 2: Check if we have a stored token
-    final hasTokens = await hasValidTokens();
-    if (!hasTokens) {
+    // Step 2: Check if we have a stored Sanctum token
+    final hasToken = await hasValidToken();
+    if (!hasToken) {
       return const Left(AuthFailure(
         message:
             'Session expirée. Veuillez vous connecter avec votre mot de passe.',
       ));
     }
 
-    // Step 3: Try to validate the stored token by fetching profile
+    // Step 3: Validate the stored token by fetching profile from server
     if (!await networkInfo.isConnected) {
       // Offline: return cached user if available
       final cached = await getCachedUser();
@@ -440,29 +392,12 @@ class AuthRepositoryImpl implements AuthRepository {
       return Right(userModel.toEntity());
     } on ServerException catch (e) {
       if (e.statusCode == 401) {
-        // Token expired, try refresh
-        final refreshResult = await refreshToken();
-        return refreshResult.fold(
-          (failure) => Left(AuthFailure(
-            message:
-                'Session expirée. Veuillez vous connecter avec votre mot de passe.',
-          )),
-          (tokens) async {
-            // Retry profile fetch with new token
-            try {
-              final userModel = await remoteDataSource.getProfile();
-              await secureStorage.write(
-                key: 'cached_user',
-                value: jsonEncode(userModel.toJson()),
-              );
-              return Right(userModel.toEntity());
-            } catch (_) {
-              return const Left(AuthFailure(
-                message: 'Impossible de récupérer le profil',
-              ));
-            }
-          },
-        );
+        // Token expired or revoked → clear it
+        await secureStorage.delete(key: AppConstants.keyAccessToken);
+        return const Left(AuthFailure(
+          message:
+              'Session expirée. Veuillez vous connecter avec votre mot de passe.',
+        ));
       }
       return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
     }
@@ -474,10 +409,6 @@ class AuthRepositoryImpl implements AuthRepository {
     await secureStorage.write(
       key: AppConstants.keyAccessToken,
       value: response.accessToken,
-    );
-    await secureStorage.write(
-      key: AppConstants.keyRefreshToken,
-      value: response.refreshToken ?? '',
     );
     await secureStorage.write(
       key: AppConstants.keyUserId,
