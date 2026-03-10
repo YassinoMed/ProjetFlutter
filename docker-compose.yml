@@ -19,9 +19,9 @@ services:
       APP_ENV: local
       APP_DEBUG: "true"
       APP_URL: "http://localhost:${APP_PORT:-8080}"
-      DB_CONNECTION: mysql
-      DB_HOST: mysql
-      DB_PORT: 3306
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
       DB_DATABASE: ${DB_DATABASE:-mediconnect}
       DB_USERNAME: ${DB_USERNAME:-mediconnect}
       DB_PASSWORD: ${DB_PASSWORD:-secret}
@@ -38,11 +38,16 @@ services:
       REVERB_APP_ID: mediconnect
       REVERB_APP_KEY: mediconnect-key
       REVERB_APP_SECRET: mediconnect-secret
-      REVERB_HOST: app
-      REVERB_PORT: 8080
+      REVERB_HOST: 127.0.0.1
+      REVERB_PORT: 8081
       REVERB_SCHEME: http
       REVERB_SERVER_HOST: 0.0.0.0
-      REVERB_SERVER_PORT: 8080
+      REVERB_SERVER_PORT: 8081
+      MEDICONNECT_PRESENCE_FRESHNESS_SECONDS: 90
+      MEDICONNECT_MESSAGE_RETENTION_DAYS: 730
+      MEDICONNECT_CALL_RING_TIMEOUT_SECONDS: 45
+      COTURN_STUN_URLS: ${COTURN_STUN_URLS:-stun:stun.l.google.com:19302}
+      COTURN_TURN_URLS: ${COTURN_TURN_URLS:-turn:coturn:3478?transport=udp,turn:coturn:3478?transport=tcp}
       # ── OpenTelemetry ──
       OTEL_ENABLED: "true"
       OTEL_SERVICE_NAME: mediconnect-api
@@ -50,23 +55,23 @@ services:
       CHAT_MESSAGE_TTL_DAYS: 730
       MEDICAL_RECORD_TTL_DAYS: 3650
     depends_on:
-      - mysql
+      - postgres
       - redis
       - mailpit
-
-  mysql:
-    image: mysql:8.0
-    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     ports:
-      - "${DB_PORT_FORWARD:-3306}:3306"
+      - "${REVERB_PORT_FORWARD:-8081}:8081"
+
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "${DB_PORT_FORWARD:-5432}:5432"
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
-      MYSQL_DATABASE: ${DB_DATABASE:-mediconnect}
-      MYSQL_USER: ${DB_USERNAME:-mediconnect}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
+      POSTGRES_DB: ${DB_DATABASE:-mediconnect}
+      POSTGRES_USER: ${DB_USERNAME:-mediconnect}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
       TZ: UTC
     volumes:
-      - mysql_data:/var/lib/mysql
+      - postgres_data:/var/lib/postgresql/data
 
   redis:
     image: redis:7-alpine
@@ -75,16 +80,12 @@ services:
     volumes:
       - redis_data:/data
 
-  phpmyadmin:
-    image: phpmyadmin:5
+  adminer:
+    image: adminer:4
     ports:
-      - "${PMA_PORT:-8081}:80"
-    environment:
-      PMA_HOST: mysql
-      PMA_PORT: 3306
-      UPLOAD_LIMIT: 64M
+      - "${ADMINER_PORT:-8082}:8080"
     depends_on:
-      - mysql
+      - postgres
 
   mailpit:
     image: axllent/mailpit:v1.24
@@ -93,5 +94,5 @@ services:
       - "${MAILPIT_UI_PORT_FORWARD:-8025}:8025"
 
 volumes:
-  mysql_data:
+  postgres_data:
   redis_data:

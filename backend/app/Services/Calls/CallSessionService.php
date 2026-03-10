@@ -1,0 +1,325 @@
+<?php
+
+namespace App\Services\Calls;
+
+use App\Enums\CallParticipantRole;
+use App\Enums\CallSessionState;
+use App\Events\CallSessionAccepted;
+use App\Events\CallSessionEnded;
+use App\Events\CallSessionRejected;
+use App\Events\CallSessionRinging;
+use App\Events\CallSessionTimedOut;
+use App\Events\WebRtcAnswerRelayed;
+use App\Events\WebRtcIceCandidateRelayed;
+use App\Events\WebRtcOfferRelayed;
+use App\Jobs\ExpireCallSessionJob;
+use App\Models\CallSession;
+use App\Models\Conversation;
+use App\Models\User;
+use App\Notifications\IncomingCallSessionNotification;
+use App\Services\AuditService;
+use App\Services\Conversations\ConversationService;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+
+class CallSessionService
+{
+    public function __construct(
+        private readonly ConversationService $conversationService,
+        private readonly AuditService $auditService,
+    ) {}
+
+    public function initiate(User $actor, array $payload): CallSession
+    {
+        /** @var Conversation $conversation */
+        $conversation = Conversation::query()
+            ->with('participants.user')
+            ->findOrFail($payload['conversation_id']);
+
+        $this->conversationService->assertParticipant($conversation, $actor);
+
+        $hasActiveCall = CallSession::query()
+            ->where('conversation_id', $conversation->id)
+            ->whereIn('current_state', [
+                CallSessionState::INITIATED->value,
+                CallSessionState::RINGING->value,
+                CallSessionState::ACCEPTED->value,
+            ])
+            ->exists();
+
+        if ($hasActiveCall) {
+            throw ValidationException::withMessages([
+                'conversation_id' => ['An active call already exists for this conversation.'],
+            ]);
+        }
+
+        return DB::transaction(function () use ($conversation, $actor, $payload): CallSession {
+            $call = CallSession::query()->create([
+                'consultation_id' => $payload['consultation_id'] ?? $conversation->consultation_id,
+                'conversation_id' => $conversation->id,
+                'initiated_by_user_id' => $actor->id,
+                'call_type' => $payload['call_type'],
+                'current_state' => CallSessionState::RINGING->value,
+                'started_ringing_at_utc' => now('UTC'),
+                'expires_at_utc' => now('UTC')->addSeconds(config('mediconnect.call_ring_timeout_seconds', 45)),
+                'server_metadata' => $payload['server_metadata'] ?? null,
+            ]);
+
+            foreach ($conversation->participants as $participant) {
+                $call->participants()->create([
+                    'user_id' => $participant->user_id,
+                    'role' => $participant->user_id === $actor->id
+                        ? CallParticipantRole::CALLER->value
+                        : CallParticipantRole::CALLEE->value,
+                    'joined_at_utc' => $participant->user_id === $actor->id ? now('UTC') : null,
+                ]);
+            }
+
+            $this->auditService->log($actor, 'call.initiated', $call, [
+                'conversation_id' => $conversation->id,
+                'call_type' => $call->call_type?->value ?? $call->call_type,
+            ]);
+
+            DB::afterCommit(function () use ($call, $conversation, $actor): void {
+                $call = $call->load('participants');
+
+                event(new CallSessionRinging($call));
+
+                $conversation->participants
+                    ->where('user_id', '!=', $actor->id)
+                    ->each(function ($participant) use ($call, $actor): void {
+                        $participant->user?->notify(new IncomingCallSessionNotification($call, $actor));
+                    });
+
+                ExpireCallSessionJob::dispatch($call->id)->delay($call->expires_at_utc);
+            });
+
+            return $call->load('participants');
+        });
+    }
+
+    public function accept(CallSession $call, User $user): CallSession
+    {
+        $this->assertParticipant($call, $user);
+        $this->assertInState($call, [CallSessionState::INITIATED, CallSessionState::RINGING]);
+
+        return DB::transaction(function () use ($call, $user): CallSession {
+            $call->forceFill([
+                'current_state' => CallSessionState::ACCEPTED->value,
+                'accepted_at_utc' => now('UTC'),
+            ])->save();
+
+            $call->participants()
+                ->where('user_id', $user->id)
+                ->update([
+                    'joined_at_utc' => now('UTC'),
+                    'last_seen_at_utc' => now('UTC'),
+                ]);
+
+            $this->auditService->log($user, 'call.accepted', $call);
+
+            DB::afterCommit(fn () => event(new CallSessionAccepted($call->fresh('participants'))));
+
+            return $call->fresh('participants');
+        });
+    }
+
+    public function reject(CallSession $call, User $user): CallSession
+    {
+        $this->assertParticipant($call, $user);
+        $this->assertInState($call, [CallSessionState::INITIATED, CallSessionState::RINGING]);
+
+        return $this->finalize($call, $user, CallSessionState::REJECTED, 'rejected');
+    }
+
+    public function cancel(CallSession $call, User $user): CallSession
+    {
+        $this->assertParticipant($call, $user);
+
+        if ($call->initiated_by_user_id !== $user->id) {
+            throw new AuthorizationException('Only the caller can cancel the ringing call.');
+        }
+
+        $this->assertInState($call, [CallSessionState::INITIATED, CallSessionState::RINGING]);
+
+        return $this->finalize($call, $user, CallSessionState::CANCELLED, 'cancelled');
+    }
+
+    public function end(CallSession $call, User $user): CallSession
+    {
+        $this->assertParticipant($call, $user);
+        $this->assertInState($call, [CallSessionState::ACCEPTED]);
+
+        return $this->finalize($call, $user, CallSessionState::ENDED, 'ended');
+    }
+
+    public function timeoutIfExpired(string $callSessionId): ?CallSession
+    {
+        /** @var CallSession|null $call */
+        $call = CallSession::query()->find($callSessionId);
+
+        if ($call === null) {
+            return null;
+        }
+
+        if (! in_array($call->current_state?->value ?? $call->current_state, [
+            CallSessionState::INITIATED->value,
+            CallSessionState::RINGING->value,
+        ], true)) {
+            return $call;
+        }
+
+        if ($call->expires_at_utc->isFuture()) {
+            return $call;
+        }
+
+        return DB::transaction(function () use ($call): CallSession {
+            $call->forceFill([
+                'current_state' => CallSessionState::TIMEOUT->value,
+                'ended_at_utc' => now('UTC'),
+                'end_reason' => 'timeout',
+            ])->save();
+
+            $this->auditService->log(null, 'call.timeout', $call);
+
+            DB::afterCommit(fn () => event(new CallSessionTimedOut($call->fresh('participants'))));
+
+            return $call->fresh('participants');
+        });
+    }
+
+    public function relayOffer(CallSession $call, User $user, array $payload): void
+    {
+        $this->assertInState($call, [CallSessionState::RINGING, CallSessionState::ACCEPTED]);
+        $targetUserId = $this->resolveTargetUserId($call, $user, $payload['target_user_id']);
+
+        $this->auditService->log($user, 'webrtc.offer.relayed', $call, [
+            'target_user_id' => $targetUserId,
+        ]);
+
+        event(new WebRtcOfferRelayed(
+            $call->id,
+            $call->conversation_id,
+            $user->id,
+            $targetUserId,
+            $payload['sdp'],
+            now('UTC')->toISOString(),
+        ));
+    }
+
+    public function relayAnswer(CallSession $call, User $user, array $payload): void
+    {
+        $this->assertInState($call, [CallSessionState::RINGING, CallSessionState::ACCEPTED]);
+        $targetUserId = $this->resolveTargetUserId($call, $user, $payload['target_user_id']);
+
+        $this->auditService->log($user, 'webrtc.answer.relayed', $call, [
+            'target_user_id' => $targetUserId,
+        ]);
+
+        event(new WebRtcAnswerRelayed(
+            $call->id,
+            $call->conversation_id,
+            $user->id,
+            $targetUserId,
+            $payload['sdp'],
+            now('UTC')->toISOString(),
+        ));
+    }
+
+    public function relayIceCandidate(CallSession $call, User $user, array $payload): void
+    {
+        $this->assertInState($call, [CallSessionState::RINGING, CallSessionState::ACCEPTED]);
+        $targetUserId = $this->resolveTargetUserId($call, $user, $payload['target_user_id']);
+
+        $this->auditService->log($user, 'webrtc.ice_candidate.relayed', $call, [
+            'target_user_id' => $targetUserId,
+        ]);
+
+        event(new WebRtcIceCandidateRelayed(
+            $call->id,
+            $call->conversation_id,
+            $user->id,
+            $targetUserId,
+            $payload['candidate'],
+            now('UTC')->toISOString(),
+        ));
+    }
+
+    private function finalize(CallSession $call, User $user, CallSessionState $state, string $reason): CallSession
+    {
+        return DB::transaction(function () use ($call, $user, $state, $reason): CallSession {
+            $call->forceFill([
+                'current_state' => $state->value,
+                'ended_at_utc' => now('UTC'),
+                'ended_by_user_id' => $user->id,
+                'end_reason' => $reason,
+            ])->save();
+
+            $call->participants()
+                ->where('user_id', $user->id)
+                ->update([
+                    'left_at_utc' => now('UTC'),
+                    'last_seen_at_utc' => now('UTC'),
+                ]);
+
+            $this->auditService->log($user, 'call.'.$reason, $call);
+
+            DB::afterCommit(function () use ($call, $state): void {
+                $call = $call->fresh('participants');
+
+                if ($state === CallSessionState::REJECTED) {
+                    event(new CallSessionRejected($call));
+
+                    return;
+                }
+
+                event(new CallSessionEnded($call));
+            });
+
+            return $call->fresh('participants');
+        });
+    }
+
+    private function resolveTargetUserId(CallSession $call, User $user, string $targetUserId): string
+    {
+        $this->assertParticipant($call, $user);
+
+        $exists = $call->participants()
+            ->where('user_id', $targetUserId)
+            ->exists();
+
+        if (! $exists || $targetUserId === $user->id) {
+            throw ValidationException::withMessages([
+                'target_user_id' => ['Invalid WebRTC signaling target user.'],
+            ]);
+        }
+
+        return $targetUserId;
+    }
+
+    private function assertParticipant(CallSession $call, User $user): void
+    {
+        $isParticipant = $call->participants()
+            ->where('user_id', $user->id)
+            ->exists();
+
+        if (! $isParticipant) {
+            throw new AuthorizationException('You are not allowed to access this call session.');
+        }
+    }
+
+    /**
+     * @param  array<int, CallSessionState>  $states
+     */
+    private function assertInState(CallSession $call, array $states): void
+    {
+        $allowed = array_map(static fn (CallSessionState $state) => $state->value, $states);
+
+        if (! in_array($call->current_state?->value ?? $call->current_state, $allowed, true)) {
+            throw ValidationException::withMessages([
+                'call_session' => ['The call session is not in a valid state for this operation.'],
+            ]);
+        }
+    }
+}

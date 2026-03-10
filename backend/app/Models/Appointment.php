@@ -55,4 +55,14 @@ class Appointment extends Model
     {
         return $this->hasMany(AppointmentEvent::class);
     }
+
+    public function conversations(): HasMany
+    {
+        return $this->hasMany(Conversation::class, 'consultation_id');
+    }
+
+    public function callSessions(): HasMany
+    {
+        return $this->hasMany(CallSession::class, 'consultation_id');
+    }
 }

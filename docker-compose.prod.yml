@@ -21,9 +21,9 @@ services:
       APP_ENV: production
       APP_DEBUG: "false"
       APP_URL: ${APP_URL:-http://localhost:8080}
-      DB_CONNECTION: mysql
-      DB_HOST: mysql
-      DB_PORT: 3306
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
       DB_DATABASE: ${DB_DATABASE:-mediconnect}
       DB_USERNAME: ${DB_USERNAME:-mediconnect}
       DB_PASSWORD: ${DB_PASSWORD:-secret}
@@ -32,32 +32,36 @@ services:
       QUEUE_CONNECTION: redis
       CACHE_STORE: redis
       SESSION_DRIVER: redis
-      BROADCAST_CONNECTION: pusher
-      PUSHER_APP_ID: ${PUSHER_APP_ID:-local}
-      PUSHER_APP_KEY: ${PUSHER_APP_KEY:-local}
-      PUSHER_APP_SECRET: ${PUSHER_APP_SECRET:-local}
-      PUSHER_HOST: app
-      PUSHER_PORT: 6001
-      PUSHER_SCHEME: http
-      PUSHER_USE_TLS: "false"
-      WEBSOCKETS_PORT: 6001
-      WEBSOCKETS_PATH: /app
+      BROADCAST_CONNECTION: reverb
+      REVERB_APP_ID: ${REVERB_APP_ID:-mediconnect}
+      REVERB_APP_KEY: ${REVERB_APP_KEY:-mediconnect-key}
+      REVERB_APP_SECRET: ${REVERB_APP_SECRET:-mediconnect-secret}
+      REVERB_HOST: 127.0.0.1
+      REVERB_PORT: 8081
+      REVERB_SCHEME: http
+      REVERB_SERVER_HOST: 0.0.0.0
+      REVERB_SERVER_PORT: 8081
+      MEDICONNECT_PRESENCE_FRESHNESS_SECONDS: ${MEDICONNECT_PRESENCE_FRESHNESS_SECONDS:-90}
+      MEDICONNECT_MESSAGE_RETENTION_DAYS: ${MEDICONNECT_MESSAGE_RETENTION_DAYS:-730}
+      MEDICONNECT_CALL_RING_TIMEOUT_SECONDS: ${MEDICONNECT_CALL_RING_TIMEOUT_SECONDS:-45}
+      COTURN_STUN_URLS: ${COTURN_STUN_URLS:-stun:stun.l.google.com:19302}
+      COTURN_TURN_URLS: ${COTURN_TURN_URLS:-turn:coturn:3478?transport=udp,turn:coturn:3478?transport=tcp}
     depends_on:
-      - mysql
+      - postgres
       - redis
+    ports:
+      - "${REVERB_PORT_FORWARD:-8081}:8081"
 
-  mysql:
-    image: mysql:8.0
+  postgres:
+    image: postgres:16-alpine
     restart: unless-stopped
-    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
-      MYSQL_DATABASE: ${DB_DATABASE:-mediconnect}
-      MYSQL_USER: ${DB_USERNAME:-mediconnect}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
+      POSTGRES_DB: ${DB_DATABASE:-mediconnect}
+      POSTGRES_USER: ${DB_USERNAME:-mediconnect}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
       TZ: UTC
     volumes:
-      - mysql_data:/var/lib/mysql
+      - postgres_data:/var/lib/postgresql/data
 
   redis:
     image: redis:7-alpine
@@ -66,5 +70,5 @@ services:
       - redis_data:/data
 
 volumes:
-  mysql_data:
+  postgres_data:
   redis_data:

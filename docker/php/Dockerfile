@@ -6,6 +6,7 @@ RUN apk add --no-cache autoconf gcc g++ make  \
     icu-dev \
     libzip-dev \
     oniguruma-dev \
+    postgresql-dev \
     unzip \
     zip \
     supervisor \
@@ -14,6 +15,7 @@ RUN apk add --no-cache autoconf gcc g++ make  \
     intl \
     mbstring \
     opcache \
+    pdo_pgsql \
     pdo_mysql \
     zip \
     && pecl install redis \
@@ -29,7 +31,7 @@ COPY entrypoint.sh /entrypoint.sh
 
 RUN chmod +x /entrypoint.sh
 
-EXPOSE 9000 6001
+EXPOSE 9000 8081
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["supervisord", "-c", "/etc/supervisord.conf"]

@@ -4,6 +4,7 @@ namespace App\Notifications\Channels;
 
 use App\Models\User;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Log;
 use Kreait\Firebase\Messaging;
 use Kreait\Firebase\Messaging\AndroidConfig;
 use Kreait\Firebase\Messaging\ApnsConfig;
@@ -12,7 +13,7 @@ use Kreait\Firebase\Messaging\Notification as FcmNotification;
 
 class FcmChannel
 {
-    public function __construct(private readonly Messaging $messaging) {}
+    public function __construct(private readonly ?Messaging $messaging = null) {}
 
     public function send(object $notifiable, Notification $notification): void
     {
@@ -21,6 +22,15 @@ class FcmChannel
         }
 
         if (! method_exists($notification, 'toFcm')) {
+            return;
+        }
+
+        if ($this->messaging === null) {
+            Log::warning('FCM messaging service is not configured; notification skipped.', [
+                'notification' => $notification::class,
+                'user_id' => $notifiable->id,
+            ]);
+
             return;
         }
 
@@ -35,7 +45,15 @@ class FcmChannel
         $priority = $payload['priority'] ?? 'high';
         $badge = $payload['badge'] ?? null;
 
-        $tokens = $notifiable->fcmTokens()->pluck('token')->all();
+        $legacyTokens = method_exists($notifiable, 'fcmTokens')
+            ? $notifiable->fcmTokens()->pluck('token')->all()
+            : [];
+
+        $modernTokens = method_exists($notifiable, 'deviceTokens')
+            ? $notifiable->deviceTokens()->whereNull('revoked_at')->pluck('token')->all()
+            : [];
+
+        $tokens = array_values(array_unique(array_merge($legacyTokens, $modernTokens)));
 
         if ($tokens === []) {
             return;

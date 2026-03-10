@@ -9,10 +9,11 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
-use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
+use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable implements JWTSubject
+class User extends Authenticatable
 {
+    use HasApiTokens;
     use HasFactory;
     use Notifiable;
 
@@ -50,15 +51,7 @@ class User extends Authenticatable implements JWTSubject
         });
     }
 
-    public function getJWTIdentifier(): mixed
-    {
-        return $this->getKey();
-    }
-
-    public function getJWTCustomClaims(): array
-    {
-        return [];
-    }
+    // ── Relationships ────────────────────────────────────────
 
     public function fcmTokens(): HasMany
     {
@@ -93,5 +86,35 @@ class User extends Authenticatable implements JWTSubject
     public function consents(): HasMany
     {
         return $this->hasMany(UserConsent::class);
+    }
+
+    public function trustedDevices(): HasMany
+    {
+        return $this->hasMany(TrustedDevice::class);
+    }
+
+    public function activeTrustedDevices(): HasMany
+    {
+        return $this->trustedDevices()->whereNull('revoked_at');
+    }
+
+    public function conversations(): HasMany
+    {
+        return $this->hasMany(ConversationParticipant::class);
+    }
+
+    public function messages(): HasMany
+    {
+        return $this->hasMany(Message::class, 'sender_user_id');
+    }
+
+    public function deviceTokens(): HasMany
+    {
+        return $this->hasMany(DeviceToken::class);
+    }
+
+    public function e2eeDevices(): HasMany
+    {
+        return $this->hasMany(UserE2eeDevice::class);
     }
 }
