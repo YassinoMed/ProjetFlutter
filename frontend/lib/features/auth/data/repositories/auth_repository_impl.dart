@@ -1,5 +1,5 @@
 /// Auth Repository Implementation
-/// CDC: JWT tokens storage, offline cache, error handling
+/// CDC: JWT tokens storage, offline cache, biometric device management
 library;
 
 import 'dart:convert';
@@ -30,8 +30,13 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<
       Either<Failure,
-          ({User user, String accessToken, String refreshToken})>> login(
-      {required String email, required String password}) async {
+          ({User user, String accessToken, String refreshToken})>> login({
+    required String email,
+    required String password,
+    String? deviceId,
+    String? deviceName,
+    String? platform,
+  }) async {
     if (!await networkInfo.isConnected) {
       return const Left(NetworkFailure());
     }
@@ -40,6 +45,9 @@ class AuthRepositoryImpl implements AuthRepository {
       final response = await remoteDataSource.login(
         email: email,
         password: password,
+        deviceId: deviceId,
+        deviceName: deviceName,
+        platform: platform,
       );
 
       // Store tokens securely
@@ -71,6 +79,9 @@ class AuthRepositoryImpl implements AuthRepository {
     String? phone,
     String? speciality,
     String? licenseNumber,
+    String? deviceId,
+    String? deviceName,
+    String? platform,
   }) async {
     if (!await networkInfo.isConnected) {
       return const Left(NetworkFailure());
@@ -86,6 +97,9 @@ class AuthRepositoryImpl implements AuthRepository {
         phone: phone,
         speciality: speciality,
         licenseNumber: licenseNumber,
+        deviceId: deviceId,
+        deviceName: deviceName,
+        platform: platform,
       );
 
       await _storeAuthData(response);
@@ -112,7 +126,16 @@ class AuthRepositoryImpl implements AuthRepository {
       // Even if server logout fails, clear local data
     }
 
-    await secureStorage.deleteAll();
+    // Clear all auth data including biometric flags
+    await secureStorage.delete(key: AppConstants.keyAccessToken);
+    await secureStorage.delete(key: AppConstants.keyRefreshToken);
+    await secureStorage.delete(key: AppConstants.keyUserId);
+    await secureStorage.delete(key: AppConstants.keyUserRole);
+    await secureStorage.delete(key: AppConstants.keyTenantId);
+    await secureStorage.delete(key: AppConstants.keyBiometricEnabled);
+    await secureStorage.delete(key: AppConstants.keyBiometricDeviceId);
+    await secureStorage.delete(key: 'cached_user');
+
     return const Right(null);
   }
 
@@ -282,6 +305,166 @@ class AuthRepositoryImpl implements AuthRepository {
       return const Right(null);
     } on ServerException catch (e) {
       return Left(ServerFailure(message: e.message));
+    }
+  }
+
+  // ── Biometric / Device Management ─────────────────────────
+
+  @override
+  Future<bool> isBiometricEnabled() async {
+    final value = await secureStorage.read(
+      key: AppConstants.keyBiometricEnabled,
+    );
+    return value == 'true';
+  }
+
+  @override
+  Future<Either<Failure, void>> enableBiometric({
+    required String deviceId,
+    required String deviceName,
+    String? platform,
+  }) async {
+    if (!await networkInfo.isConnected) {
+      return const Left(NetworkFailure());
+    }
+
+    try {
+      await remoteDataSource.enableBiometric(
+        deviceId: deviceId,
+        deviceName: deviceName,
+        platform: platform,
+      );
+
+      // Save biometric flag locally
+      await secureStorage.write(
+        key: AppConstants.keyBiometricEnabled,
+        value: 'true',
+      );
+      await secureStorage.write(
+        key: AppConstants.keyBiometricDeviceId,
+        value: deviceId,
+      );
+
+      return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> disableBiometric({
+    required String deviceId,
+  }) async {
+    if (!await networkInfo.isConnected) {
+      return const Left(NetworkFailure());
+    }
+
+    try {
+      await remoteDataSource.disableBiometric(deviceId: deviceId);
+
+      // Clear biometric flag locally
+      await secureStorage.delete(key: AppConstants.keyBiometricEnabled);
+      await secureStorage.delete(key: AppConstants.keyBiometricDeviceId);
+
+      return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<Map<String, dynamic>>>> getDevices() async {
+    if (!await networkInfo.isConnected) {
+      return const Left(NetworkFailure());
+    }
+
+    try {
+      final devices = await remoteDataSource.getDevices();
+      return Right(devices);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> revokeDevice({
+    required String deviceId,
+  }) async {
+    if (!await networkInfo.isConnected) {
+      return const Left(NetworkFailure());
+    }
+
+    try {
+      await remoteDataSource.revokeDevice(deviceId: deviceId);
+      return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
+    }
+  }
+
+  @override
+  Future<Either<Failure, User>> loginWithBiometric() async {
+    // Step 1: Check if biometric is enabled locally
+    final biometricEnabled = await isBiometricEnabled();
+    if (!biometricEnabled) {
+      return const Left(AuthFailure(
+        message: 'La biométrie n\'est pas activée sur cet appareil',
+      ));
+    }
+
+    // Step 2: Check if we have a stored token
+    final hasTokens = await hasValidTokens();
+    if (!hasTokens) {
+      return const Left(AuthFailure(
+        message:
+            'Session expirée. Veuillez vous connecter avec votre mot de passe.',
+      ));
+    }
+
+    // Step 3: Try to validate the stored token by fetching profile
+    if (!await networkInfo.isConnected) {
+      // Offline: return cached user if available
+      final cached = await getCachedUser();
+      if (cached != null) {
+        return Right(cached);
+      }
+      return const Left(NetworkFailure());
+    }
+
+    try {
+      final userModel = await remoteDataSource.getProfile();
+      await secureStorage.write(
+        key: 'cached_user',
+        value: jsonEncode(userModel.toJson()),
+      );
+      return Right(userModel.toEntity());
+    } on ServerException catch (e) {
+      if (e.statusCode == 401) {
+        // Token expired, try refresh
+        final refreshResult = await refreshToken();
+        return refreshResult.fold(
+          (failure) => Left(AuthFailure(
+            message:
+                'Session expirée. Veuillez vous connecter avec votre mot de passe.',
+          )),
+          (tokens) async {
+            // Retry profile fetch with new token
+            try {
+              final userModel = await remoteDataSource.getProfile();
+              await secureStorage.write(
+                key: 'cached_user',
+                value: jsonEncode(userModel.toJson()),
+              );
+              return Right(userModel.toEntity());
+            } catch (_) {
+              return const Left(AuthFailure(
+                message: 'Impossible de récupérer le profil',
+              ));
+            }
+          },
+        );
+      }
+      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
     }
   }
 

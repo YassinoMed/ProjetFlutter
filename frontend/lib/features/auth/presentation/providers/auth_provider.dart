@@ -1,15 +1,16 @@
 /// Auth Provider - Riverpod state management for authentication
-/// CDC: AuthNotifier with JWT handling, role redirect
+/// CDC: AuthNotifier with JWT handling, role redirect, biometric support
 library;
 
 import 'package:dartz/dartz.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/errors/failures.dart';
-
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/network_info.dart';
+import '../../../../core/security/biometric_service.dart';
 import '../../../../core/security/secure_storage_service.dart';
+import '../../../../core/utils/device_info_helper.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/entities/auth_state_entity.dart';
@@ -62,9 +63,13 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
       if (hasTokens) {
         final cachedUser = await repository.getCachedUser();
         if (cachedUser != null) {
+          // Check if biometric is enabled for this device
+          final biometricEnabled = await repository.isBiometricEnabled();
+
           return AuthStateEntity(
             user: cachedUser,
             isAuthenticated: true,
+            biometricEnabled: biometricEnabled,
           );
         }
       }
@@ -75,18 +80,29 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
     return const AuthStateEntity.initial();
   }
 
-  /// Login
+  /// Login with email + password
   Future<void> login({
     required String email,
     required String password,
   }) async {
     state = const AsyncValue.loading();
 
+    // Get device info for trusted device registration
+    final deviceHelper = ref.read(deviceInfoHelperProvider);
+    final deviceInfo = await deviceHelper.getDeviceInfo();
+
     final loginUseCase = ref.read(loginUseCaseProvider);
     final result = await loginUseCase(LoginParams(
       email: email,
       password: password,
+      deviceId: deviceInfo.deviceId,
+      deviceName: deviceInfo.deviceName,
+      platform: deviceInfo.platform,
     ));
+
+    // Check biometric status after login
+    final repository = ref.read(authRepositoryProvider);
+    final biometricEnabled = await repository.isBiometricEnabled();
 
     state = result.fold(
       (failure) => AsyncValue.error(failure.message, StackTrace.current),
@@ -94,8 +110,71 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
         user: data.user,
         accessToken: data.accessToken,
         isAuthenticated: true,
+        biometricEnabled: biometricEnabled,
       )),
     );
+  }
+
+  /// Login with biometric (fingerprint)
+  ///
+  /// Flow:
+  /// 1. Verify fingerprint locally via local_auth
+  /// 2. Read stored JWT token from SecureStorage
+  /// 3. Validate token with server (/me endpoint)
+  /// 4. If token expired, try refresh
+  /// 5. If refresh fails, fallback to password
+  Future<void> loginWithBiometric() async {
+    state = const AsyncValue.loading();
+
+    try {
+      // Step 1: Local biometric authentication
+      final biometricService = ref.read(biometricServiceProvider);
+      final authenticated = await biometricService.authenticate(
+        reason: 'Utilisez votre empreinte pour vous connecter',
+      );
+
+      if (!authenticated) {
+        state = AsyncValue.data(
+          state.valueOrNull ?? const AuthStateEntity.initial(),
+        );
+        return; // User cancelled
+      }
+
+      // Step 2: Validate stored token with server
+      final repository = ref.read(authRepositoryProvider);
+      final result = await repository.loginWithBiometric();
+
+      state = result.fold(
+        (failure) => AsyncValue.error(failure.message, StackTrace.current),
+        (user) => AsyncValue.data(AuthStateEntity(
+          user: user,
+          isAuthenticated: true,
+          biometricEnabled: true,
+        )),
+      );
+    } on BiometricLockedOutException {
+      state = AsyncValue.error(
+        'Trop de tentatives. Veuillez réessayer plus tard.',
+        StackTrace.current,
+      );
+    } on BiometricPermanentlyLockedOutException {
+      state = AsyncValue.error(
+        'Biométrie désactivée. Veuillez utiliser votre mot de passe.',
+        StackTrace.current,
+      );
+    } on BiometricNotAvailableException {
+      state = AsyncValue.error(
+        "La biométrie n'est pas disponible sur cet appareil.",
+        StackTrace.current,
+      );
+    } on BiometricException catch (e) {
+      state = AsyncValue.error(e.message, StackTrace.current);
+    } catch (e) {
+      state = AsyncValue.error(
+        'Erreur lors de l\'authentification biométrique',
+        StackTrace.current,
+      );
+    }
   }
 
   /// Register
@@ -111,6 +190,10 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
   }) async {
     state = const AsyncValue.loading();
 
+    // Get device info
+    final deviceHelper = ref.read(deviceInfoHelperProvider);
+    final deviceInfo = await deviceHelper.getDeviceInfo();
+
     final registerUseCase = ref.read(registerUseCaseProvider);
     final result = await registerUseCase(RegisterParams(
       name: name,
@@ -121,6 +204,9 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
       phone: phone,
       speciality: speciality,
       licenseNumber: licenseNumber,
+      deviceId: deviceInfo.deviceId,
+      deviceName: deviceInfo.deviceName,
+      platform: deviceInfo.platform,
     ));
 
     state = result.fold(
@@ -131,6 +217,81 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
         isAuthenticated: true,
       )),
     );
+  }
+
+  /// Enable biometric authentication for current device
+  Future<Either<Failure, void>> enableBiometric() async {
+    // Step 1: Verify biometric availability
+    final biometricService = ref.read(biometricServiceProvider);
+    final isAvailable = await biometricService.isAvailable();
+    if (!isAvailable) {
+      return const Left(AuthFailure(
+        message: "La biométrie n'est pas disponible sur cet appareil",
+      ));
+    }
+
+    // Step 2: Authenticate with biometric to confirm
+    try {
+      final authenticated = await biometricService.authenticate(
+        reason: 'Confirmez votre empreinte pour activer la biométrie',
+      );
+      if (!authenticated) {
+        return const Left(AuthFailure(
+          message: 'Authentification biométrique annulée',
+        ));
+      }
+    } on BiometricException catch (e) {
+      return Left(AuthFailure(message: e.message));
+    }
+
+    // Step 3: Register on server
+    final deviceHelper = ref.read(deviceInfoHelperProvider);
+    final deviceInfo = await deviceHelper.getDeviceInfo();
+
+    final repository = ref.read(authRepositoryProvider);
+    final result = await repository.enableBiometric(
+      deviceId: deviceInfo.deviceId,
+      deviceName: deviceInfo.deviceName,
+      platform: deviceInfo.platform,
+    );
+
+    // Step 4: Update state
+    result.fold(
+      (_) {},
+      (_) {
+        final current = state.valueOrNull;
+        if (current != null) {
+          state = AsyncValue.data(
+            current.copyWith(biometricEnabled: true),
+          );
+        }
+      },
+    );
+
+    return result;
+  }
+
+  /// Disable biometric authentication for current device
+  Future<Either<Failure, void>> disableBiometric() async {
+    final deviceHelper = ref.read(deviceInfoHelperProvider);
+    final deviceId = await deviceHelper.getDeviceId();
+
+    final repository = ref.read(authRepositoryProvider);
+    final result = await repository.disableBiometric(deviceId: deviceId);
+
+    result.fold(
+      (_) {},
+      (_) {
+        final current = state.valueOrNull;
+        if (current != null) {
+          state = AsyncValue.data(
+            current.copyWith(biometricEnabled: false),
+          );
+        }
+      },
+    );
+
+    return result;
   }
 
   /// Logout
@@ -198,6 +359,18 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
       confirmPassword: confirmPassword,
     );
   }
+
+  /// Get the list of trusted devices
+  Future<Either<Failure, List<Map<String, dynamic>>>> getDevices() async {
+    final repository = ref.read(authRepositoryProvider);
+    return await repository.getDevices();
+  }
+
+  /// Revoke a trusted device (e.g., for lost phone scenario)
+  Future<Either<Failure, void>> revokeDevice(String deviceId) async {
+    final repository = ref.read(authRepositoryProvider);
+    return await repository.revokeDevice(deviceId: deviceId);
+  }
 }
 
 // ── Providers ───────────────────────────────────────────────
@@ -217,4 +390,15 @@ final isAuthenticatedProvider = Provider<bool>((ref) {
 
 final currentUserRoleProvider = Provider<String?>((ref) {
   return ref.watch(currentUserProvider)?.role;
+});
+
+/// Whether biometric is enabled for the current user/device
+final isBiometricEnabledProvider = Provider<bool>((ref) {
+  return ref.watch(authNotifierProvider).valueOrNull?.biometricEnabled ?? false;
+});
+
+/// Check if biometric hardware is available on this device
+final isBiometricAvailableProvider = FutureProvider<bool>((ref) async {
+  final biometricService = ref.read(biometricServiceProvider);
+  return biometricService.isAvailable();
 });

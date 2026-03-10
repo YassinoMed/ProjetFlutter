@@ -115,3 +115,8 @@ class ValidationFailure extends Failure {
 class GdprFailure extends Failure {
   const GdprFailure({required super.message});
 }
+
+/// Biometric authentication failure
+class BiometricFailure extends Failure {
+  const BiometricFailure({required super.message});
+}

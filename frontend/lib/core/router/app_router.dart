@@ -12,6 +12,7 @@ import '../../features/appointments/presentation/pages/appointment_detail_page.d
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
+import '../../features/auth/presentation/pages/trusted_devices_page.dart';
 import '../../features/chat/presentation/pages/chat_detail_page.dart';
 import '../../features/medical_records/presentation/pages/add_record_page.dart';
 import '../../features/medical_records/presentation/pages/medical_records_page.dart';
@@ -149,6 +150,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.changePassword,
         name: 'change-password',
         builder: (context, state) => const ChangePasswordPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.trustedDevices,
+        name: 'trusted-devices',
+        builder: (context, state) => const TrustedDevicesPage(),
       ),
       patientShellRoute,
       doctorShellRoute,

@@ -1,12 +1,10 @@
-/// Login Page - Premium Medical Design
-/// CDC: Authentification JWT avec redirection par rôle
+/// Login Page - Premium Medical Design with Biometric Auth
+/// CDC: Authentification JWT avec redirection par rôle + biométrie locale
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/constants/app_constants.dart';
@@ -32,8 +30,11 @@ class _LoginPageState extends ConsumerState<LoginPage>
   late AnimationController _animController;
   late Animation<double> _fadeAnimation;
 
-  /// 🔹 Biométrie
-  final LocalAuthentication _auth = LocalAuthentication();
+  /// Whether the biometric button should be shown
+  bool _showBiometricButton = false;
+
+  /// Whether biometric is available on this device
+  bool _biometricAvailable = false;
 
   @override
   void initState() {
@@ -51,16 +52,35 @@ class _LoginPageState extends ConsumerState<LoginPage>
 
     _animController.forward();
 
-    // Charger le dernier email
-    _loadLastEmail();
+    // Load saved data + check biometric status
+    _initBiometric();
   }
 
-  Future<void> _loadLastEmail() async {
+  Future<void> _initBiometric() async {
+    // Load last email
     final prefs = await SharedPreferences.getInstance();
     final lastEmail = prefs.getString('last_email');
     if (lastEmail != null) {
       _emailController.text = lastEmail;
     }
+
+    // Check biometric availability and stored flag
+    final biometricAvailableAsync = ref.read(isBiometricAvailableProvider);
+    final biometricEnabled = ref.read(isBiometricEnabledProvider);
+
+    biometricAvailableAsync.whenData((available) {
+      if (mounted) {
+        setState(() {
+          _biometricAvailable = available;
+          _showBiometricButton = available && biometricEnabled;
+        });
+
+        // Auto-trigger biometric if enabled and available
+        if (available && biometricEnabled) {
+          _handleBiometricLogin();
+        }
+      }
+    });
   }
 
   @override
@@ -71,7 +91,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
     super.dispose();
   }
 
-  /// 🔹 Login normal
+  /// Login with email + password
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -88,11 +108,11 @@ class _LoginPageState extends ConsumerState<LoginPage>
     authState.maybeWhen(
       data: (state) async {
         if (state.isAuthenticated) {
-          // 🔹 Sauvegarder l’email après login réussi
+          // Save email for next time
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('last_email', _emailController.text.trim());
 
-          // 🔹 Redirection par rôle
+          // Role-based redirect
           if (state.user?.role == AppConstants.roleDoctor) {
             context.go(AppRoutes.doctorHome);
           } else {
@@ -118,73 +138,77 @@ class _LoginPageState extends ConsumerState<LoginPage>
     );
   }
 
-  /// 🔹 Authentification biométrique
-  Future<void> _authenticateWithBiometrics() async {
-    try {
-      final bool canCheckBiometrics = await _auth.canCheckBiometrics;
-      final bool isSupported = await _auth.isDeviceSupported();
+  /// Login with biometric (fingerprint)
+  ///
+  /// Flow:
+  /// 1. local_auth prompts for fingerprint
+  /// 2. On success, stored JWT token is read from SecureStorage
+  /// 3. Token is validated with server (/me endpoint)
+  /// 4. If token expired, automatic refresh is attempted
+  /// 5. If everything fails → fallback to password form
+  Future<void> _handleBiometricLogin() async {
+    final notifier = ref.read(authNotifierProvider.notifier);
+    await notifier.loginWithBiometric();
 
-      if (!canCheckBiometrics || !isSupported) {
+    if (!mounted) return;
+
+    final authState = ref.read(authNotifierProvider);
+
+    authState.maybeWhen(
+      data: (state) {
+        if (state.isAuthenticated) {
+          // Role-based redirect
+          if (state.user?.role == AppConstants.roleDoctor) {
+            context.go(AppRoutes.doctorHome);
+          } else {
+            context.go(AppRoutes.patientHome);
+          }
+        }
+      },
+      error: (error, _) {
+        // Show error + keep password form visible
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("La biométrie n'est pas disponible sur cet appareil"),
+          SnackBar(
+            content: Text(error.toString()),
+            backgroundColor: AppTheme.errorColor,
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'Mot de passe',
+              textColor: Colors.white,
+              onPressed: () {
+                // Password form is already visible, just focus on it
+              },
+            ),
           ),
         );
-        return;
-      }
-
-      final bool authenticated = await _auth.authenticate(
-        localizedReason: 'Utilisez votre empreinte pour vous connecter',
-        options: const AuthenticationOptions(
-          biometricOnly: true,
-          stickyAuth: true,
-        ),
-      );
-
-      if (!mounted) return;
-
-      if (authenticated) {
-        final authState = ref.read(authNotifierProvider);
-
-        authState.maybeWhen(
-          data: (state) {
-            if (state.isAuthenticated) {
-              if (state.user?.role == AppConstants.roleDoctor) {
-                context.go(AppRoutes.doctorHome);
-              } else {
-                context.go(AppRoutes.patientHome);
-              }
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                      "Veuillez vous connecter une première fois pour activer l'empreinte"),
-                ),
-              );
-            }
-          },
-          orElse: () {},
-        );
-
-        authState.when(
-          loading: () {},
-          error: (error, _) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(error.toString())),
-            );
-          },
-          data: (_) {},
-        );
-      }
-    } on PlatformException catch (e) {
-      debugPrint("Erreur biométrie: $e");
-    }
+      },
+      orElse: () {},
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final authAsync = ref.watch(authNotifierProvider);
     final isLoading = authAsync.isLoading;
+
+    // Also watch biometric state reactively
+    final biometricEnabled = ref.watch(isBiometricEnabledProvider);
+    final biometricAvailableAsync = ref.watch(isBiometricAvailableProvider);
+
+    // Update biometric button visibility
+    biometricAvailableAsync.whenData((available) {
+      if (_biometricAvailable != available ||
+          _showBiometricButton != (available && biometricEnabled)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _biometricAvailable = available;
+              _showBiometricButton = available && biometricEnabled;
+            });
+          }
+        });
+      }
+    });
 
     return Scaffold(
       body: SafeArea(
@@ -197,7 +221,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
               children: [
                 const SizedBox(height: 40),
 
-                /// Logo
+                /// Logo + Header
                 Center(
                   child: Column(
                     children: [
@@ -236,7 +260,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
 
                 const SizedBox(height: 40),
 
-                /// Formulaire
+                /// Login Form
                 Form(
                   key: _formKey,
                   child: Column(
@@ -326,34 +350,124 @@ class _LoginPageState extends ConsumerState<LoginPage>
 
                       const SizedBox(height: 20),
 
-                      /// Biométrie
-                      Center(
-                        child: Column(
-                          children: [
-                            Container(
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: AppTheme.primarySurface,
+                      /// Biometric button — only shown if enabled & available
+                      if (_showBiometricButton) ...[
+                        Center(
+                          child: Column(
+                            children: [
+                              // Divider with text
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Divider(
+                                      color: AppTheme.neutralGray500
+                                          .withOpacity(0.3),
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16),
+                                    child: Text(
+                                      'ou',
+                                      style: AppTheme.bodySmall.copyWith(
+                                        color: AppTheme.neutralGray500,
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Divider(
+                                      color: AppTheme.neutralGray500
+                                          .withOpacity(0.3),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              child: IconButton(
-                                icon: const Icon(
-                                  Icons.fingerprint_rounded,
-                                  size: 32,
-                                  color: AppTheme.primaryColor,
+
+                              const SizedBox(height: 20),
+
+                              // Fingerprint button
+                              GestureDetector(
+                                onTap: isLoading ? null : _handleBiometricLogin,
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  width: 72,
+                                  height: 72,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: AppTheme.primarySurface,
+                                    border: Border.all(
+                                      color: AppTheme.primaryColor
+                                          .withOpacity(0.3),
+                                      width: 2,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AppTheme.primaryColor
+                                            .withOpacity(0.15),
+                                        blurRadius: 16,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Icon(
+                                    Icons.fingerprint_rounded,
+                                    size: 36,
+                                    color: AppTheme.primaryColor,
+                                  ),
                                 ),
-                                onPressed: _authenticateWithBiometrics,
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Connexion biométrique',
-                              style: AppTheme.bodySmall.copyWith(
-                                color: AppTheme.neutralGray500,
+
+                              const SizedBox(height: 12),
+
+                              Text(
+                                'Connexion par empreinte',
+                                style: AppTheme.bodySmall.copyWith(
+                                  color: AppTheme.primaryColor,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
+                      ] else if (_biometricAvailable) ...[
+                        // Biometric available but not enabled — show hint
+                        Center(
+                          child: Column(
+                            children: [
+                              Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.grey.withOpacity(0.1),
+                                ),
+                                child: IconButton(
+                                  icon: const Icon(
+                                    Icons.fingerprint_rounded,
+                                    size: 32,
+                                    color: Colors.grey,
+                                  ),
+                                  onPressed: () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Connectez-vous d\'abord, puis activez l\'empreinte dans les paramètres',
+                                        ),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Connexion biométrique disponible',
+                                style: AppTheme.bodySmall.copyWith(
+                                  color: AppTheme.neutralGray500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

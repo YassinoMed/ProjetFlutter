@@ -11,6 +11,7 @@ class AuthStateEntity extends Equatable {
   final bool isAuthenticated;
   final bool isLoading;
   final String? errorMessage;
+  final bool biometricEnabled;
 
   const AuthStateEntity({
     this.user,
@@ -18,6 +19,7 @@ class AuthStateEntity extends Equatable {
     this.isAuthenticated = false,
     this.isLoading = false,
     this.errorMessage,
+    this.biometricEnabled = false,
   });
 
   const AuthStateEntity.initial()
@@ -25,14 +27,16 @@ class AuthStateEntity extends Equatable {
         accessToken = null,
         isAuthenticated = false,
         isLoading = false,
-        errorMessage = null;
+        errorMessage = null,
+        biometricEnabled = false;
 
   const AuthStateEntity.loading()
       : user = null,
         accessToken = null,
         isAuthenticated = false,
         isLoading = true,
-        errorMessage = null;
+        errorMessage = null,
+        biometricEnabled = false;
 
   AuthStateEntity copyWith({
     User? user,
@@ -40,6 +44,7 @@ class AuthStateEntity extends Equatable {
     bool? isAuthenticated,
     bool? isLoading,
     String? errorMessage,
+    bool? biometricEnabled,
   }) {
     return AuthStateEntity(
       user: user ?? this.user,
@@ -47,15 +52,17 @@ class AuthStateEntity extends Equatable {
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
       isLoading: isLoading ?? this.isLoading,
       errorMessage: errorMessage,
+      biometricEnabled: biometricEnabled ?? this.biometricEnabled,
     );
   }
 
   @override
   List<Object?> get props => [
-    user,
-    accessToken,
-    isAuthenticated,
-    isLoading,
-    errorMessage,
-  ];
+        user,
+        accessToken,
+        isAuthenticated,
+        isLoading,
+        errorMessage,
+        biometricEnabled,
+      ];
 }

@@ -1,5 +1,6 @@
 /// Auth Use Cases
 /// CDC: JWT (access 15 min + refresh 7 jours avec rotation)
+/// Extended with device info for trusted device tracking
 library;
 
 import 'package:dartz/dartz.dart';
@@ -14,22 +15,36 @@ import '../repositories/auth_repository.dart';
 class LoginParams {
   final String email;
   final String password;
+  final String? deviceId;
+  final String? deviceName;
+  final String? platform;
 
-  const LoginParams({required this.email, required this.password});
+  const LoginParams({
+    required this.email,
+    required this.password,
+    this.deviceId,
+    this.deviceName,
+    this.platform,
+  });
 }
 
-class LoginUseCase
-    extends UseCase<({User user, String accessToken, String refreshToken}), LoginParams> {
+class LoginUseCase extends UseCase<
+    ({User user, String accessToken, String refreshToken}), LoginParams> {
   final AuthRepository repository;
 
   LoginUseCase(this.repository);
 
   @override
-  Future<Either<Failure, ({User user, String accessToken, String refreshToken})>>
-      call(LoginParams params) {
+  Future<
+      Either<Failure,
+          ({User user, String accessToken, String refreshToken})>> call(
+      LoginParams params) {
     return repository.login(
       email: params.email,
       password: params.password,
+      deviceId: params.deviceId,
+      deviceName: params.deviceName,
+      platform: params.platform,
     );
   }
 }
@@ -45,6 +60,9 @@ class RegisterParams {
   final String? phone;
   final String? speciality;
   final String? licenseNumber;
+  final String? deviceId;
+  final String? deviceName;
+  final String? platform;
 
   const RegisterParams({
     required this.name,
@@ -55,18 +73,23 @@ class RegisterParams {
     this.phone,
     this.speciality,
     this.licenseNumber,
+    this.deviceId,
+    this.deviceName,
+    this.platform,
   });
 }
 
-class RegisterUseCase
-    extends UseCase<({User user, String accessToken, String refreshToken}), RegisterParams> {
+class RegisterUseCase extends UseCase<
+    ({User user, String accessToken, String refreshToken}), RegisterParams> {
   final AuthRepository repository;
 
   RegisterUseCase(this.repository);
 
   @override
-  Future<Either<Failure, ({User user, String accessToken, String refreshToken})>>
-      call(RegisterParams params) {
+  Future<
+      Either<Failure,
+          ({User user, String accessToken, String refreshToken})>> call(
+      RegisterParams params) {
     return repository.register(
       name: params.name,
       email: params.email,
@@ -76,6 +99,9 @@ class RegisterUseCase
       phone: params.phone,
       speciality: params.speciality,
       licenseNumber: params.licenseNumber,
+      deviceId: params.deviceId,
+      deviceName: params.deviceName,
+      platform: params.platform,
     );
   }
 }

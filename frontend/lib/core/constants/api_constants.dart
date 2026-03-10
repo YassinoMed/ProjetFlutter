@@ -32,6 +32,12 @@ class ApiConstants {
   static const String forgotPassword = '/auth/forgot-password';
   static const String resetPassword = '/auth/reset-password';
 
+  // ── Biometric & Device Endpoints ──────────────────────────
+  static const String enableBiometric = '/auth/enable-biometric';
+  static const String disableBiometric = '/auth/disable-biometric';
+  static const String devices = '/auth/devices';
+  static const String revokeDevice = '/auth/devices'; // + /{deviceId}
+
   // ── Appointments Endpoints ────────────────────────────────
   static const String appointments = '/appointments';
   static const String appointmentCreate = '/appointments';

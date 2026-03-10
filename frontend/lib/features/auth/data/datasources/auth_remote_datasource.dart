@@ -1,5 +1,5 @@
 /// Auth Remote Data Source
-/// Handles API communication for authentication
+/// Handles API communication for authentication + biometric device management
 library;
 
 import 'package:dio/dio.dart';
@@ -13,6 +13,9 @@ abstract class AuthRemoteDataSource {
   Future<LoginResponseModel> login({
     required String email,
     required String password,
+    String? deviceId,
+    String? deviceName,
+    String? platform,
   });
 
   Future<LoginResponseModel> register({
@@ -24,6 +27,9 @@ abstract class AuthRemoteDataSource {
     String? phone,
     String? speciality,
     String? licenseNumber,
+    String? deviceId,
+    String? deviceName,
+    String? platform,
   });
 
   Future<void> logout();
@@ -50,6 +56,24 @@ abstract class AuthRemoteDataSource {
     required String password,
     required String passwordConfirmation,
   });
+
+  // ── Biometric / Device Management ─────────────────────────
+
+  /// Enable biometric auth for a device on the server
+  Future<void> enableBiometric({
+    required String deviceId,
+    required String deviceName,
+    String? platform,
+  });
+
+  /// Disable biometric auth for a device on the server
+  Future<void> disableBiometric({required String deviceId});
+
+  /// List all trusted devices for the user
+  Future<List<Map<String, dynamic>>> getDevices();
+
+  /// Revoke a trusted device
+  Future<void> revokeDevice({required String deviceId});
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -61,11 +85,20 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   Future<LoginResponseModel> login({
     required String email,
     required String password,
+    String? deviceId,
+    String? deviceName,
+    String? platform,
   }) async {
     try {
       final response = await dio.post(
         ApiConstants.login,
-        data: {'email': email, 'password': password},
+        data: {
+          'email': email,
+          'password': password,
+          if (deviceId != null) 'device_id': deviceId,
+          if (deviceName != null) 'device_name': deviceName,
+          if (platform != null) 'platform': platform,
+        },
       );
 
       if (response.statusCode == 200) {
@@ -111,6 +144,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     String? phone,
     String? speciality,
     String? licenseNumber,
+    String? deviceId,
+    String? deviceName,
+    String? platform,
   }) async {
     try {
       final parts = name.trim().split(' ');
@@ -128,6 +164,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         if (phone != null) 'phone': phone,
         if (speciality != null) 'speciality': speciality,
         if (licenseNumber != null) 'license_number': licenseNumber,
+        if (deviceId != null) 'device_id': deviceId,
+        if (deviceName != null) 'device_name': deviceName,
+        if (platform != null) 'platform': platform,
       };
 
       final response = await dio.post(ApiConstants.register, data: data);
@@ -203,7 +242,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<UserModel> getProfile() async {
     try {
-      final response = await dio.get(ApiConstants.profile);
+      final response = await dio.get(ApiConstants.me);
 
       if (response.statusCode == 200) {
         final userJson = extractUserMap(response.data);
@@ -309,6 +348,111 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       );
     }
   }
+
+  // ── Biometric / Device Management ─────────────────────────
+
+  @override
+  Future<void> enableBiometric({
+    required String deviceId,
+    required String deviceName,
+    String? platform,
+  }) async {
+    try {
+      final response = await dio.post(
+        ApiConstants.enableBiometric,
+        data: {
+          'device_id': deviceId,
+          'device_name': deviceName,
+          if (platform != null) 'platform': platform,
+        },
+      );
+
+      if (response.statusCode != 200) {
+        throw ServerException(
+          message: response.data['message'] ?? 'Failed to enable biometric',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      throw ServerException(
+        message: e.message ?? 'Erreur réseau',
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  @override
+  Future<void> disableBiometric({required String deviceId}) async {
+    try {
+      final response = await dio.post(
+        ApiConstants.disableBiometric,
+        data: {'device_id': deviceId},
+      );
+
+      if (response.statusCode != 200) {
+        throw ServerException(
+          message: response.data['message'] ?? 'Failed to disable biometric',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      throw ServerException(
+        message: e.message ?? 'Erreur réseau',
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getDevices() async {
+    try {
+      final response = await dio.get(ApiConstants.devices);
+
+      if (response.statusCode == 200) {
+        final data = extractPayloadMap(response.data);
+        final rawData = data['data'];
+        if (rawData is List) {
+          return rawData
+              .map((e) => e is Map<String, dynamic> ? e : <String, dynamic>{})
+              .toList();
+        }
+        return [];
+      }
+
+      throw ServerException(
+        message: 'Failed to get devices',
+        statusCode: response.statusCode,
+      );
+    } on DioException catch (e) {
+      throw ServerException(
+        message: e.message ?? 'Erreur réseau',
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  @override
+  Future<void> revokeDevice({required String deviceId}) async {
+    try {
+      final response = await dio.delete(
+        '${ApiConstants.revokeDevice}/$deviceId',
+      );
+
+      if (response.statusCode != 200) {
+        throw ServerException(
+          message: response.data['message'] ?? 'Failed to revoke device',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      throw ServerException(
+        message: e.message ?? 'Erreur réseau',
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  // ── Helpers ───────────────────────────────────────────────
 
   String _extractValidationError(dynamic data) {
     if (data is Map<String, dynamic>) {
