@@ -5,23 +5,28 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CallSessionController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\ConversationController;
+use App\Http\Controllers\Api\DelegationContextController;
 use App\Http\Controllers\Api\DeviceController;
 use App\Http\Controllers\Api\DeviceTokenController;
 use App\Http\Controllers\Api\DoctorController;
+use App\Http\Controllers\Api\DoctorSecretaryController;
+use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\E2eeKeyController;
 use App\Http\Controllers\Api\EncryptedAttachmentController;
 use App\Http\Controllers\Api\FcmTokenController;
+use App\Http\Controllers\Api\MeDelegationController;
 use App\Http\Controllers\Api\MedicalRecordMetadataController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\PresenceController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\RgpdController;
 use App\Http\Controllers\Api\ScheduleController;
-use App\Http\Controllers\Api\WebRtcSignalingController;
+use App\Http\Controllers\Api\SecretaryInvitationController;
 use App\Http\Controllers\Api\WebRtcController;
+use App\Http\Controllers\Api\WebRtcSignalingController;
+use App\Models\Tenant;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
-use App\Models\Tenant;
 
 Route::get('/tenants', function () {
     return response()->json([
@@ -76,7 +81,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function (): void {
     Route::get('/doctors/{doctorUserId}/slots', [DoctorController::class, 'slots']);
 
     // ── Doctor Schedule Management (doctor-only) ─────────
-    Route::prefix('schedule')->group(function (): void {
+    Route::prefix('schedule')->middleware('doctor.context')->group(function (): void {
         Route::get('/', [ScheduleController::class, 'index']);
         Route::post('/', [ScheduleController::class, 'upsert']);
         Route::put('/bulk', [ScheduleController::class, 'bulkUpdate']);
@@ -84,11 +89,23 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function (): void {
     });
 
     // ── Appointments ─────────────────────────────────────
-    Route::get('/appointments', [AppointmentController::class, 'index']);
-    Route::post('/appointments', [AppointmentController::class, 'store']);
-    Route::get('/appointments/{appointmentId}', [AppointmentController::class, 'show']);
-    Route::post('/appointments/{appointmentId}/cancel', [AppointmentController::class, 'cancel']);
-    Route::post('/appointments/{appointmentId}/confirm', [AppointmentController::class, 'confirm']);
+    Route::middleware('doctor.context')->group(function (): void {
+        Route::get('/appointments', [AppointmentController::class, 'index']);
+        Route::post('/appointments', [AppointmentController::class, 'store']);
+        Route::get('/appointments/{appointmentId}', [AppointmentController::class, 'show']);
+        Route::post('/appointments/{appointmentId}/cancel', [AppointmentController::class, 'cancel']);
+        Route::post('/appointments/{appointmentId}/confirm', [AppointmentController::class, 'confirm']);
+    });
+
+    // ── Doctor Secretaries ───────────────────────────────
+    Route::post('/doctor/secretaries/invite', [DoctorSecretaryController::class, 'invite'])->middleware('throttle:secretaries');
+    Route::get('/doctor/secretaries', [DoctorSecretaryController::class, 'index'])->middleware('throttle:secretaries');
+    Route::patch('/doctor/secretaries/{delegationId}/permissions', [DoctorSecretaryController::class, 'updatePermissions'])->middleware('throttle:secretaries');
+    Route::patch('/doctor/secretaries/{delegationId}/suspend', [DoctorSecretaryController::class, 'suspend'])->middleware('throttle:secretaries');
+    Route::patch('/doctor/secretaries/{delegationId}/reactivate', [DoctorSecretaryController::class, 'reactivate'])->middleware('throttle:secretaries');
+    Route::delete('/doctor/secretaries/{delegationId}', [DoctorSecretaryController::class, 'destroy'])->middleware('throttle:secretaries');
+    Route::get('/me/delegations', [MeDelegationController::class, 'index'])->middleware('throttle:secretaries');
+    Route::post('/context/switch-doctor', [DelegationContextController::class, 'switchDoctor'])->middleware('throttle:secretaries');
 
     // ── Chat ─────────────────────────────────────────────
     Route::get('/consultations/{appointmentId}/messages', [ChatController::class, 'index'])->middleware('throttle:chat-messages');
@@ -131,6 +148,17 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function (): void {
     Route::post('/devices/push-token-heartbeat', [DeviceTokenController::class, 'heartbeat']);
     Route::delete('/devices/push-token', [DeviceTokenController::class, 'destroy']);
 
+    // ── Medical Documents & AI Summaries ─────────────────
+    Route::prefix('documents')->middleware('throttle:documents')->group(function (): void {
+        Route::post('/upload', [DocumentController::class, 'upload']);
+        Route::get('/', [DocumentController::class, 'index']);
+        Route::get('/{documentId}', [DocumentController::class, 'show']);
+        Route::get('/{documentId}/summary', [DocumentController::class, 'summary']);
+        Route::get('/{documentId}/entities', [DocumentController::class, 'entities']);
+        Route::post('/{documentId}/reanalyze', [DocumentController::class, 'reanalyze']);
+        Route::delete('/{documentId}', [DocumentController::class, 'destroy']);
+    });
+
     // ── E2EE Key Bundles ────────────────────────────────
     Route::post('/e2ee/devices', [E2eeKeyController::class, 'upsertOwnDevice'])->middleware('throttle:conversations');
     Route::get('/e2ee/users/{userId}/bundle', [E2eeKeyController::class, 'showPeerBundle'])->middleware('throttle:conversations');
@@ -158,3 +186,5 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function (): void {
     Route::post('/rgpd/consent', [RgpdController::class, 'consent'])->middleware('throttle:rgpd');
     Route::delete('/rgpd/forget', [RgpdController::class, 'forget'])->middleware('throttle:rgpd');
 });
+
+Route::post('/secretary/invitations/accept', [SecretaryInvitationController::class, 'accept'])->middleware('throttle:auth-register');

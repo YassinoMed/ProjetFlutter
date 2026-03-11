@@ -1,0 +1,15 @@
+<?php
+
+namespace App\Enums;
+
+enum DocumentType: string
+{
+    case PRESCRIPTION = 'PRESCRIPTION';
+    case MEDICAL_REPORT = 'MEDICAL_REPORT';
+    case LAB_RESULT = 'LAB_RESULT';
+    case RADIOLOGY_REPORT = 'RADIOLOGY_REPORT';
+    case REFERRAL_LETTER = 'REFERRAL_LETTER';
+    case MEDICAL_CERTIFICATE = 'MEDICAL_CERTIFICATE';
+    case CONSULTATION_HISTORY = 'CONSULTATION_HISTORY';
+    case OTHER = 'OTHER';
+}

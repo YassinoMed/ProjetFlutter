@@ -73,6 +73,21 @@ class User extends Authenticatable
         return $this->hasMany(MedicalRecordMetadata::class, 'patient_user_id');
     }
 
+    public function uploadedDocuments(): HasMany
+    {
+        return $this->hasMany(Document::class, 'uploaded_by_user_id');
+    }
+
+    public function documentsAsPatient(): HasMany
+    {
+        return $this->hasMany(Document::class, 'patient_user_id');
+    }
+
+    public function documentsAsDoctor(): HasMany
+    {
+        return $this->hasMany(Document::class, 'doctor_user_id');
+    }
+
     public function appointmentsAsPatient(): HasMany
     {
         return $this->hasMany(Appointment::class, 'patient_user_id');
@@ -96,6 +111,16 @@ class User extends Authenticatable
     public function activeTrustedDevices(): HasMany
     {
         return $this->trustedDevices()->whereNull('revoked_at');
+    }
+
+    public function delegationsAsDoctor(): HasMany
+    {
+        return $this->hasMany(DoctorSecretaryDelegation::class, 'doctor_user_id');
+    }
+
+    public function delegationsAsSecretary(): HasMany
+    {
+        return $this->hasMany(DoctorSecretaryDelegation::class, 'secretary_user_id');
     }
 
     public function conversations(): HasMany

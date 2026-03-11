@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\AppointmentStatus;
+use App\Enums\SecretaryPermission;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Appointments\CancelAppointmentRequest;
@@ -11,6 +12,8 @@ use App\Http\Resources\AppointmentResource;
 use App\Models\Appointment;
 use App\Services\Appointments\AppointmentBookingService;
 use App\Services\Appointments\AppointmentStateService;
+use App\Services\AuditService;
+use App\Services\DelegationContextService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -21,6 +24,8 @@ class AppointmentController extends Controller
     public function __construct(
         private readonly AppointmentBookingService $booking,
         private readonly AppointmentStateService $states,
+        private readonly DelegationContextService $delegationContextService,
+        private readonly AuditService $auditService,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -34,7 +39,13 @@ class AppointmentController extends Controller
             ->when($request->filled('from_utc'), fn ($q) => $q->where('starts_at_utc', '>=', Carbon::parse($request->string('from_utc'), 'UTC')))
             ->when($request->filled('to_utc'), fn ($q) => $q->where('starts_at_utc', '<=', Carbon::parse($request->string('to_utc'), 'UTC')));
 
-        if ($user->role !== UserRole::ADMIN) {
+        if ($user->role === UserRole::SECRETARY) {
+            $doctorUserId = $this->delegationContextService
+                ->assertSecretaryPermission($request, SecretaryPermission::MANAGE_APPOINTMENTS)
+                ->doctor_user_id;
+
+            $query->where('doctor_user_id', $doctorUserId);
+        } elseif ($user->role !== UserRole::ADMIN) {
             $query->where(function ($q) use ($user) {
                 $q->where('patient_user_id', $user->id)->orWhere('doctor_user_id', $user->id);
             });
@@ -43,6 +54,17 @@ class AppointmentController extends Controller
         $appointments = $query
             ->orderBy('starts_at_utc')
             ->cursorPaginate(min(max((int) $request->query('per_page', 20), 1), 50));
+
+        $delegation = $request->attributes->get('doctor_delegation');
+        $this->auditService->log(
+            $request->user(),
+            'appointments.viewed',
+            Appointment::class,
+            ['count' => count($appointments->items())],
+            $request->attributes->get('acting_doctor_user_id'),
+            $delegation?->id,
+            $request,
+        );
 
         return $this->respondSuccess(
             AppointmentResource::collection(collect($appointments->items())),
@@ -79,7 +101,7 @@ class AppointmentController extends Controller
     {
         $appointment = Appointment::query()->findOrFail($appointmentId);
 
-        $this->authorize('view', $appointment);
+        $this->authorizeAppointmentAccess($request, $appointment);
 
         return $this->respondSuccess([
             'appointment' => new AppointmentResource($appointment),
@@ -90,7 +112,7 @@ class AppointmentController extends Controller
     {
         $appointment = Appointment::query()->findOrFail($appointmentId);
 
-        $this->authorize('update', $appointment);
+        $this->authorizeAppointmentAccess($request, $appointment, SecretaryPermission::MANAGE_APPOINTMENTS);
 
         $appointment = $this->states->transition(
             appointment: $appointment,
@@ -98,6 +120,17 @@ class AppointmentController extends Controller
             actorUserId: $request->user()->id,
             metadataEncrypted: $request->validated()['metadata_encrypted'] ?? null,
             cancelReason: $request->validated()['cancel_reason'] ?? null,
+        );
+
+        $delegation = $request->attributes->get('doctor_delegation');
+        $this->auditService->log(
+            $request->user(),
+            'appointment.cancelled',
+            $appointment,
+            ['appointment_id' => $appointment->id],
+            $request->attributes->get('acting_doctor_user_id'),
+            $delegation?->id,
+            $request,
         );
 
         return $this->respondSuccess([
@@ -109,7 +142,7 @@ class AppointmentController extends Controller
     {
         $appointment = Appointment::query()->findOrFail($appointmentId);
 
-        $this->authorize('confirm', $appointment);
+        $this->authorizeAppointmentAccess($request, $appointment, SecretaryPermission::MANAGE_APPOINTMENTS, true);
 
         $appointment = $this->states->transition(
             appointment: $appointment,
@@ -117,8 +150,52 @@ class AppointmentController extends Controller
             actorUserId: $request->user()->id,
         );
 
+        $delegation = $request->attributes->get('doctor_delegation');
+        $this->auditService->log(
+            $request->user(),
+            'appointment.confirmed',
+            $appointment,
+            ['appointment_id' => $appointment->id],
+            $request->attributes->get('acting_doctor_user_id'),
+            $delegation?->id,
+            $request,
+        );
+
         return $this->respondSuccess([
             'appointment' => new AppointmentResource($appointment),
         ], 'Appointment confirmed successfully');
+    }
+
+    private function authorizeAppointmentAccess(
+        Request $request,
+        Appointment $appointment,
+        SecretaryPermission $secretaryPermission = SecretaryPermission::MANAGE_APPOINTMENTS,
+        bool $useConfirmAbility = false,
+    ): void {
+        $user = $request->user();
+
+        if ($user->role === UserRole::SECRETARY) {
+            if (! $this->delegationContextService->canAccessAppointment($request, $appointment, $secretaryPermission)) {
+                throw new AccessDeniedHttpException('You are not allowed to access this appointment.');
+            }
+
+            return;
+        }
+
+        $ability = $secretaryPermission === SecretaryPermission::MANAGE_APPOINTMENTS ? 'update' : 'view';
+
+        if ($ability === 'view') {
+            $this->authorize('view', $appointment);
+
+            return;
+        }
+
+        if ($useConfirmAbility) {
+            $this->authorize('confirm', $appointment);
+
+            return;
+        }
+
+        $this->authorize('update', $appointment);
     }
 }

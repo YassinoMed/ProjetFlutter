@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../secretaries/presentation/widgets/acting_doctor_banner.dart';
 
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
@@ -32,6 +33,8 @@ class ProfilePage extends ConsumerWidget {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
+            if (user?.isSecretary == true) const ActingDoctorBanner(compact: true),
+            if (user?.isSecretary == true) const SizedBox(height: 20),
             // ── Avatar ────────────────────────────
             Center(
               child: Column(
@@ -69,15 +72,19 @@ class ProfilePage extends ConsumerWidget {
                     decoration: BoxDecoration(
                       color: user?.isDoctor == true
                           ? AppTheme.secondaryColor.withValues(alpha: 0.1)
-                          : AppTheme.primaryColor.withValues(alpha: 0.1),
+                          : user?.isSecretary == true
+                              ? AppTheme.warningColor.withValues(alpha: 0.1)
+                              : AppTheme.primaryColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      user?.isDoctor == true ? 'Médecin' : 'Patient',
+                      _roleLabel(user),
                       style: AppTheme.labelSmall.copyWith(
                         color: user?.isDoctor == true
                             ? AppTheme.secondaryColor
-                            : AppTheme.primaryColor,
+                            : user?.isSecretary == true
+                                ? AppTheme.warningColor
+                                : AppTheme.primaryColor,
                       ),
                     ),
                   ),
@@ -101,10 +108,30 @@ class ProfilePage extends ConsumerWidget {
                 context.push(AppRoutes.editProfile);
               },
             ),
+            if (user?.isDoctor == true)
+              _buildMenuItem(
+                icon: Icons.support_agent_rounded,
+                title: 'Mes secrétaires',
+                subtitle: 'Invitations, permissions, suspension',
+                onTap: () {
+                  context.push(AppRoutes.doctorSecretaries);
+                },
+              ),
+            if (user?.isSecretary == true)
+              _buildMenuItem(
+                icon: Icons.badge_outlined,
+                title: 'Mes délégations',
+                subtitle: 'Choisir le médecin actif',
+                onTap: () {
+                  context.go(AppRoutes.secretaryHome);
+                },
+              ),
             _buildMenuItem(
               icon: Icons.folder_open_rounded,
               title: 'Dossier médical',
-              onTap: () {},
+              onTap: () {
+                context.push(AppRoutes.documents);
+              },
             ),
             _buildMenuItem(
               icon: Icons.notifications_outlined,
@@ -202,6 +229,12 @@ class ProfilePage extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  String _roleLabel(user) {
+    if (user?.isDoctor == true) return 'Médecin';
+    if (user?.isSecretary == true) return 'Secrétaire';
+    return 'Patient';
   }
 
   Widget _buildMenuItem({

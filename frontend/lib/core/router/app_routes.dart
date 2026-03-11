@@ -18,6 +18,7 @@ class AppRoutes {
   static const String patientChat = '/patient/chat';
   static const String patientProfile = '/patient/profile';
   static const String patientRecords = '/patient/records';
+  static const String documents = '/documents';
 
   // ── Patient Sub-routes ──────────────────────────────────
   static const String doctorSearch = '/patient/search';
@@ -33,15 +34,23 @@ class AppRoutes {
   static const String doctorChat = '/doctor/chat';
   static const String doctorProfile = '/doctor/profile';
   static const String doctorPatients = '/doctor/patients';
+  static const String doctorSecretaries = '/doctor/secretaries';
 
   // ── Doctor Sub-routes ───────────────────────────────────
   static const String doctorAppointmentDetail = '/doctor/appointment/:id';
   static const String doctorChatDetail = '/doctor/chat/:conversationId';
   static const String patientDetail = '/doctor/patient/:id';
 
+  // ── Secretary Routes ────────────────────────────────────
+  static const String secretaryHome = '/secretary';
+  static const String secretaryAppointments = '/secretary/appointments';
+  static const String secretaryProfile = '/secretary/profile';
+
   // ── Medical Records ─────────────────────────────────────
   static const String recordDetail = '/records/:id';
   static const String addRecord = '/records/add';
+  static const String documentDetail = '/documents/:id';
+  static const String documentUpload = '/documents/upload';
 
   // ── Settings ────────────────────────────────────────────
   static const String settings = '/settings';

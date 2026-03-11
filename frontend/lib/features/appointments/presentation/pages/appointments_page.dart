@@ -8,6 +8,8 @@ import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/error_display.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../secretaries/presentation/providers/secretary_providers.dart';
+import '../../../secretaries/presentation/widgets/acting_doctor_banner.dart';
 import '../../domain/entities/appointment_entity.dart';
 import '../providers/appointment_providers.dart';
 
@@ -37,15 +39,23 @@ class _AppointmentsPageState extends ConsumerState<AppointmentsPage>
 
   @override
   Widget build(BuildContext context) {
-    final appointmentsAsync = ref.watch(myAppointmentsProvider);
     final user = ref.watch(currentUserProvider);
-    final isDoctor = user?.role == AppConstants.roleDoctor;
+    final isSecretary = user?.role == AppConstants.roleSecretary;
+    final isManagementView =
+        user?.role == AppConstants.roleDoctor || isSecretary;
+    final secretaryContext = isSecretary
+        ? ref.watch(secretaryContextProvider)
+        : const AsyncValue.data(null);
+    final hasSecretaryContext = !isSecretary || secretaryContext.valueOrNull != null;
+    final appointmentsAsync = hasSecretaryContext
+        ? ref.watch(myAppointmentsProvider)
+        : const AsyncValue.data(<Appointment>[]);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isDoctor ? 'Mon Planning' : 'Mes Rendez-vous'),
+        title: Text(isManagementView ? 'Planning médical' : 'Mes Rendez-vous'),
         actions: [
-          if (!isDoctor)
+          if (!isManagementView)
             IconButton(
               icon: const Icon(Icons.add_rounded),
               onPressed: () => context.push(AppRoutes.doctorSearch),
@@ -62,6 +72,7 @@ class _AppointmentsPageState extends ConsumerState<AppointmentsPage>
       ),
       body: Column(
         children: [
+          if (isSecretary) const ActingDoctorBanner(compact: true),
           // ── Status filter chips ─────────────────
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -110,18 +121,23 @@ class _AppointmentsPageState extends ConsumerState<AppointmentsPage>
 
           // ── Appointments list ───────────────────
           Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildAppointmentsList(appointmentsAsync, isDoctor, 'upcoming'),
-                _buildAppointmentsList(appointmentsAsync, isDoctor, 'past'),
-                _buildAppointmentsList(appointmentsAsync, isDoctor, 'all'),
-              ],
-            ),
+            child: isSecretary && !hasSecretaryContext
+                ? _buildSecretaryContextEmptyState()
+                : TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildAppointmentsList(
+                          appointmentsAsync, isManagementView, 'upcoming'),
+                      _buildAppointmentsList(
+                          appointmentsAsync, isManagementView, 'past'),
+                      _buildAppointmentsList(
+                          appointmentsAsync, isManagementView, 'all'),
+                    ],
+                  ),
           ),
         ],
       ),
-      floatingActionButton: isDoctor
+      floatingActionButton: isManagementView
           ? null
           : FloatingActionButton.extended(
               onPressed: () => context.push(AppRoutes.doctorSearch),
@@ -132,7 +148,7 @@ class _AppointmentsPageState extends ConsumerState<AppointmentsPage>
   }
 
   Widget _buildAppointmentsList(AsyncValue<List<Appointment>> appointmentsAsync,
-      bool isDoctor, String tab) {
+      bool isManagementView, String tab) {
     return appointmentsAsync.when(
       data: (appointments) {
         var filtered = appointments.toList();
@@ -143,11 +159,14 @@ class _AppointmentsPageState extends ConsumerState<AppointmentsPage>
           case 'upcoming':
             filtered = filtered.where((a) => a.dateTime.isAfter(now)).toList()
               ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+            break;
           case 'past':
             filtered = filtered.where((a) => a.dateTime.isBefore(now)).toList()
               ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
+            break;
           default:
             filtered.sort((a, b) => b.dateTime.compareTo(a.dateTime));
+            break;
         }
 
         // Status/type filter
@@ -175,7 +194,7 @@ class _AppointmentsPageState extends ConsumerState<AppointmentsPage>
               final appointment = filtered[index];
               return _AppointmentCard(
                 appointment: appointment,
-                isDoctor: isDoctor,
+                isDoctor: isManagementView,
               );
             },
           ),
@@ -223,6 +242,42 @@ class _AppointmentsPageState extends ConsumerState<AppointmentsPage>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSecretaryContextEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 96,
+              height: 96,
+              decoration: BoxDecoration(
+                color: AppTheme.warningColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(28),
+              ),
+              child: const Icon(
+                Icons.badge_outlined,
+                size: 48,
+                color: AppTheme.warningColor,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text('Choisissez un médecin actif', style: AppTheme.titleLarge),
+            const SizedBox(height: 8),
+            Text(
+              'Le contexte de délégation doit être sélectionné avant d’accéder au planning.',
+              textAlign: TextAlign.center,
+              style: AppTheme.bodyMedium.copyWith(
+                color: AppTheme.neutralGray500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -428,18 +483,23 @@ class _StatusBadge extends StatelessWidget {
       case AppointmentStatus.confirmed:
         color = const Color(0xFF10B981);
         label = 'Confirmé';
+        break;
       case AppointmentStatus.pending:
         color = const Color(0xFFF59E0B);
         label = 'En attente';
+        break;
       case AppointmentStatus.cancelled:
         color = const Color(0xFFEF4444);
         label = 'Annulé';
+        break;
       case AppointmentStatus.completed:
         color = const Color(0xFF3B82F6);
         label = 'Terminé';
+        break;
       case AppointmentStatus.noShow:
         color = const Color(0xFF6B7280);
         label = 'Absent';
+        break;
     }
 
     return Container(

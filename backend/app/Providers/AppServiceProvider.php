@@ -2,6 +2,10 @@
 
 namespace App\Providers;
 
+use App\Services\Documents\Ai\HeuristicDocumentAiAnalyzer;
+use App\Services\Documents\Contracts\DocumentAiAnalyzer;
+use App\Services\Documents\Contracts\DocumentTextExtractor;
+use App\Services\Documents\TextExtraction\CompositeDocumentTextExtractor;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -9,7 +13,11 @@ use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    public function register(): void {}
+    public function register(): void
+    {
+        $this->app->singleton(DocumentTextExtractor::class, CompositeDocumentTextExtractor::class);
+        $this->app->singleton(DocumentAiAnalyzer::class, HeuristicDocumentAiAnalyzer::class);
+    }
 
     public function boot(): void
     {
@@ -34,6 +42,8 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('conversations', fn (Request $request) => Limit::perMinute(60)->by('conversations:'.$request->user()?->id.':'.$request->ip()));
         RateLimiter::for('messages', fn (Request $request) => Limit::perMinute(180)->by('messages:'.$request->user()?->id.':'.$request->ip()));
         RateLimiter::for('calls', fn (Request $request) => Limit::perMinute(60)->by('calls:'.$request->user()?->id.':'.$request->ip()));
+        RateLimiter::for('secretaries', fn (Request $request) => Limit::perMinute(30)->by('secretaries:'.$request->user()?->id.':'.$request->ip()));
+        RateLimiter::for('documents', fn (Request $request) => Limit::perMinute(30)->by('documents:'.$request->user()?->id.':'.$request->ip()));
         RateLimiter::for('rgpd', fn (Request $request) => Limit::perMinute(10)->by('rgpd:'.$request->user()?->id.':'.$request->ip()));
     }
 }

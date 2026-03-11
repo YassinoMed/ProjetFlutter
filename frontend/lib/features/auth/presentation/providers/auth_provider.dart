@@ -5,6 +5,7 @@ library;
 import 'package:dartz/dartz.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/network_info.dart';
@@ -63,6 +64,12 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
       if (hasToken) {
         final cachedUser = await repository.getCachedUser();
         if (cachedUser != null) {
+          if (!cachedUser.isSecretary) {
+            await ref
+                .read(secureStorageProvider)
+                .delete(key: AppConstants.keyActingDoctorUserId);
+          }
+
           // Check if biometric is enabled for this device
           final biometricEnabled = await repository.isBiometricEnabled();
 
@@ -104,6 +111,10 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
     final repository = ref.read(authRepositoryProvider);
     final biometricEnabled = await repository.isBiometricEnabled();
 
+    await ref
+        .read(secureStorageProvider)
+        .delete(key: AppConstants.keyActingDoctorUserId);
+
     state = result.fold(
       (failure) => AsyncValue.error(failure.message, StackTrace.current),
       (data) => AsyncValue.data(AuthStateEntity(
@@ -142,6 +153,13 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
       // Step 2: Validate stored token with server
       final repository = ref.read(authRepositoryProvider);
       final result = await repository.loginWithBiometric();
+
+      final user = result.fold((_) => null, (user) => user);
+      if (user?.isSecretary != true) {
+        await ref
+            .read(secureStorageProvider)
+            .delete(key: AppConstants.keyActingDoctorUserId);
+      }
 
       state = result.fold(
         (failure) => AsyncValue.error(failure.message, StackTrace.current),
@@ -207,6 +225,10 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
       deviceName: deviceInfo.deviceName,
       platform: deviceInfo.platform,
     ));
+
+    await ref
+        .read(secureStorageProvider)
+        .delete(key: AppConstants.keyActingDoctorUserId);
 
     state = result.fold(
       (failure) => AsyncValue.error(failure.message, StackTrace.current),
@@ -296,6 +318,9 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
   Future<void> logout() async {
     final logoutUseCase = ref.read(logoutUseCaseProvider);
     await logoutUseCase();
+    await ref
+        .read(secureStorageProvider)
+        .delete(key: AppConstants.keyActingDoctorUserId);
 
     state = const AsyncValue.data(AuthStateEntity.initial());
   }

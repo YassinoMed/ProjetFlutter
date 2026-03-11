@@ -89,6 +89,15 @@ class AuthInterceptor extends Interceptor {
             ? tenantId
             : ApiConstants.defaultTenantId;
 
+    final actingDoctorUserId = await _secureStorage.read(
+      key: AppConstants.keyActingDoctorUserId,
+    );
+    if (actingDoctorUserId != null && actingDoctorUserId.isNotEmpty) {
+      options.headers['X-Acting-Doctor-Id'] = actingDoctorUserId;
+    } else {
+      options.headers.remove('X-Acting-Doctor-Id');
+    }
+
     handler.next(options);
   }
 

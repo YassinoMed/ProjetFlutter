@@ -71,11 +71,13 @@ class UserModel {
       name = '$firstName $lastName'.trim();
     }
 
+    final role = (json['role'] as String? ?? 'patient').toLowerCase();
+
     return UserModel(
       id: json['id']?.toString() ?? '',
       name: name,
       email: json['email'] as String? ?? '',
-      role: json['role'] as String? ?? 'patient',
+      role: role,
       phone: json['phone'] as String?,
       avatarUrl: json['avatar_url'] as String?,
       speciality: json['speciality'] as String?,

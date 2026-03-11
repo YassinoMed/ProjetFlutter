@@ -10,6 +10,7 @@ import '../../features/chat/presentation/pages/conversations_page.dart';
 import '../../features/home/presentation/pages/doctor_home_page.dart';
 import '../../features/home/presentation/pages/patient_home_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
+import '../../features/secretaries/presentation/pages/secretary_home_page.dart';
 import '../../shared/widgets/bottom_nav_scaffold.dart';
 import 'app_routes.dart';
 
@@ -83,6 +84,35 @@ final doctorShellRoute = ShellRoute(
     GoRoute(
       path: AppRoutes.doctorProfile,
       name: 'doctor-profile',
+      builder: (context, state) => const ProfilePage(),
+    ),
+  ],
+);
+
+// ── Secretary Shell Route ───────────────────────────────────
+
+final secretaryShellRoute = ShellRoute(
+  builder: (context, state, child) {
+    return BottomNavScaffold(
+      currentPath: state.matchedLocation,
+      role: 'secretary',
+      child: child,
+    );
+  },
+  routes: [
+    GoRoute(
+      path: AppRoutes.secretaryHome,
+      name: 'secretary-shell-home',
+      builder: (context, state) => const SecretaryHomePage(),
+    ),
+    GoRoute(
+      path: AppRoutes.secretaryAppointments,
+      name: 'secretary-appointments',
+      builder: (context, state) => const AppointmentsPage(),
+    ),
+    GoRoute(
+      path: AppRoutes.secretaryProfile,
+      name: 'secretary-profile',
       builder: (context, state) => const ProfilePage(),
     ),
   ],

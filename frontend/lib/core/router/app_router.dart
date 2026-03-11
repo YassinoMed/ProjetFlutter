@@ -14,12 +14,16 @@ import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/pages/trusted_devices_page.dart';
 import '../../features/chat/presentation/pages/chat_detail_page.dart';
+import '../../features/documents/presentation/pages/document_detail_page.dart';
+import '../../features/documents/presentation/pages/document_upload_page.dart';
+import '../../features/documents/presentation/pages/documents_page.dart';
 import '../../features/medical_records/presentation/pages/add_record_page.dart';
 import '../../features/medical_records/presentation/pages/medical_records_page.dart';
 import '../../features/onboarding/presentation/pages/onboarding_page.dart';
 import '../../features/profile/presentation/pages/change_password_page.dart';
 import '../../features/profile/presentation/pages/edit_profile_page.dart';
 import '../../features/profile/presentation/pages/gdpr_settings_page.dart';
+import '../../features/secretaries/presentation/pages/doctor_secretaries_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 import '../../features/video_call/presentation/pages/video_call_page.dart';
 import '../constants/app_constants.dart';
@@ -51,6 +55,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         final role = authState.valueOrNull?.user?.role;
         if (role == AppConstants.roleDoctor) {
           return AppRoutes.doctorHome;
+        }
+        if (role == AppConstants.roleSecretary) {
+          return AppRoutes.secretaryHome;
         }
         return AppRoutes.patientHome;
       }
@@ -127,6 +134,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+        path: AppRoutes.documents,
+        name: 'documents',
+        builder: (context, state) => const DocumentsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.documentDetail,
+        name: 'document-detail',
+        builder: (context, state) {
+          final documentId = state.pathParameters['id']!;
+          return DocumentDetailPage(documentId: documentId);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.documentUpload,
+        name: 'document-upload',
+        builder: (context, state) => const DocumentUploadPage(),
+      ),
+      GoRoute(
         path: AppRoutes.patientRecords,
         name: 'medical-records',
         builder: (context, state) => const MedicalRecordsPage(),
@@ -156,8 +181,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: 'trusted-devices',
         builder: (context, state) => const TrustedDevicesPage(),
       ),
+      GoRoute(
+        path: AppRoutes.doctorSecretaries,
+        name: 'doctor-secretaries',
+        builder: (context, state) => const DoctorSecretariesPage(),
+      ),
       patientShellRoute,
       doctorShellRoute,
+      secretaryShellRoute,
     ],
     errorBuilder: (context, state) => Scaffold(
       body: Center(

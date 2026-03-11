@@ -69,6 +69,14 @@ class ApiConstants {
   static const String medicalRecords = '/medical-records';
   static const String medicalRecordShow = '/medical-records/{id}';
 
+  // ── Medical Documents AI ───────────────────────────────
+  static const String documents = '/documents';
+  static const String documentUpload = '/documents/upload';
+  static const String documentShow = '/documents/{id}';
+  static const String documentSummary = '/documents/{id}/summary';
+  static const String documentEntities = '/documents/{id}/entities';
+  static const String documentReanalyze = '/documents/{id}/reanalyze';
+
   // ── E2EE Encrypted Attachments ────────────────────────────
   static const String attachmentUpload = '/attachments/upload';
   static const String attachmentShow = '/attachments/{id}';
@@ -83,6 +91,12 @@ class ApiConstants {
   // ── Profile ───────────────────────────────────────────────
   static const String profile = '/profile';
   static const String profilePassword = '/profile/password';
+
+  // ── Secretary Delegation ─────────────────────────────────
+  static const String doctorSecretaries = '/doctor/secretaries';
+  static const String secretaryInvitationAccept = '/secretary/invitations/accept';
+  static const String meDelegations = '/me/delegations';
+  static const String switchDoctorContext = '/context/switch-doctor';
 
   // ── RGPD ──────────────────────────────────────────────────
   static const String rgpdExport = '/rgpd/export';

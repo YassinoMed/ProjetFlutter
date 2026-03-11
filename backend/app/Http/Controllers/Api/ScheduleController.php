@@ -2,29 +2,42 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\SecretaryPermission;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ScheduleSlotResource;
 use App\Models\DoctorSchedule;
+use App\Services\AuditService;
+use App\Services\DelegationContextService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 class ScheduleController extends Controller
 {
+    public function __construct(
+        private readonly DelegationContextService $delegationContextService,
+        private readonly AuditService $auditService,
+    ) {}
+
     /**
      * List the authenticated doctor's schedule.
      */
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
-        $this->assertIsDoctor($user);
+        $doctorUserId = $this->resolveDoctorUserId($request);
 
         $schedules = DoctorSchedule::query()
-            ->where('doctor_user_id', $user->id)
+            ->where('doctor_user_id', $doctorUserId)
             ->orderBy('day_of_week')
             ->orderBy('start_time')
             ->get();
+
+        $this->auditAction($request, 'schedule.viewed', [
+            'doctor_user_id' => $doctorUserId,
+            'count' => $schedules->count(),
+        ]);
 
         return $this->respondSuccess(ScheduleSlotResource::collection($schedules), 'Schedule retrieved successfully');
     }
@@ -34,8 +47,7 @@ class ScheduleController extends Controller
      */
     public function upsert(Request $request): JsonResponse
     {
-        $user = $request->user();
-        $this->assertIsDoctor($user);
+        $doctorUserId = $this->resolveDoctorUserId($request);
 
         $data = $request->validate([
             'day_of_week' => 'required|integer|min:0|max:6',
@@ -47,7 +59,7 @@ class ScheduleController extends Controller
 
         $schedule = DoctorSchedule::query()->updateOrCreate(
             [
-                'doctor_user_id' => $user->id,
+                'doctor_user_id' => $doctorUserId,
                 'day_of_week' => $data['day_of_week'],
                 'start_time' => $data['start_time'],
             ],
@@ -57,6 +69,11 @@ class ScheduleController extends Controller
                 'is_active' => $data['is_active'] ?? true,
             ],
         );
+
+        $this->auditAction($request, 'schedule.upserted', [
+            'doctor_user_id' => $doctorUserId,
+            'schedule_id' => $schedule->id,
+        ]);
 
         return $this->respondSuccess([
             'schedule' => new ScheduleSlotResource($schedule),
@@ -68,15 +85,19 @@ class ScheduleController extends Controller
      */
     public function destroy(string $scheduleId, Request $request): JsonResponse
     {
-        $user = $request->user();
-        $this->assertIsDoctor($user);
+        $doctorUserId = $this->resolveDoctorUserId($request);
 
         $schedule = DoctorSchedule::query()
             ->where('id', $scheduleId)
-            ->where('doctor_user_id', $user->id)
+            ->where('doctor_user_id', $doctorUserId)
             ->firstOrFail();
 
         $schedule->delete();
+
+        $this->auditAction($request, 'schedule.deleted', [
+            'doctor_user_id' => $doctorUserId,
+            'schedule_id' => $scheduleId,
+        ]);
 
         return $this->respondSuccess(null, 'Schedule slot deleted successfully');
     }
@@ -86,8 +107,7 @@ class ScheduleController extends Controller
      */
     public function bulkUpdate(Request $request): JsonResponse
     {
-        $user = $request->user();
-        $this->assertIsDoctor($user);
+        $doctorUserId = $this->resolveDoctorUserId($request);
 
         $data = $request->validate([
             'slots' => 'required|array|min:1|max:21',
@@ -100,13 +120,13 @@ class ScheduleController extends Controller
 
         // Delete all existing slots
         DoctorSchedule::query()
-            ->where('doctor_user_id', $user->id)
+            ->where('doctor_user_id', $doctorUserId)
             ->delete();
 
         // Create new slots
-        $createdSlots = collect($data['slots'])->map(function ($slot) use ($user) {
+        $createdSlots = collect($data['slots'])->map(function ($slot) use ($doctorUserId) {
             return DoctorSchedule::query()->create([
-                'doctor_user_id' => $user->id,
+                'doctor_user_id' => $doctorUserId,
                 'day_of_week' => $slot['day_of_week'],
                 'start_time' => $slot['start_time'],
                 'end_time' => $slot['end_time'],
@@ -115,13 +135,43 @@ class ScheduleController extends Controller
             ]);
         });
 
+        $this->auditAction($request, 'schedule.bulk_updated', [
+            'doctor_user_id' => $doctorUserId,
+            'count' => $createdSlots->count(),
+        ]);
+
         return $this->respondSuccess(ScheduleSlotResource::collection($createdSlots), 'Bulk schedule updated successfully');
     }
 
-    private function assertIsDoctor($user): void
+    private function resolveDoctorUserId(Request $request): string
     {
-        if (! in_array($user->role, [UserRole::DOCTOR, UserRole::ADMIN], true)) {
-            throw new AccessDeniedHttpException('Only doctors can manage schedules');
+        $user = $request->user();
+
+        if (in_array($user->role, [UserRole::DOCTOR, UserRole::ADMIN], true)) {
+            return $user->id;
         }
+
+        if ($user->role === UserRole::SECRETARY) {
+            return $this->delegationContextService
+                ->assertSecretaryPermission($request, SecretaryPermission::MANAGE_SCHEDULE)
+                ->doctor_user_id;
+        }
+
+        throw new AccessDeniedHttpException('Only doctors or delegated secretaries can manage schedules');
+    }
+
+    private function auditAction(Request $request, string $event, array $context): void
+    {
+        $delegation = $request->attributes->get('doctor_delegation');
+
+        $this->auditService->log(
+            $request->user(),
+            $event,
+            DoctorSchedule::class,
+            $context,
+            $request->attributes->get('acting_doctor_user_id'),
+            $delegation?->id,
+            $request,
+        );
     }
 }

@@ -12,6 +12,7 @@ class AppConstants {
   // ── User Roles ────────────────────────────────────────────
   static const String rolePatient = 'patient';
   static const String roleDoctor = 'doctor';
+  static const String roleSecretary = 'secretary';
 
   // ── Appointment States (CDC page 14) ──────────────────────
   static const String appointmentPending = 'pending';
@@ -47,6 +48,7 @@ class AppConstants {
   static const String keyDbEncryptionKey = 'db_encryption_key';
   static const String keyE2ePrivateKey = 'e2e_private_key';
   static const String keyE2ePublicKey = 'e2e_public_key';
+  static const String keyActingDoctorUserId = 'acting_doctor_user_id';
 
   // ── Date Formats ──────────────────────────────────────────
   static const String dateFormat = 'dd/MM/yyyy';

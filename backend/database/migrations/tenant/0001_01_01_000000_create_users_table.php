@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('last_name');
             $table->string('phone', 32)->nullable()->unique();
 
-            $table->enum('role', ['PATIENT', 'DOCTOR', 'ADMIN'])->index();
+            $table->enum('role', ['PATIENT', 'DOCTOR', 'ADMIN', 'SECRETARY'])->index();
 
             $table->rememberToken();
             $table->timestamps();

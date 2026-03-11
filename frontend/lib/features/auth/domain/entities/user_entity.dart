@@ -8,7 +8,7 @@ class User extends Equatable {
   final String id;
   final String name;
   final String email;
-  final String role; // 'patient' or 'doctor'
+  final String role; // 'patient', 'doctor', or 'secretary'
   final String? phone;
   final String? avatarUrl;
   final String? speciality; // For doctors
@@ -37,6 +37,7 @@ class User extends Equatable {
 
   bool get isDoctor => role == 'doctor';
   bool get isPatient => role == 'patient';
+  bool get isSecretary => role == 'secretary';
 
   User copyWith({
     String? id,

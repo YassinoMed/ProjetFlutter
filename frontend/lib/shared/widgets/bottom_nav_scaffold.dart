@@ -26,6 +26,10 @@ class BottomNavScaffold extends StatelessWidget {
       if (currentPath.startsWith(AppRoutes.patientChat)) return 2;
       if (currentPath.startsWith(AppRoutes.patientProfile)) return 3;
       return 0;
+    } else if (role == 'secretary') {
+      if (currentPath.startsWith(AppRoutes.secretaryAppointments)) return 1;
+      if (currentPath.startsWith(AppRoutes.secretaryProfile)) return 2;
+      return 0;
     } else {
       if (currentPath.startsWith(AppRoutes.doctorAppointments)) return 1;
       if (currentPath.startsWith(AppRoutes.doctorChat)) return 2;
@@ -51,6 +55,24 @@ class BottomNavScaffold extends StatelessWidget {
           icon: Icon(Icons.chat_bubble_outline_rounded),
           activeIcon: Icon(Icons.chat_bubble_rounded),
           label: 'Messages',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.person_outline_rounded),
+          activeIcon: Icon(Icons.person_rounded),
+          label: 'Profil',
+        ),
+      ];
+    } else if (role == 'secretary') {
+      return const [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.badge_outlined),
+          activeIcon: Icon(Icons.badge_rounded),
+          label: 'Contexte',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.calendar_today_outlined),
+          activeIcon: Icon(Icons.calendar_today_rounded),
+          label: 'Planning',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.person_outline_rounded),
@@ -89,23 +111,43 @@ class BottomNavScaffold extends StatelessWidget {
       switch (index) {
         case 0:
           context.go(AppRoutes.patientHome);
+          return;
         case 1:
           context.go(AppRoutes.patientAppointments);
+          return;
         case 2:
           context.go(AppRoutes.patientChat);
+          return;
         case 3:
           context.go(AppRoutes.patientProfile);
+          return;
+      }
+    } else if (role == 'secretary') {
+      switch (index) {
+        case 0:
+          context.go(AppRoutes.secretaryHome);
+          return;
+        case 1:
+          context.go(AppRoutes.secretaryAppointments);
+          return;
+        case 2:
+          context.go(AppRoutes.secretaryProfile);
+          return;
       }
     } else {
       switch (index) {
         case 0:
           context.go(AppRoutes.doctorHome);
+          return;
         case 1:
           context.go(AppRoutes.doctorAppointments);
+          return;
         case 2:
           context.go(AppRoutes.doctorChat);
+          return;
         case 3:
           context.go(AppRoutes.doctorProfile);
+          return;
       }
     }
   }

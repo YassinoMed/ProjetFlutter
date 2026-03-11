@@ -13,9 +13,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
         then: function () {
             Route::middleware([
-                    'web',
-                    \Stancl\Tenancy\Middleware\InitializeTenancyByDomain::class,
-                ])
+                'web',
+                \Stancl\Tenancy\Middleware\InitializeTenancyByDomain::class,
+            ])
                 ->prefix('admin')
                 ->name('admin.')
                 ->group(base_path('routes/admin.php'));
@@ -28,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(\App\Http\Middleware\TenantMiddleware::class);
         $middleware->alias([
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
+            'doctor.context' => \App\Http\Middleware\ResolveDoctorDelegationContext::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
