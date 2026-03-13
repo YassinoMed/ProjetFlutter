@@ -330,6 +330,14 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
               'Gérez vos patients, votre planning et vos consultations en ligne.',
           color: AppTheme.secondaryColor,
         ),
+        const SizedBox(height: 16),
+      _buildRoleCard(
+        role: AppConstants.roleSecretary,
+        icon: Icons.badge_rounded,
+        title: 'Secrétaire',
+        description: 'Gérez les rendez-vous, le planning et l’accueil des patients.',
+        color: const Color.fromARGB(255, 0, 40, 150),
+      ),
       ],
     );
   }
@@ -488,6 +496,19 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             ),
           ),
         ],
+        if (_selectedRole == AppConstants.roleSecretary) ...[
+        const SizedBox(height: 16),
+        _buildLabel('Département'),
+        TextFormField(
+          controller: _specialityController, // ou créer _departmentController
+          validator: (v) => Validators.required(v, 'Le département'),
+          textInputAction: TextInputAction.done,
+          decoration: const InputDecoration(
+            hintText: 'Accueil / Administration',
+            prefixIcon: Icon(Icons.apartment_outlined),
+          ),
+        ),
+      ],
       ],
     );
   }
