@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/router/app_routes.dart';
@@ -137,6 +138,24 @@ class _LoginPageState extends ConsumerState<LoginPage>
       data: (_) {},
     );
   }
+
+
+// Future<void> _handleGoogleLogin() async {
+//   try {
+//     final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+
+//     if (googleUser == null) return;
+
+//     final notifier = ref.read(authNotifierProvider.notifier);
+//     await notifier.loginWithGoogle();
+
+//   } catch (e) {
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(content: Text(e.toString())),
+//     );
+//   }
+// } 
+
 
   /// Login with biometric (fingerprint)
   ///
@@ -347,6 +366,26 @@ class _LoginPageState extends ConsumerState<LoginPage>
                               : const Text('Se connecter'),
                         ),
                       ),
+
+const SizedBox(height: 16),
+
+SizedBox(
+  width: double.infinity,
+  height: 56,
+  child: OutlinedButton.icon(
+    icon: Image.network(
+      "https://developers.google.com/identity/images/g-logo.png",
+      height: 22,
+    ),
+    label: const Text("Se connecter avec Google"),
+    onPressed: isLoading ? null : null,
+    style: OutlinedButton.styleFrom(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+    ),
+  ),
+),
 
                       const SizedBox(height: 20),
 
