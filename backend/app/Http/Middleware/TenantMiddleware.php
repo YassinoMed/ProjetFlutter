@@ -23,8 +23,11 @@ class TenantMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Skip tenant initialization for non-API routes and the tenants listing endpoint
-        if (! $request->is('api/*') || $request->is('api/tenants')) {
+        // Skip tenant initialization only for non-API/admin routes and the tenants listing endpoint
+        if (
+            $request->is('api/tenants') || 
+            (! $request->is('api/*') && ! $request->is('admin*') && ! $request->is('admin'))
+        ) {
             return $next($request);
         }
 

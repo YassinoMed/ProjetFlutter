@@ -6,8 +6,11 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/device_info_helper.dart';
 import '../providers/auth_provider.dart';
 
 class TrustedDevicesPage extends ConsumerStatefulWidget {
@@ -56,6 +59,13 @@ class _TrustedDevicesPageState extends ConsumerState<TrustedDevicesPage> {
   }
 
   Future<void> _revokeDevice(String deviceId, String deviceName) async {
+    final targetDevice = _devices.firstWhere(
+      (device) => device['id'] == deviceId,
+      orElse: () => <String, dynamic>{},
+    );
+    final targetDeviceUuid = targetDevice['device_uuid'] as String? ??
+        targetDevice['device_id'] as String?;
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -78,7 +88,12 @@ class _TrustedDevicesPageState extends ConsumerState<TrustedDevicesPage> {
       ),
     );
 
+    if (!mounted) return;
     if (confirmed != true) return;
+
+    final currentDeviceId =
+        await ref.read(deviceInfoHelperProvider).getDeviceId();
+    final isCurrentDevice = targetDeviceUuid == currentDeviceId;
 
     final notifier = ref.read(authNotifierProvider.notifier);
     final result = await notifier.revokeDevice(deviceId);
@@ -95,7 +110,24 @@ class _TrustedDevicesPageState extends ConsumerState<TrustedDevicesPage> {
           ),
         );
       },
-      (_) {
+      (_) async {
+        if (isCurrentDevice) {
+          await notifier.logout();
+
+          if (!mounted) return;
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Cet appareil a été révoqué. Veuillez vous reconnecter.',
+              ),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          context.go(AppRoutes.login);
+          return;
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Appareil révoqué avec succès'),
@@ -113,6 +145,12 @@ class _TrustedDevicesPageState extends ConsumerState<TrustedDevicesPage> {
         return Icons.phone_iphone_rounded;
       case 'android':
         return Icons.phone_android_rounded;
+      case 'web':
+        return Icons.language_rounded;
+      case 'macos':
+        return Icons.laptop_mac_rounded;
+      case 'windows':
+        return Icons.laptop_windows_rounded;
       default:
         return Icons.devices_rounded;
     }
@@ -160,7 +198,7 @@ class _TrustedDevicesPageState extends ConsumerState<TrustedDevicesPage> {
                           Icon(
                             Icons.devices_rounded,
                             size: 64,
-                            color: Colors.grey.withOpacity(0.5),
+                            color: Colors.grey.withValues(alpha: 0.5),
                           ),
                           const SizedBox(height: 16),
                           Text(
@@ -181,6 +219,11 @@ class _TrustedDevicesPageState extends ConsumerState<TrustedDevicesPage> {
                           final device = _devices[index];
                           final biometricsEnabled =
                               device['biometrics_enabled'] == true;
+                          final isCurrentDevice =
+                              device['current_device'] == true;
+                          final lastSeenAt =
+                              device['last_used_at'] as String? ??
+                                  device['last_login_at'] as String?;
 
                           return Container(
                             margin: const EdgeInsets.only(bottom: 12),
@@ -190,11 +233,11 @@ class _TrustedDevicesPageState extends ConsumerState<TrustedDevicesPage> {
                               border: Border.all(
                                 color: Theme.of(context)
                                     .dividerColor
-                                    .withOpacity(0.2),
+                                    .withValues(alpha: 0.2),
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.04),
+                                  color: Colors.black.withValues(alpha: 0.04),
                                   blurRadius: 10,
                                   offset: const Offset(0, 2),
                                 ),
@@ -209,7 +252,9 @@ class _TrustedDevicesPageState extends ConsumerState<TrustedDevicesPage> {
                                 width: 48,
                                 height: 48,
                                 decoration: BoxDecoration(
-                                  color: AppTheme.primaryColor.withOpacity(0.1),
+                                  color: AppTheme.primaryColor.withValues(
+                                    alpha: 0.1,
+                                  ),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Icon(
@@ -226,10 +271,31 @@ class _TrustedDevicesPageState extends ConsumerState<TrustedDevicesPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const SizedBox(height: 4),
+                                  if (isCurrentDevice)
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 4),
+                                      child: Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.verified_user_rounded,
+                                            size: 14,
+                                            color: AppTheme.successColor,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'Appareil actuel',
+                                            style: AppTheme.bodySmall.copyWith(
+                                              color: AppTheme.successColor,
+                                              fontSize: 11,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   if (biometricsEnabled)
                                     Row(
                                       children: [
-                                        Icon(
+                                        const Icon(
                                           Icons.fingerprint_rounded,
                                           size: 14,
                                           color: AppTheme.primaryColor,
@@ -244,11 +310,11 @@ class _TrustedDevicesPageState extends ConsumerState<TrustedDevicesPage> {
                                         ),
                                       ],
                                     ),
-                                  if (device['last_login_at'] != null)
+                                  if (lastSeenAt != null)
                                     Padding(
                                       padding: const EdgeInsets.only(top: 2),
                                       child: Text(
-                                        'Dernière connexion: ${_formatDate(device['last_login_at'] as String?)}',
+                                        'Derniere activite: ${_formatDate(lastSeenAt)}',
                                         style: AppTheme.bodySmall.copyWith(
                                           color: AppTheme.neutralGray500,
                                           fontSize: 11,

@@ -1,13 +1,16 @@
+library;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
-import 'package:mediconnect_pro/core/theme/app_theme.dart';
-import 'package:mediconnect_pro/core/router/app_routes.dart';
-import 'package:mediconnect_pro/features/medical_records/domain/entities/medical_record_entity.dart';
-import 'package:mediconnect_pro/features/medical_records/presentation/providers/medical_record_providers.dart';
-import 'package:mediconnect_pro/shared/widgets/error_display.dart';
+import '../../../../core/router/app_routes.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/widgets/clinical_ui.dart';
+import '../../../../shared/widgets/error_display.dart';
+import '../../domain/entities/medical_record_entity.dart';
+import '../providers/medical_record_providers.dart';
 
 class MedicalRecordsPage extends ConsumerStatefulWidget {
   const MedicalRecordsPage({super.key});
@@ -18,25 +21,28 @@ class MedicalRecordsPage extends ConsumerStatefulWidget {
 
 class _MedicalRecordsPageState extends ConsumerState<MedicalRecordsPage>
     with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+  late final TabController _tabController;
 
   static const _categories = [
-    (null, 'Tout', Icons.folder_open_rounded, Color(0xFF3498DB)),
+    (null, 'Tout', Icons.folder_open_rounded, AppTheme.primaryColor),
+    (
+      'lab_result',
+      'Analyses',
+      Icons.science_outlined,
+      AppTheme.primaryColor,
+    ),
     (
       'consultation',
       'Consultations',
-      Icons.assignment_rounded,
-      Color(0xFF2E86C1)
+      Icons.description_outlined,
+      AppTheme.primaryLight,
     ),
     (
       'prescription',
       'Ordonnances',
-      Icons.medication_rounded,
-      Color(0xFF27AE60)
+      Icons.medication_outlined,
+      AppTheme.successColor,
     ),
-    ('lab_result', 'Analyses', Icons.science_rounded, Color(0xFF8E44AD)),
-    ('imaging', 'Imagerie', Icons.visibility_rounded, Color(0xFFE67E22)),
-    ('certificate', 'Certificats', Icons.verified_rounded, Color(0xFF16A085)),
   ];
 
   @override
@@ -54,242 +60,228 @@ class _MedicalRecordsPageState extends ConsumerState<MedicalRecordsPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dossier Médical'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search_rounded),
-            onPressed: () {
-              // TODO: Implement search within records
-            },
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          labelStyle:
-              const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-          unselectedLabelStyle: const TextStyle(fontSize: 13),
-          indicatorSize: TabBarIndicatorSize.label,
-          tabs: _categories
-              .map((c) => Tab(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(c.$3, size: 16),
-                        const SizedBox(width: 6),
-                        Text(c.$2),
-                      ],
-                    ),
-                  ))
-              .toList(),
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: _categories.map((cat) {
-          final catKey = cat.$1;
-          final catRecords = ref.watch(medicalRecordsProvider(catKey));
-
-          return catRecords.when(
-            data: (records) {
-              if (records.isEmpty) {
-                return _buildEmptyCategory(cat.$2, cat.$3, cat.$4);
-              }
-              return RefreshIndicator(
-                onRefresh: () =>
-                    ref.refresh(medicalRecordsProvider(catKey).future),
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: records.length,
-                  itemBuilder: (context, index) {
-                    final record = records[index];
-                    final cat = _getCategoryMeta(record.category);
-                    return _RecordCard(
-                      record: record,
-                      icon: cat.$3,
-                      color: cat.$4,
-                      onTap: () => context.push(AppRoutes.recordDetail
-                          .replaceFirst(':id', record.id)),
-                    );
-                  },
-                ),
-              );
-            },
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (err, st) => ErrorDisplay(
-              message: err.toString(),
-              onRetry: () => ref.refresh(medicalRecordsProvider(catKey)),
-            ),
-          );
-        }).toList(),
-      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push(AppRoutes.addRecord),
         icon: const Icon(Icons.add_rounded),
         label: const Text('Ajouter'),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
       ),
-    );
-  }
-
-  (String?, String, IconData, Color) _getCategoryMeta(String category) {
-    return _categories.firstWhere(
-      (c) => c.$1 == category,
-      orElse: () => (
-        'other',
-        'Autre',
-        Icons.description_rounded,
-        const Color(0xFF95A5A6)
-      ),
-    );
-  }
-
-  Widget _buildEmptyCategory(String name, IconData icon, Color color) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(24),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const ClinicalStatusChip(
+                    label: 'STOCKAGE LOCAL CHIFFRÉ AES-256',
+                    color: AppTheme.successColor,
+                    icon: Icons.lock_rounded,
+                    compact: true,
+                  ),
+                  const SizedBox(height: 12),
+                  Text('Historique', style: AppTheme.headlineSmall),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Retrouvez l’intégralité de vos soins numériques.',
+                    style: AppTheme.bodyMedium.copyWith(
+                      color: AppTheme.neutralGray500,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ClinicalSurface(
+                    padding: const EdgeInsets.all(6),
+                    child: TabBar(
+                      controller: _tabController,
+                      isScrollable: true,
+                      splashFactory: NoSplash.splashFactory,
+                      tabs: _categories
+                          .map((category) => Tab(text: category.$2))
+                          .toList(),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            child: Icon(icon, size: 48, color: color),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            'Aucun document $name',
-            style: AppTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Vos documents apparaîtront ici.',
-            style: AppTheme.bodySmall.copyWith(color: AppTheme.neutralGray500),
-          ),
-        ],
+            const SizedBox(height: 12),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: _categories.map((category) {
+                  final recordsAsync =
+                      ref.watch(medicalRecordsProvider(category.$1));
+
+                  return recordsAsync.when(
+                    data: (records) {
+                      if (records.isEmpty) {
+                        return ClinicalEmptyState(
+                          icon: category.$3,
+                          title: 'Aucun document ${category.$2.toLowerCase()}',
+                          message:
+                              'Les documents ${category.$2.toLowerCase()} apparaîtront ici après synchronisation.',
+                        );
+                      }
+
+                      return RefreshIndicator(
+                        onRefresh: () async {
+                          ref.invalidate(medicalRecordsProvider(category.$1));
+                          await ref
+                              .read(medicalRecordsProvider(category.$1).future);
+                        },
+                        child: ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                          itemCount: records.length,
+                          itemBuilder: (context, index) {
+                            final record = records[index];
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: _RecordCard(record: record),
+                            );
+                          },
+                        ),
+                      );
+                    },
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (err, st) => ErrorDisplay(
+                      message: err.toString(),
+                      onRetry: () =>
+                          ref.invalidate(medicalRecordsProvider(category.$1)),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-// ── Record Card ─────────────────────────────────────────────
-
 class _RecordCard extends StatelessWidget {
   final MedicalRecord record;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
 
-  const _RecordCard({
-    required this.record,
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
+  const _RecordCard({required this.record});
 
   @override
   Widget build(BuildContext context) {
     final dateStr =
         DateFormat('dd MMM yyyy', 'fr_FR').format(record.recordedAtUtc);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final meta = _meta(record.category);
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: isDark ? 0 : 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: isDark
-            ? BorderSide(color: Colors.white.withOpacity(0.08))
-            : BorderSide.none,
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
+    return ClinicalSurface(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
               Container(
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(12),
+                  color: meta.$3.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                 ),
-                child: Icon(icon, color: color, size: 24),
+                child: Icon(meta.$2, color: meta.$3),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      _categoryLabel(record.category),
-                      style: AppTheme.titleMedium,
-                    ),
+                    Text(meta.$1, style: AppTheme.titleMedium),
                     const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(Icons.calendar_today_rounded,
-                            size: 12, color: AppTheme.neutralGray500),
-                        const SizedBox(width: 4),
-                        Text(
-                          dateStr,
-                          style: AppTheme.bodySmall
-                              .copyWith(color: AppTheme.neutralGray500),
-                        ),
-                        if (record.doctorUserId != null) ...[
-                          const SizedBox(width: 12),
-                          const Icon(Icons.person_rounded,
-                              size: 12, color: AppTheme.neutralGray500),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Dr.',
-                            style: AppTheme.bodySmall
-                                .copyWith(color: AppTheme.neutralGray500),
-                          ),
-                        ],
-                      ],
+                    Text(
+                      'Dernière mise à jour • $dateStr',
+                      style: AppTheme.bodySmall.copyWith(
+                        color: AppTheme.neutralGray500,
+                      ),
                     ),
                   ],
                 ),
               ),
-              // E2E badge
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.lock_rounded,
-                  size: 14,
-                  color: Colors.green,
-                ),
+              const Icon(
+                Icons.more_vert_rounded,
+                color: AppTheme.neutralGray400,
               ),
-              const SizedBox(width: 8),
-              const Icon(Icons.chevron_right_rounded,
-                  color: AppTheme.neutralGray400),
             ],
           ),
-        ),
+          const SizedBox(height: 14),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppTheme.neutralGray100,
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            ),
+            child: Text(
+              _recordPreview(record),
+              style: AppTheme.bodySmall.copyWith(
+                color: AppTheme.neutralGray600,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              ClinicalStatusChip(
+                label: meta.$1.toUpperCase(),
+                color: meta.$3,
+                compact: true,
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: () => context.push(
+                  AppRoutes.recordDetail.replaceFirst(':id', record.id),
+                ),
+                child: const Text('Voir détails'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  String _categoryLabel(String category) {
+  (String, IconData, Color) _meta(String category) {
     return switch (category) {
-      'consultation' => 'Consultation',
-      'prescription' => 'Ordonnance',
-      'lab_result' => 'Résultat d\'analyse',
-      'imaging' => 'Imagerie médicale',
-      'certificate' => 'Certificat médical',
-      _ => 'Document médical',
+      'consultation' => (
+          'Consultation',
+          Icons.description_outlined,
+          AppTheme.primaryLight
+        ),
+      'prescription' => (
+          'Ordonnance',
+          Icons.medication_outlined,
+          AppTheme.successColor
+        ),
+      'lab_result' => (
+          'Résultats labo',
+          Icons.science_outlined,
+          AppTheme.primaryColor
+        ),
+      'imaging' => ('Imagerie', Icons.image_outlined, AppTheme.warningColor),
+      _ => (
+          'Document médical',
+          Icons.folder_open_outlined,
+          AppTheme.neutralGray500
+        ),
     };
+  }
+
+  String _recordPreview(MedicalRecord record) {
+    final notes = record.metadataEncrypted?['notes']?.toString();
+    if (notes != null && notes.isNotEmpty) {
+      return notes;
+    }
+
+    final originalName =
+        record.metadataEncrypted?['original_file_name']?.toString();
+    if (originalName != null && originalName.isNotEmpty) {
+      return originalName;
+    }
+
+    return 'Aucun résumé structuré disponible pour ce document.';
   }
 }

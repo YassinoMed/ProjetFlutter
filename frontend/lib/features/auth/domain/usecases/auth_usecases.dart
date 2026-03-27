@@ -12,14 +12,14 @@ import '../repositories/auth_repository.dart';
 // ── Login Use Case ──────────────────────────────────────────
 
 class LoginParams {
-  final String email;
+  final String identifier;
   final String password;
   final String? deviceId;
   final String? deviceName;
   final String? platform;
 
   const LoginParams({
-    required this.email,
+    required this.identifier,
     required this.password,
     this.deviceId,
     this.deviceName,
@@ -36,7 +36,7 @@ class LoginUseCase extends UseCase<({User user, String token}), LoginParams> {
   Future<Either<Failure, ({User user, String token})>> call(
       LoginParams params) {
     return repository.login(
-      email: params.email,
+      identifier: params.identifier,
       password: params.password,
       deviceId: params.deviceId,
       deviceName: params.deviceName,

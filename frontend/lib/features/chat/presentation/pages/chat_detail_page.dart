@@ -11,6 +11,7 @@ import 'package:mediconnect_pro/core/voice/voice_service.dart';
 import 'package:mediconnect_pro/core/security/encrypted_attachment_service.dart';
 import 'package:mediconnect_pro/features/chat/presentation/providers/chat_providers.dart';
 import 'package:mediconnect_pro/features/chat/domain/entities/chat_entities.dart';
+import 'package:mediconnect_pro/shared/widgets/clinical_ui.dart';
 import '../../../../shared/widgets/error_display.dart';
 
 class ChatDetailPage extends ConsumerStatefulWidget {
@@ -33,13 +34,53 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
   @override
   Widget build(BuildContext context) {
     final messagesAsync = ref.watch(messagesProvider(widget.conversationId));
+    final conversations =
+        ref.watch(conversationsProvider).valueOrNull ?? const <Conversation>[];
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    Conversation? conversation;
+    for (final item in conversations) {
+      if (item.id == widget.conversationId) {
+        conversation = item;
+        break;
+      }
+    }
 
     return Scaffold(
+      backgroundColor:
+          isDark ? AppTheme.darkBackground : AppTheme.neutralGray50,
       appBar: AppBar(
-        title: const Text('Chat sécurisé 🔒'),
+        title: Row(
+          children: [
+            ClinicalAvatar(
+              name: conversation?.otherMemberName ?? 'Conversation',
+              imageUrl: conversation?.otherMemberAvatar,
+              radius: 18,
+              online: true,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    conversation?.otherMemberName ?? 'Conversation sécurisée',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTheme.titleSmall,
+                  ),
+                  Text(
+                    'En ligne',
+                    style: AppTheme.bodySmall.copyWith(
+                      color: AppTheme.successColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
         actions: [
-          // TTS toggle
           IconButton(
             icon: const Icon(Icons.volume_up_rounded),
             tooltip: 'Lire les messages',
@@ -60,42 +101,26 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
       ),
       body: Column(
         children: [
-          // E2EE indicator banner
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: isDark
-                    ? [const Color(0xFF1a1a2e), const Color(0xFF16213e)]
-                    : [const Color(0xFFe8f4fd), const Color(0xFFd6eaf8)],
+              color: isDark ? AppTheme.darkSurface : AppTheme.neutralGray100,
+            ),
+            child: const Center(
+              child: ClinicalStatusChip(
+                label: 'E2E CHIFFRÉ',
+                color: AppTheme.successColor,
+                icon: Icons.lock_rounded,
+                compact: true,
               ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.lock_rounded,
-                    size: 14,
-                    color: isDark ? Colors.greenAccent : Colors.green[700]),
-                const SizedBox(width: 6),
-                Text(
-                  'Chiffrement de bout en bout activé',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: isDark ? Colors.greenAccent : Colors.green[800],
-                  ),
-                ),
-              ],
-            ),
           ).animate().fadeIn(duration: 500.ms),
-
-          // Messages list
           Expanded(
             child: messagesAsync.when(
               data: (messages) => ListView.builder(
                 controller: _scrollController,
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
                 itemCount: messages.length,
                 itemBuilder: (context, index) {
                   final message = messages[index];
@@ -113,40 +138,46 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
               ),
             ),
           ),
-
-          // Voice listening indicator
           if (_isListening)
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer,
+                color: isDark ? AppTheme.darkSurface : AppTheme.primarySurface,
               ),
               child: Row(
                 children: [
                   _PulsingDot(),
                   const SizedBox(width: 8),
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'Écoute en cours... Parlez maintenant',
-                      style: TextStyle(fontWeight: FontWeight.w500),
+                      style: AppTheme.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.stop_rounded, color: Colors.red),
+                    icon: const Icon(
+                      Icons.stop_rounded,
+                      color: AppTheme.errorColor,
+                    ),
                     onPressed: _stopVoiceInput,
                   ),
                 ],
               ),
             ).animate().slideY(begin: 1.0, end: 0.0, duration: 300.ms),
-
-          // Attachment options panel
           if (_showAttachOptions)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
+                color:
+                    isDark ? AppTheme.darkSurface : Theme.of(context).cardColor,
                 border: Border(
-                    top: BorderSide(color: Colors.grey.withOpacity(0.2))),
+                  top: BorderSide(
+                    color:
+                        isDark ? AppTheme.darkBorder : AppTheme.neutralGray200,
+                  ),
+                ),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -154,32 +185,30 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
                   _AttachOption(
                     icon: Icons.description_rounded,
                     label: 'Ordonnance',
-                    color: Colors.blue,
+                    color: AppTheme.primaryColor,
                     onTap: () => _pickAndUploadFile(type: 'medical_record'),
                   ),
                   _AttachOption(
                     icon: Icons.science_rounded,
                     label: 'Résultat',
-                    color: Colors.purple,
+                    color: AppTheme.videoCallColor,
                     onTap: () => _pickAndUploadFile(type: 'medical_record'),
                   ),
                   _AttachOption(
                     icon: Icons.image_rounded,
                     label: 'Image',
-                    color: Colors.green,
+                    color: AppTheme.successColor,
                     onTap: () => _pickAndUploadFile(),
                   ),
                   _AttachOption(
                     icon: Icons.insert_drive_file_rounded,
                     label: 'Fichier',
-                    color: Colors.orange,
+                    color: AppTheme.warningColor,
                     onTap: () => _pickAndUploadFile(),
                   ),
                 ],
               ),
             ).animate().slideY(begin: 1.0, end: 0.0, duration: 200.ms),
-
-          // Input bar with voice toggle
           _buildInput(),
         ],
       ),
@@ -187,29 +216,36 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
   }
 
   Widget _buildInput() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: isDark ? AppTheme.darkBackground : Theme.of(context).cardColor,
         boxShadow: AppTheme.shadowSm,
       ),
       child: SafeArea(
         child: Row(
           children: [
-            // Attachment button
-            IconButton(
-              icon: Icon(
-                _showAttachOptions
-                    ? Icons.close_rounded
-                    : Icons.add_circle_outline_rounded,
-                color: AppTheme.primaryColor,
-              ),
-              onPressed: () {
+            GestureDetector(
+              onTap: () {
                 setState(() => _showAttachOptions = !_showAttachOptions);
               },
+              child: Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color:
+                      isDark ? AppTheme.darkSurface : AppTheme.neutralGray100,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  _showAttachOptions ? Icons.close_rounded : Icons.add_rounded,
+                  color: AppTheme.primaryColor,
+                ),
+              ),
             ),
-
-            // Text input / Voice toggle
+            const SizedBox(width: 10),
             Expanded(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 200),
@@ -222,8 +258,10 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
                           height: 48,
                           decoration: BoxDecoration(
                             color: _isListening
-                                ? Colors.red.withOpacity(0.1)
-                                : Colors.grey.withOpacity(0.1),
+                                ? AppTheme.softColor(AppTheme.errorColor)
+                                : (isDark
+                                    ? AppTheme.darkSurface
+                                    : AppTheme.neutralGray100),
                             borderRadius: BorderRadius.circular(24),
                           ),
                           child: Center(
@@ -231,10 +269,10 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
                               _isListening
                                   ? '🎤 Relâchez pour envoyer'
                                   : 'Maintenez pour parler',
-                              style: TextStyle(
+                              style: AppTheme.bodyMedium.copyWith(
                                 color: _isListening
-                                    ? Colors.red
-                                    : Colors.grey[600],
+                                    ? AppTheme.errorColor
+                                    : AppTheme.neutralGray500,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -244,14 +282,30 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
                     : TextField(
                         key: const ValueKey('text'),
                         controller: _controller,
-                        decoration: const InputDecoration(
-                          hintText: 'Tapez votre message...',
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
+                        decoration: InputDecoration(
+                          hintText: 'Écrivez votre message',
+                          filled: true,
+                          fillColor: isDark
+                              ? AppTheme.darkSurface
+                              : AppTheme.neutralGray100,
+                          border: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.circular(AppTheme.radiusFull),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.circular(AppTheme.radiusFull),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.circular(AppTheme.radiusFull),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
                           ),
                         ),
                         maxLines: null,
@@ -259,28 +313,48 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
                       ),
               ),
             ),
-
-            // Voice / Text toggle
-            IconButton(
-              icon: Icon(
-                _isVoiceMode ? Icons.keyboard_rounded : Icons.mic_rounded,
-                color: AppTheme.primaryColor,
-              ),
-              onPressed: () {
+            const SizedBox(width: 10),
+            GestureDetector(
+              onTap: () {
                 setState(() => _isVoiceMode = !_isVoiceMode);
               },
+              child: Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color:
+                      isDark ? AppTheme.darkSurface : AppTheme.neutralGray100,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  _isVoiceMode ? Icons.keyboard_rounded : Icons.mic_rounded,
+                  color: AppTheme.primaryColor,
+                ),
+              ),
             ),
-
-            // Send button (only in text mode)
             if (!_isVoiceMode)
               AnimatedOpacity(
                 opacity: _controller.text.trim().isNotEmpty ? 1.0 : 0.3,
                 duration: const Duration(milliseconds: 200),
-                child: IconButton(
-                  icon: const Icon(Icons.send_rounded,
-                      color: AppTheme.primaryColor),
-                  onPressed:
-                      _controller.text.trim().isNotEmpty ? _sendMessage : null,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 10),
+                  child: GestureDetector(
+                    onTap: _controller.text.trim().isNotEmpty
+                        ? _sendMessage
+                        : null,
+                    child: Container(
+                      width: 46,
+                      height: 46,
+                      decoration: const BoxDecoration(
+                        color: AppTheme.primaryColor,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.send_rounded,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
                 ),
               ),
           ],
@@ -404,7 +478,7 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('✅ Fichier chiffré envoyé avec succès !'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppTheme.successColor,
           ),
         );
       }
@@ -413,7 +487,7 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('❌ Erreur: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -442,38 +516,31 @@ class _MessageBubble extends StatelessWidget {
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
-            gradient: message.isMe
-                ? const LinearGradient(
-                    colors: [Color(0xFF0D6EFD), Color(0xFF0A58CA)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
-                : null,
-            color: message.isMe ? null : AppTheme.neutralGray200,
-            borderRadius: BorderRadius.circular(16).copyWith(
+            color: message.isMe
+                ? AppTheme.primaryColor
+                : (Theme.of(context).brightness == Brightness.dark
+                    ? AppTheme.darkSurface
+                    : Colors.white),
+            borderRadius: BorderRadius.circular(18).copyWith(
               bottomRight: message.isMe
                   ? const Radius.circular(4)
-                  : const Radius.circular(16),
+                  : const Radius.circular(18),
               bottomLeft: message.isMe
-                  ? const Radius.circular(16)
+                  ? const Radius.circular(18)
                   : const Radius.circular(4),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.06),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            border: message.isMe
+                ? null
+                : Border.all(color: AppTheme.neutralGray200),
+            boxShadow: AppTheme.shadowSm,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
                 message.content,
-                style: TextStyle(
+                style: AppTheme.bodyMedium.copyWith(
                   color: message.isMe ? Colors.white : Colors.black87,
-                  fontSize: 14,
                   height: 1.4,
                 ),
               ),
@@ -483,8 +550,7 @@ class _MessageBubble extends StatelessWidget {
                 children: [
                   Text(
                     DateFormat('HH:mm').format(message.timestamp),
-                    style: TextStyle(
-                      fontSize: 10,
+                    style: AppTheme.bodySmall.copyWith(
                       color: message.isMe ? Colors.white60 : Colors.black38,
                     ),
                   ),
@@ -530,7 +596,7 @@ class _PulsingDot extends StatelessWidget {
       width: 12,
       height: 12,
       decoration: const BoxDecoration(
-        color: Colors.red,
+        color: AppTheme.errorColor,
         shape: BoxShape.circle,
       ),
     )
@@ -567,16 +633,15 @@ class _AttachOption extends StatelessWidget {
             width: 52,
             height: 52,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              shape: BoxShape.circle,
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
             ),
             child: Icon(icon, color: color, size: 24),
           ),
           const SizedBox(height: 6),
           Text(
             label,
-            style: TextStyle(
-              fontSize: 11,
+            style: AppTheme.bodySmall.copyWith(
               fontWeight: FontWeight.w500,
               color: Theme.of(context).textTheme.bodySmall?.color,
             ),

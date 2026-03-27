@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -56,29 +55,12 @@ class WebSocketService {
     }
   }
 
-  String _getHost() {
-    // Extract host from WS URL
-    final url = _getBaseUrlWs();
-    final uri = Uri.parse(url);
-    return uri.host;
-  }
-
-  int _getPort() {
-    final url = _getBaseUrlWs();
-    final uri = Uri.parse(url);
-    return uri.port;
-  }
-
   String _getBaseUrl() {
     if (kReleaseMode) return ApiConstants.baseUrlProd;
-    if (Platform.isIOS) return ApiConstants.baseUrlIos;
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      return ApiConstants.baseUrlIos;
+    }
     return ApiConstants.baseUrl; // Android emulator
-  }
-
-  String _getBaseUrlWs() {
-    if (kReleaseMode) return ApiConstants.wsUrlProd;
-    if (Platform.isIOS) return ApiConstants.wsUrlIos;
-    return ApiConstants.wsUrl;
   }
 
   Future<void> subscribeToConsultation(

@@ -1,7 +1,11 @@
+library;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mediconnect_pro/core/theme/app_theme.dart';
+
 import 'package:mediconnect_pro/core/rgpd/rgpd_service.dart';
+import 'package:mediconnect_pro/core/theme/app_theme.dart';
+import 'package:mediconnect_pro/shared/widgets/clinical_ui.dart';
 
 class GdprSettingsPage extends ConsumerStatefulWidget {
   const GdprSettingsPage({super.key});
@@ -11,97 +15,172 @@ class GdprSettingsPage extends ConsumerStatefulWidget {
 }
 
 class _GdprSettingsPageState extends ConsumerState<GdprSettingsPage> {
-  // In a real app we'd fetch the initial state of these from the backend
-  // For now we'll mock the initial state to true for all
   final Map<String, bool> _consents = {
-    for (var c in ConsentType.all) c: true,
+    for (var consent in ConsentType.all) consent: true,
   };
+
   bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Confidentialité & RGPD'),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                _buildSectionHeader('Vos Consentements'),
-                const SizedBox(height: 8),
-                Card(
-                  child: Column(
-                    children: ConsentType.all.map((type) {
-                      return SwitchListTile(
-                        title: Text(ConsentType.label(type)),
-                        subtitle: Text(
-                          ConsentType.description(type),
-                          style: AppTheme.bodySmall
-                              .copyWith(color: AppTheme.neutralGray500),
-                        ),
-                        value: _consents[type] ?? true,
-                        activeThumbColor: AppTheme.primaryColor,
-                        onChanged: (val) => _updateConsent(type, val),
-                      );
-                    }).toList(),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                _buildSectionHeader('Vos Droits'),
-                const SizedBox(height: 8),
-                Card(
-                  child: Column(
+      body: SafeArea(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : ListView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                children: [
+                  Row(
                     children: [
-                      ListTile(
-                        leading: const Icon(Icons.download_rounded,
-                            color: Colors.blue),
-                        title: const Text('Exporter mes données'),
-                        subtitle: const Text(
-                            'Télécharger une copie de toutes vos données'),
-                        trailing: const Icon(Icons.chevron_right_rounded),
-                        onTap: () => _exportData(context),
+                      Expanded(
+                        child: Text(
+                          'Confidentialité',
+                          style: AppTheme.headlineSmall,
+                        ),
                       ),
-                      const Divider(),
-                      ListTile(
-                        leading: const Icon(Icons.delete_forever_rounded,
-                            color: Colors.red),
-                        title: const Text('Droit à l\'oubli',
-                            style: TextStyle(color: Colors.red)),
-                        subtitle: const Text(
-                            'Supprimer définitivement votre compte et vos données'),
-                        trailing: const Icon(Icons.chevron_right_rounded,
-                            color: Colors.red),
-                        onTap: () => _showDeleteConfirmDialog(context),
+                      Switch.adaptive(
+                        value: _consents[ConsentType.analytics] ?? true,
+                        onChanged: (value) =>
+                            _updateConsent(ConsentType.analytics, value),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 32),
-                const Text(
-                  'Conformément au Règlement Général sur la Protection des Données (RGPD), '
-                  'vous disposez de droits concernant vos informations personnelles.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ],
-            ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4),
-      child: Text(
-        title,
-        style: AppTheme.titleMedium.copyWith(color: AppTheme.primaryColor),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Votre santé est privée. MediConnect Pro s’engage à protéger vos données avec un niveau de sécurité clinique.',
+                    style: AppTheme.bodyMedium.copyWith(
+                      color: AppTheme.neutralGray500,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  ...ConsentType.all.map((type) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: ClinicalSurface(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      ConsentType.label(type),
+                                      style: AppTheme.titleMedium,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      ConsentType.description(type),
+                                      style: AppTheme.bodySmall.copyWith(
+                                        color: AppTheme.neutralGray500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Switch.adaptive(
+                                value: _consents[type] ?? true,
+                                onChanged: (value) =>
+                                    _updateConsent(type, value),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )),
+                  const SizedBox(height: 8),
+                  ClinicalSurface(
+                    color: AppTheme.primarySurface,
+                    elevated: false,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Chiffrement E2E', style: AppTheme.titleMedium),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Obligatoire pour l’utilisation. Vos messages et documents sensibles ne sont jamais exposés en clair.',
+                          style: AppTheme.bodySmall.copyWith(
+                            color: AppTheme.neutralGray600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  const ClinicalSectionHeader(title: 'Vos droits'),
+                  const SizedBox(height: 12),
+                  ClinicalSurface(
+                    padding: EdgeInsets.zero,
+                    child: Column(
+                      children: [
+                        ListTile(
+                          onTap: () => _exportData(context),
+                          leading: Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: AppTheme.primarySurface,
+                              borderRadius:
+                                  BorderRadius.circular(AppTheme.radiusMd),
+                            ),
+                            child: const Icon(
+                              Icons.download_rounded,
+                              color: AppTheme.primaryColor,
+                            ),
+                          ),
+                          title: Text('Exporter mes données',
+                              style: AppTheme.titleSmall),
+                          subtitle: Text(
+                            'Télécharger une copie structurée de vos données.',
+                            style: AppTheme.bodySmall.copyWith(
+                              color: AppTheme.neutralGray500,
+                            ),
+                          ),
+                          trailing: const Icon(Icons.chevron_right_rounded),
+                        ),
+                        const Divider(height: 1),
+                        ListTile(
+                          onTap: () => _showDeleteConfirmDialog(context),
+                          leading: Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: AppTheme.softColor(AppTheme.errorColor),
+                              borderRadius:
+                                  BorderRadius.circular(AppTheme.radiusMd),
+                            ),
+                            child: const Icon(
+                              Icons.delete_outline_rounded,
+                              color: AppTheme.errorColor,
+                            ),
+                          ),
+                          title: Text(
+                            'Droit à l’oubli',
+                            style: AppTheme.titleSmall.copyWith(
+                              color: AppTheme.errorColor,
+                            ),
+                          ),
+                          subtitle: Text(
+                            'Supprimer définitivement votre compte et vos données.',
+                            style: AppTheme.bodySmall.copyWith(
+                              color: AppTheme.neutralGray500,
+                            ),
+                          ),
+                          trailing: const Icon(
+                            Icons.chevron_right_rounded,
+                            color: AppTheme.errorColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }
 
   Future<void> _updateConsent(String type, bool consented) async {
-    final prev = _consents[type]!;
+    final previous = _consents[type]!;
     setState(() => _consents[type] = consented);
 
     final service = ref.read(rgpdServiceProvider);
@@ -110,22 +189,20 @@ class _GdprSettingsPageState extends ConsumerState<GdprSettingsPage> {
 
     result.fold(
       (failure) {
-        setState(() => _consents[type] = prev); // Revert on failure
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erreur: ${failure.message}')),
-          );
-        }
+        setState(() => _consents[type] = previous);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: ${failure.message}')),
+        );
       },
       (_) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Préférence mise à jour'),
-              duration: Duration(seconds: 1),
-            ),
-          );
-        }
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Préférence mise à jour'),
+            duration: Duration(seconds: 1),
+          ),
+        );
       },
     );
   }
@@ -134,54 +211,46 @@ class _GdprSettingsPageState extends ConsumerState<GdprSettingsPage> {
     setState(() => _isLoading = true);
     final service = ref.read(rgpdServiceProvider);
     final result = await service.exportData();
-
     setState(() => _isLoading = false);
 
     result.fold(
       (failure) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erreur: ${failure.message}')),
-          );
-        }
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: ${failure.message}')),
+        );
       },
-      (data) {
-        if (context.mounted) {
-          _showDataExportedDialog(context, data);
-        }
-      },
-    );
-  }
-
-  void _showDataExportedDialog(
-      BuildContext context, Map<String, dynamic> data) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Export terminé'),
-        content: const Text(
-          'Vos données ont été exportées avec succès. '
-          'Dans une application réelle, cela téléchargera un fichier JSON structuré, ou un fichier ZIP chiffré.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Fermer'),
+      (_) {
+        if (!mounted) return;
+        showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Export terminé'),
+            content: const Text(
+              'Vos données ont été préparées avec succès.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Fermer'),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   void _showDeleteConfirmDialog(BuildContext context) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Supprimer votre compte ?',
-            style: TextStyle(color: Colors.red)),
+        title: Text(
+          'Supprimer votre compte ?',
+          style: AppTheme.titleLarge.copyWith(color: AppTheme.errorColor),
+        ),
         content: const Text(
-          'Cette action est irréversible. Toutes vos données personnelles, '
-          'dossiers médicaux et conversations seront définitivement supprimés.',
+          'Cette action est irréversible. Toutes vos données personnelles, dossiers et conversations seront supprimés.',
         ),
         actions: [
           TextButton(
@@ -189,13 +258,14 @@ class _GdprSettingsPageState extends ConsumerState<GdprSettingsPage> {
             child: const Text('Annuler'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.errorColor,
+            ),
             onPressed: () async {
               Navigator.pop(context);
               await _requestDeletion(context);
             },
-            child:
-                const Text('Supprimer', style: TextStyle(color: Colors.white)),
+            child: const Text('Supprimer'),
           ),
         ],
       ),
@@ -210,31 +280,28 @@ class _GdprSettingsPageState extends ConsumerState<GdprSettingsPage> {
 
     result.fold(
       (failure) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erreur: ${failure.message}')),
-          );
-        }
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: ${failure.message}')),
+        );
       },
       (_) {
-        if (context.mounted) {
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => AlertDialog(
-              title: const Text('Au revoir'),
-              content: const Text('Vos données ont été supprimées.'),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    // TODO: Logout and navigate to login
-                  },
-                  child: const Text('Fermer'),
-                ),
-              ],
+        if (!mounted) return;
+        showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Demande prise en compte'),
+            content: const Text(
+              'Votre demande de suppression a été enregistrée.',
             ),
-          );
-        }
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Fermer'),
+              ),
+            ],
+          ),
+        );
       },
     );
   }

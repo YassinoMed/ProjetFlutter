@@ -177,6 +177,12 @@ class MockInterceptor extends Interceptor {
     }
 
     // Fallback to error mapping for better UI messages
+    // BUT: skip remapping for auth endpoints — preserve real error messages
+    final path = err.requestOptions.path;
+    if (path.contains('/auth/')) {
+      handler.next(err);
+      return;
+    }
     final customError = _mapException(err);
     handler.next(customError);
   }

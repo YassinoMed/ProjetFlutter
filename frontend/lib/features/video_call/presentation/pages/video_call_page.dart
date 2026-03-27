@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:mediconnect_pro/core/theme/app_theme.dart';
 import 'package:mediconnect_pro/features/video_call/domain/entities/video_call_entity.dart';
 import 'package:mediconnect_pro/features/video_call/presentation/providers/video_call_providers.dart';
 
@@ -59,7 +60,7 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
         ref.read(videoCallNotifierProvider(widget.appointmentId).notifier);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0E21),
+      backgroundColor: AppTheme.darkBackground,
       body: GestureDetector(
         onTap: () {
           setState(() => _showControls = !_showControls);
@@ -117,7 +118,7 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.9),
+                    color: AppTheme.warningColor.withValues(alpha: 0.92),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Row(
@@ -173,13 +174,7 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
     }
 
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF0A0E21), Color(0xFF1A1A2E)],
-        ),
-      ),
+      decoration: const BoxDecoration(gradient: AppTheme.darkGradient),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -193,13 +188,17 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
                   height: 120,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.blue.withOpacity(0.15),
+                    color: AppTheme.primaryLight.withValues(alpha: 0.16),
                     border: Border.all(
-                      color: Colors.blue.withOpacity(0.3),
+                      color: AppTheme.primaryLight.withValues(alpha: 0.32),
                       width: 2,
                     ),
                   ),
-                  child: Icon(statusIcon, size: 48, color: Colors.blue[300]),
+                  child: Icon(
+                    statusIcon,
+                    size: 48,
+                    color: AppTheme.primaryLight,
+                  ),
                 ),
               );
             },
@@ -207,10 +206,8 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
           const SizedBox(height: 32),
           Text(
             statusText,
-            style: const TextStyle(
+            style: AppTheme.titleLarge.copyWith(
               color: Colors.white70,
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
             ),
           ),
           if (callState.state == CallState.error) ...[
@@ -220,7 +217,7 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
               icon: const Icon(Icons.arrow_back_rounded),
               label: const Text('Retour'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
+                backgroundColor: AppTheme.errorColor,
                 foregroundColor: Colors.white,
               ),
             ),
@@ -235,15 +232,10 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
       onDoubleTap: () => notifier.switchCamera(),
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withOpacity(0.3), width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.4),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+              color: Colors.white.withValues(alpha: 0.24), width: 1.4),
+          boxShadow: AppTheme.shadowLg,
         ),
         clipBehavior: Clip.antiAlias,
         child: RTCVideoView(
@@ -272,7 +264,7 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Colors.black.withOpacity(0.7),
+            Colors.black.withValues(alpha: 0.72),
             Colors.transparent,
           ],
         ),
@@ -288,10 +280,12 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.3),
+                color: AppTheme.successColor.withValues(alpha: 0.22),
                 borderRadius: BorderRadius.circular(20),
-                border:
-                    Border.all(color: Colors.green.withOpacity(0.5), width: 1),
+                border: Border.all(
+                  color: AppTheme.successColor.withValues(alpha: 0.45),
+                  width: 1,
+                ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -300,7 +294,7 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
                     width: 8,
                     height: 8,
                     decoration: const BoxDecoration(
-                      color: Colors.greenAccent,
+                      color: AppTheme.successColor,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -322,12 +316,12 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.2),
+              color: AppTheme.successColor.withValues(alpha: 0.18),
               shape: BoxShape.circle,
             ),
             child: const Icon(
               Icons.lock_rounded,
-              color: Colors.greenAccent,
+              color: AppTheme.successColor,
               size: 18,
             ),
           ),
@@ -349,7 +343,7 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
           begin: Alignment.bottomCenter,
           end: Alignment.topCenter,
           colors: [
-            Colors.black.withOpacity(0.8),
+            Colors.black.withValues(alpha: 0.8),
             Colors.transparent,
           ],
         ),
@@ -425,10 +419,10 @@ class _ControlBtn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bgColor = isDestructive
-        ? Colors.red
+        ? AppTheme.errorColor
         : isActive
-            ? Colors.white.withOpacity(0.15)
-            : Colors.white.withOpacity(0.1);
+            ? Colors.white.withValues(alpha: 0.15)
+            : Colors.white.withValues(alpha: 0.1);
 
     final iconColor = isDestructive
         ? Colors.white
@@ -457,7 +451,7 @@ class _ControlBtn extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            color: Colors.white.withOpacity(0.7),
+            color: Colors.white.withValues(alpha: 0.7),
             fontSize: 11,
             fontWeight: FontWeight.w500,
           ),

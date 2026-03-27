@@ -89,50 +89,59 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
 
   /// Login with email + password
   Future<void> login({
-    required String email,
+    required String identifier,
     required String password,
   }) async {
     state = const AsyncValue.loading();
 
-    // Get device info for trusted device registration
-    final deviceHelper = ref.read(deviceInfoHelperProvider);
-    final deviceInfo = await deviceHelper.getDeviceInfo();
+    try {
+      // Get device info for trusted device registration
+      final deviceHelper = ref.read(deviceInfoHelperProvider);
+      final deviceInfo = await deviceHelper.getDeviceInfo();
 
-    final loginUseCase = ref.read(loginUseCaseProvider);
-    final result = await loginUseCase(LoginParams(
-      email: email,
-      password: password,
-      deviceId: deviceInfo.deviceId,
-      deviceName: deviceInfo.deviceName,
-      platform: deviceInfo.platform,
-    ));
+      final loginUseCase = ref.read(loginUseCaseProvider);
+      final result = await loginUseCase(LoginParams(
+        identifier: identifier,
+        password: password,
+        deviceId: deviceInfo.deviceId,
+        deviceName: deviceInfo.deviceName,
+        platform: deviceInfo.platform,
+      ));
 
-    // Check biometric status after login
-    final repository = ref.read(authRepositoryProvider);
-    final biometricEnabled = await repository.isBiometricEnabled();
+      state = await result.fold(
+        (failure) => AsyncValue<AuthStateEntity>.error(
+            failure.message, StackTrace.current),
+        (data) async {
+          // Only do post-login work on success
+          final repository = ref.read(authRepositoryProvider);
+          final biometricEnabled = await repository.isBiometricEnabled();
 
-    await ref
-        .read(secureStorageProvider)
-        .delete(key: AppConstants.keyActingDoctorUserId);
+          await ref
+              .read(secureStorageProvider)
+              .delete(key: AppConstants.keyActingDoctorUserId);
 
-    state = result.fold(
-      (failure) => AsyncValue.error(failure.message, StackTrace.current),
-      (data) => AsyncValue.data(AuthStateEntity(
-        user: data.user,
-        isAuthenticated: true,
-        biometricEnabled: biometricEnabled,
-      )),
-    );
+          return AsyncValue.data(AuthStateEntity(
+            user: data.user,
+            isAuthenticated: true,
+            biometricEnabled: biometricEnabled,
+          ));
+        },
+      );
+    } catch (e) {
+      state = AsyncValue.error(
+        e.toString(),
+        StackTrace.current,
+      );
+    }
   }
 
   /// Login with biometric (fingerprint)
   ///
   /// Flow:
   /// 1. Verify fingerprint locally via local_auth
-  /// 2. Read stored JWT token from SecureStorage
+  /// 2. Read stored Sanctum token from SecureStorage
   /// 3. Validate token with server (/me endpoint)
-  /// 4. If token expired, try refresh
-  /// 5. If refresh fails, fallback to password
+  /// 4. If token expired or revoked, fallback to password
   Future<void> loginWithBiometric() async {
     state = const AsyncValue.loading();
 

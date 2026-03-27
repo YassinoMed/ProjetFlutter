@@ -12,13 +12,6 @@ double? _toDouble(dynamic v) {
   return null;
 }
 
-int? _toInt(dynamic v) {
-  if (v == null) return null;
-  if (v is num) return v.toInt();
-  if (v is String) return int.tryParse(v);
-  return null;
-}
-
 bool _toBool(dynamic v, {bool fallback = false}) {
   if (v == null) return fallback;
   if (v is bool) return v;

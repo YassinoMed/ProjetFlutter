@@ -14,7 +14,6 @@ return Application::configure(basePath: dirname(__DIR__))
         then: function () {
             Route::middleware([
                 'web',
-                \Stancl\Tenancy\Middleware\InitializeTenancyByDomain::class,
             ])
                 ->prefix('admin')
                 ->name('admin.')

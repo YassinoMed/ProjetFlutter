@@ -7,14 +7,14 @@ class ApiConstants {
   ApiConstants._();
 
   // ── Base URLs ─────────────────────────────────────────────
-  static const String baseUrl = 'http://51.210.243.30:8081/api';
-  static const String baseUrlIos = 'http://51.210.243.30:8081/api';
-  static const String baseUrlProd = 'http://51.210.243.30:8081/api';
+  static const String baseUrl = 'http://127.0.0.1:8000/api';
+  static const String baseUrlIos = 'http://127.0.0.1:8000/api';
+  static const String baseUrlProd = 'http://127.0.0.1:8000/api';
 
   // ── WebSocket (Reverb – Laravel native) ───────────────────
-  static const String wsUrl = 'http://51.210.243.30:8081';
-  static const String wsUrlIos = 'http://51.210.243.30:8081';
-  static const String wsUrlProd = 'http://51.210.243.30:8081';
+  static const String wsUrl = 'http://127.0.0.1:8000';
+  static const String wsUrlIos = 'http://127.0.0.1:8000';
+  static const String wsUrlProd = 'http://127.0.0.1:8000';
 
   // Reverb app credentials (must match backend .env)
   static const String reverbAppKey = 'mediconnect-key';
@@ -94,7 +94,8 @@ class ApiConstants {
 
   // ── Secretary Delegation ─────────────────────────────────
   static const String doctorSecretaries = '/doctor/secretaries';
-  static const String secretaryInvitationAccept = '/secretary/invitations/accept';
+  static const String secretaryInvitationAccept =
+      '/secretary/invitations/accept';
   static const String meDelegations = '/me/delegations';
   static const String switchDoctorContext = '/context/switch-doctor';
 

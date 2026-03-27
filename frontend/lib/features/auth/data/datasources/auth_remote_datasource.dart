@@ -12,7 +12,7 @@ import '../models/user_model.dart';
 
 abstract class AuthRemoteDataSource {
   Future<LoginResponseModel> login({
-    required String email,
+    required String identifier,
     required String password,
     String? deviceId,
     String? deviceName,
@@ -76,7 +76,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
   @override
   Future<LoginResponseModel> login({
-    required String email,
+    required String identifier,
     required String password,
     String? deviceId,
     String? deviceName,
@@ -86,7 +86,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final response = await dio.post(
         ApiConstants.login,
         data: {
-          'email': email,
+          'login': identifier,
           'password': password,
           if (deviceId != null) 'device_id': deviceId,
           if (deviceName != null) 'device_name': deviceName,
@@ -115,9 +115,20 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         );
       }
       if (e.response?.statusCode == 422) {
-        throw ServerException(
-          message: _extractValidationError(e.response?.data),
+        // Backend throws ValidationException for invalid credentials (422)
+        final validationMsg = _extractValidationError(e.response?.data);
+        throw AuthException(
+          message: validationMsg.contains('Invalid')
+              ? 'Email ou mot de passe incorrect'
+              : validationMsg,
           statusCode: 422,
+        );
+      }
+      if (e.type == DioExceptionType.connectionError ||
+          e.type == DioExceptionType.connectionTimeout) {
+        throw const ServerException(
+          message:
+              'Impossible de contacter le serveur. Vérifiez votre connexion.',
         );
       }
       throw ServerException(

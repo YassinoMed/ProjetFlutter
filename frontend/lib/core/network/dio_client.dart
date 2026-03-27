@@ -3,8 +3,6 @@
 /// On 401 → clear storage → redirect to login.
 library;
 
-import 'dart:io' show Platform;
-
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,7 +19,9 @@ final _logger = Logger(printer: PrettyPrinter(methodCount: 0));
 /// Resolve base URL based on platform
 String get _resolvedBaseUrl {
   if (kReleaseMode) return ApiConstants.baseUrlProd;
-  if (Platform.isIOS) return ApiConstants.baseUrlIos;
+  if (defaultTargetPlatform == TargetPlatform.iOS) {
+    return ApiConstants.baseUrlIos;
+  }
   return ApiConstants.baseUrl; // Android emulator
 }
 
@@ -109,6 +109,11 @@ class AuthInterceptor extends Interceptor {
       // and redirect to login.
       _logger.w('Received 401 — token expired or revoked, clearing storage');
       await _secureStorage.delete(key: AppConstants.keyAccessToken);
+      await _secureStorage.delete(key: AppConstants.keyUserId);
+      await _secureStorage.delete(key: AppConstants.keyUserRole);
+      await _secureStorage.delete(key: AppConstants.keyTenantId);
+      await _secureStorage.delete(key: AppConstants.keyActingDoctorUserId);
+      await _secureStorage.delete(key: 'cached_user');
     }
     handler.next(err);
   }

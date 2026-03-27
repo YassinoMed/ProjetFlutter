@@ -11,6 +11,7 @@
 /// 4. On failure → fallback to password login
 library;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
@@ -23,8 +24,25 @@ class BiometricService {
   BiometricService({LocalAuthentication? localAuth})
       : _localAuth = localAuth ?? LocalAuthentication();
 
+  bool get _isSupportedPlatform {
+    if (kIsWeb) return false;
+
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+      case TargetPlatform.windows:
+        return true;
+      case TargetPlatform.linux:
+      case TargetPlatform.fuchsia:
+        return false;
+    }
+  }
+
   /// Check if the device has biometric hardware AND enrolled biometrics
   Future<bool> isAvailable() async {
+    if (!_isSupportedPlatform) return false;
+
     try {
       final canCheck = await _localAuth.canCheckBiometrics;
       final isSupported = await _localAuth.isDeviceSupported();
@@ -32,15 +50,23 @@ class BiometricService {
     } on PlatformException catch (e) {
       _logger.w('Biometric availability check failed: $e');
       return false;
+    } catch (e) {
+      _logger.w('Biometric availability check not supported: $e');
+      return false;
     }
   }
 
   /// Get the list of available biometric types (fingerprint, face, iris)
   Future<List<BiometricType>> getAvailableBiometrics() async {
+    if (!_isSupportedPlatform) return [];
+
     try {
       return await _localAuth.getAvailableBiometrics();
     } on PlatformException catch (e) {
       _logger.w('Failed to get available biometrics: $e');
+      return [];
+    } catch (e) {
+      _logger.w('Biometric listing not supported: $e');
       return [];
     }
   }
@@ -61,6 +87,10 @@ class BiometricService {
   Future<bool> authenticate({
     String reason = 'Utilisez votre empreinte pour vous connecter',
   }) async {
+    if (!_isSupportedPlatform) {
+      throw BiometricNotAvailableException();
+    }
+
     try {
       final result = await _localAuth.authenticate(
         localizedReason: reason,
@@ -97,6 +127,9 @@ class BiometricService {
             code: e.code,
           );
       }
+    } catch (e) {
+      _logger.e('Biometric authentication unsupported: $e');
+      throw BiometricNotAvailableException();
     }
   }
 

@@ -103,12 +103,12 @@ class _BiometricSettingsCardState extends ConsumerState<BiometricSettingsCard> {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: biometricEnabled
-                  ? AppTheme.primaryColor.withOpacity(0.3)
-                  : Theme.of(context).dividerColor.withOpacity(0.2),
+                  ? AppTheme.primaryColor.withValues(alpha: 0.3)
+                  : Theme.of(context).dividerColor.withValues(alpha: 0.2),
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.04),
+                color: Colors.black.withValues(alpha: 0.04),
                 blurRadius: 10,
                 offset: const Offset(0, 2),
               ),
@@ -124,8 +124,8 @@ class _BiometricSettingsCardState extends ConsumerState<BiometricSettingsCard> {
                   height: 48,
                   decoration: BoxDecoration(
                     color: biometricEnabled
-                        ? AppTheme.primaryColor.withOpacity(0.1)
-                        : Colors.grey.withOpacity(0.1),
+                        ? AppTheme.primaryColor.withValues(alpha: 0.1)
+                        : Colors.grey.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -173,7 +173,9 @@ class _BiometricSettingsCardState extends ConsumerState<BiometricSettingsCard> {
                         value: biometricEnabled,
                         onChanged: (value) =>
                             _toggleBiometric(biometricEnabled),
-                        activeColor: AppTheme.primaryColor,
+                        activeThumbColor: AppTheme.primaryColor,
+                        activeTrackColor:
+                            AppTheme.primaryColor.withValues(alpha: 0.35),
                       ),
               ],
             ),

@@ -29,7 +29,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<Either<Failure, ({User user, String token})>> login({
-    required String email,
+    required String identifier,
     required String password,
     String? deviceId,
     String? deviceName,
@@ -41,7 +41,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
     try {
       final response = await remoteDataSource.login(
-        email: email,
+        identifier: identifier,
         password: password,
         deviceId: deviceId,
         deviceName: deviceName,

@@ -18,6 +18,24 @@ class Validators {
     return null;
   }
 
+  static String? emailOrPhone(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'L\'email ou le numero de telephone est requis';
+    }
+
+    final trimmed = value.trim();
+    final emailRegex = RegExp(
+      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+    );
+    final phoneRegex = RegExp(r'^\+?[0-9][0-9\s().-]{7,}$');
+
+    if (emailRegex.hasMatch(trimmed) || phoneRegex.hasMatch(trimmed)) {
+      return null;
+    }
+
+    return 'Saisissez un email ou numero de telephone valide';
+  }
+
   static String? password(String? value) {
     if (value == null || value.isEmpty) {
       return 'Le mot de passe est requis';

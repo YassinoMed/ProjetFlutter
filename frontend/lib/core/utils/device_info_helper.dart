@@ -6,9 +6,8 @@
 /// a reinstalled app = a new device from a trust perspective.
 library;
 
-import 'dart:io';
-
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
@@ -51,25 +50,50 @@ class DeviceInfoHelper {
   ///
   /// Examples: "iPhone16,1", "Samsung Galaxy S24"
   Future<String> getDeviceName() async {
+    if (kIsWeb) return 'Web Browser';
+
     try {
-      if (Platform.isIOS) {
-        final iosInfo = await _deviceInfo.iosInfo;
-        return iosInfo.utsname.machine; // e.g. "iPhone16,1"
-      } else if (Platform.isAndroid) {
-        final androidInfo = await _deviceInfo.androidInfo;
-        final brand = androidInfo.brand;
-        final model = androidInfo.model;
-        return '$brand $model';
+      switch (defaultTargetPlatform) {
+        case TargetPlatform.iOS:
+          final iosInfo = await _deviceInfo.iosInfo;
+          return iosInfo.utsname.machine; // e.g. "iPhone16,1"
+        case TargetPlatform.android:
+          final androidInfo = await _deviceInfo.androidInfo;
+          final brand = androidInfo.brand;
+          final model = androidInfo.model;
+          return '$brand $model';
+        case TargetPlatform.macOS:
+          return 'macOS Desktop';
+        case TargetPlatform.windows:
+          return 'Windows Desktop';
+        case TargetPlatform.linux:
+          return 'Linux Desktop';
+        case TargetPlatform.fuchsia:
+          return 'Fuchsia Device';
       }
     } catch (_) {}
+
     return 'Unknown Device';
   }
 
   /// Get the platform string.
   String getPlatform() {
-    if (Platform.isIOS) return 'ios';
-    if (Platform.isAndroid) return 'android';
-    return 'unknown';
+    if (kIsWeb) return 'web';
+
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.iOS:
+        return 'ios';
+      case TargetPlatform.android:
+        return 'android';
+      case TargetPlatform.macOS:
+        return 'macos';
+      case TargetPlatform.windows:
+        return 'windows';
+      case TargetPlatform.linux:
+        return 'linux';
+      case TargetPlatform.fuchsia:
+        return 'fuchsia';
+    }
   }
 
   /// Get all device info in one call.

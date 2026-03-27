@@ -8,10 +8,10 @@ import '../../../../core/errors/failures.dart';
 import '../entities/user_entity.dart';
 
 abstract class AuthRepository {
-  /// Login with email and password
+  /// Login with email or phone number and password
   /// Returns the Sanctum token + User on success
   Future<Either<Failure, ({User user, String token})>> login({
-    required String email,
+    required String identifier,
     required String password,
     String? deviceId,
     String? deviceName,

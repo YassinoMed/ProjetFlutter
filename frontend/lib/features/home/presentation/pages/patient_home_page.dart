@@ -1,3 +1,5 @@
+library;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,6 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/widgets/clinical_ui.dart';
 import '../../../../shared/widgets/error_display.dart';
 import '../../../appointments/domain/entities/appointment_entity.dart';
 import '../../../appointments/presentation/providers/appointment_providers.dart';
@@ -17,385 +20,186 @@ class PatientHomePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authNotifierProvider).valueOrNull?.user;
     final appointmentsAsync = ref.watch(myAppointmentsProvider);
+    final doctorsAsync = ref.watch(doctorSearchProvider);
 
     return Scaffold(
-      body: RefreshIndicator(
-        onRefresh: () => ref.refresh(myAppointmentsProvider.future),
-        child: CustomScrollView(
-          slivers: [
-            // ── App Bar with gradient ───────────────────
-            SliverAppBar(
-              expandedHeight: 140,
-              floating: true,
-              pinned: true,
-              flexibleSpace: FlexibleSpaceBar(
-                title: Text(
-                  'Bonjour, ${user?.name ?? 'Patient'} 👋',
-                  style: AppTheme.titleMedium.copyWith(
-                    color: AppTheme.neutralWhite,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                background: Container(
-                  decoration: const BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
-                  ),
-                  child: Stack(
-                    children: [
-                      Positioned(
-                        right: -30,
-                        top: -30,
-                        child: Container(
-                          width: 160,
-                          height: 160,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withValues(alpha: 0.08),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        right: 40,
-                        bottom: -20,
-                        child: Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withValues(alpha: 0.05),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ── Quick Actions ───────────────────
-                    _buildQuickActions(context),
-                    const SizedBox(height: 28),
-
-                    // ── Upcoming Appointments Section ───
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(myAppointmentsProvider);
+            ref.invalidate(doctorSearchProvider);
+            await ref.read(myAppointmentsProvider.future);
+          },
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Mes prochains rendez-vous',
-                          style: AppTheme.titleLarge.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                          'Bonjour, ${user?.name.split(' ').first ?? 'Patient'}',
+                          style: AppTheme.headlineSmall,
                         ),
-                        TextButton.icon(
-                          onPressed: () =>
-                              context.go(AppRoutes.patientAppointments),
-                          icon:
-                              const Icon(Icons.arrow_forward_rounded, size: 18),
-                          label: const Text('Voir tout'),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Votre santé, notre priorité.',
+                          style: AppTheme.bodyMedium.copyWith(
+                            color: AppTheme.neutralGray500,
+                          ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                  ),
+                  ClinicalAvatar(
+                    name: user?.name ?? 'Patient',
+                    imageUrl: user?.avatarUrl,
+                    radius: 24,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              appointmentsAsync.when(
+                data: (appointments) {
+                  final upcoming = appointments
+                      .where((item) => item.dateTime.isAfter(DateTime.now()))
+                      .toList()
+                    ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
 
-                    // ── Appointments list ───────────────
-                    appointmentsAsync.when(
-                      data: (appointments) {
-                        final upcoming = appointments
-                            .where((a) => a.dateTime.isAfter(DateTime.now()))
-                            .toList()
-                          ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+                  if (upcoming.isEmpty) {
+                    return const ClinicalEmptyState(
+                      icon: Icons.calendar_today_rounded,
+                      title: 'Aucun rendez-vous à venir',
+                      message:
+                          'Vous pourrez retrouver ici vos prochaines consultations et téléconsultations.',
+                    );
+                  }
 
-                        if (upcoming.isEmpty) {
-                          return _buildNoAppointment(context);
-                        }
-
-                        return Column(
-                          children: upcoming
-                              .take(3)
-                              .map((a) => _AppointmentCard(appointment: a))
-                              .toList(),
-                        );
-                      },
-                      loading: () => const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 40),
-                        child: Center(child: CircularProgressIndicator()),
-                      ),
-                      error: (err, st) => ErrorDisplay(
-                        compact: true,
-                        message: err.toString(),
-                        onRetry: () => ref.refresh(myAppointmentsProvider),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // ── Recent / past appointments ──────
-                    appointmentsAsync.when(
-                      data: (appointments) {
-                        final past = appointments
-                            .where((a) => a.dateTime.isBefore(DateTime.now()))
-                            .toList()
-                          ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
-
-                        if (past.isEmpty) return const SizedBox.shrink();
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Rendez-vous passés',
-                              style: AppTheme.titleMedium.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.neutralGray600,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            ...past.take(2).map((a) =>
-                                _AppointmentCard(appointment: a, isPast: true)),
-                          ],
-                        );
-                      },
-                      loading: () => const SizedBox.shrink(),
-                      error: (_, __) => const SizedBox.shrink(),
-                    ),
-
-                    const SizedBox(height: 32),
-                  ],
+                  return _PatientHeroCard(appointment: upcoming.first);
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, st) => ErrorDisplay(
+                  compact: true,
+                  message: err.toString(),
+                  onRetry: () => ref.invalidate(myAppointmentsProvider),
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickActions(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: [
-        _QuickAction(
-          icon: Icons.search_rounded,
-          label: 'Chercher\nun médecin',
-          color: AppTheme.primaryColor,
-          onTap: () => context.push(AppRoutes.doctorSearch),
-        ),
-        _QuickAction(
-          icon: Icons.history_edu_rounded,
-          label: 'Dossier\nmédical',
-          color: const Color(0xFF10B981),
-          onTap: () => context.push(AppRoutes.patientRecords),
-        ),
-        _QuickAction(
-          icon: Icons.videocam_rounded,
-          label: 'Télé-\nconsultation',
-          color: const Color(0xFF8B5CF6),
-          onTap: () => context.go(AppRoutes.patientAppointments),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNoAppointment(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
-      decoration: BoxDecoration(
-        color: AppTheme.primaryColor.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppTheme.primaryColor.withValues(alpha: 0.1),
-        ),
-      ),
-      child: Column(
-        children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Icon(
-              Icons.calendar_today_rounded,
-              size: 36,
-              color: AppTheme.primaryColor,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Pas de rendez-vous prévu',
-            style: AppTheme.titleMedium.copyWith(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Trouvez un médecin et prenez rendez-vous en quelques clics.',
-            textAlign: TextAlign.center,
-            style: AppTheme.bodySmall.copyWith(color: AppTheme.neutralGray500),
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton.icon(
-            onPressed: () => context.push(AppRoutes.doctorSearch),
-            icon: const Icon(Icons.add_rounded, size: 20),
-            label: const Text('Prendre rendez-vous'),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Appointment Card ────────────────────────────────────────
-
-class _AppointmentCard extends StatelessWidget {
-  final Appointment appointment;
-  final bool isPast;
-
-  const _AppointmentCard({required this.appointment, this.isPast = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final doctor = appointment.doctor;
-    final dateStr =
-        DateFormat('EEE d MMM', 'fr_FR').format(appointment.dateTime);
-    final timeStr = DateFormat('HH:mm').format(appointment.dateTime);
-    final isVideo = appointment.type == AppointmentType.video;
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: isPast ? 0 : 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: isPast
-            ? BorderSide(color: AppTheme.neutralGray200)
-            : BorderSide.none,
-      ),
-      child: InkWell(
-        onTap: () => context.push(
-            AppRoutes.appointmentDetail.replaceFirst(':id', appointment.id)),
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              // Date badge
-              Container(
-                width: 56,
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: isPast
-                      ? AppTheme.neutralGray100
-                      : AppTheme.primaryColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      DateFormat('dd').format(appointment.dateTime),
-                      style: AppTheme.titleLarge.copyWith(
-                        color: isPast
-                            ? AppTheme.neutralGray500
-                            : AppTheme.primaryColor,
-                        fontWeight: FontWeight.bold,
-                      ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: _QuickAccessCard(
+                      icon: Icons.search_rounded,
+                      title: 'Trouver\nun médecin',
+                      color: AppTheme.primaryColor,
+                      onTap: () => context.push(AppRoutes.doctorSearch),
                     ),
-                    Text(
-                      DateFormat('MMM', 'fr_FR')
-                          .format(appointment.dateTime)
-                          .toUpperCase(),
-                      style: AppTheme.labelSmall.copyWith(
-                        color: isPast
-                            ? AppTheme.neutralGray400
-                            : AppTheme.primaryColor,
-                        fontWeight: FontWeight.w600,
-                      ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _QuickAccessCard(
+                      icon: Icons.folder_open_rounded,
+                      title: 'Journal\npatient',
+                      color: AppTheme.successColor,
+                      onTap: () => context.push(AppRoutes.patientRecords),
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _QuickAccessCard(
+                      icon: Icons.chat_bubble_outline_rounded,
+                      title: 'Messages\nsécurisés',
+                      color: AppTheme.chatColor,
+                      onTap: () => context.go(AppRoutes.patientChat),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 16),
-              // Details
-              Expanded(
+              const SizedBox(height: 24),
+              const ClinicalSectionHeader(title: 'Activité consultations'),
+              const SizedBox(height: 12),
+              ClinicalSurface(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      doctor?.fullName ?? 'Médecin',
-                      style: AppTheme.titleSmall.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: isPast ? AppTheme.neutralGray500 : null,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      doctor?.specialty ?? 'Généraliste',
-                      style: AppTheme.bodySmall.copyWith(
+                      'Activité mensuelle',
+                      style: AppTheme.bodyMedium.copyWith(
                         color: AppTheme.neutralGray500,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(Icons.access_time_rounded,
-                            size: 14, color: AppTheme.neutralGray400),
-                        const SizedBox(width: 4),
-                        Text('$dateStr • $timeStr',
-                            style: AppTheme.labelSmall
-                                .copyWith(color: AppTheme.neutralGray500)),
-                        const SizedBox(width: 12),
-                        if (isVideo) ...[
-                          Icon(Icons.videocam_rounded,
-                              size: 14, color: const Color(0xFF8B5CF6)),
-                          const SizedBox(width: 4),
-                          Text('Vidéo',
-                              style: AppTheme.labelSmall.copyWith(
-                                  color: const Color(0xFF8B5CF6),
-                                  fontWeight: FontWeight.w600)),
-                        ],
-                      ],
-                    ),
+                    const SizedBox(height: 14),
+                    const _BarChartPlaceholder(),
                   ],
                 ),
               ),
-              // Status + video button
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  _StatusChip(status: appointment.status),
-                  if (isVideo &&
-                      !isPast &&
-                      (appointment.status == AppointmentStatus.confirmed ||
-                          appointment.status == AppointmentStatus.pending))
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: SizedBox(
-                        height: 32,
-                        child: ElevatedButton.icon(
-                          onPressed: () => context.push(AppRoutes.videoCall
-                              .replaceFirst(':appointmentId', appointment.id)),
-                          icon: const Icon(Icons.videocam, size: 16),
-                          label: const Text('Rejoindre',
-                              style: TextStyle(fontSize: 11)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF8B5CF6),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+              const SizedBox(height: 24),
+              ClinicalSectionHeader(
+                title: 'Médecins recommandés',
+                actionLabel: 'Voir tout',
+                onAction: () => context.push(AppRoutes.doctorSearch),
+              ),
+              const SizedBox(height: 12),
+              doctorsAsync.when(
+                data: (doctors) {
+                  if (doctors.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+
+                  return SizedBox(
+                    height: 198,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: doctors.length.clamp(0, 6),
+                      separatorBuilder: (_, __) => const SizedBox(width: 12),
+                      itemBuilder: (context, index) {
+                        final doctor = doctors[index];
+                        return _RecommendedDoctorCard(
+                          doctorName: doctor.fullName,
+                          specialty: doctor.specialty ?? 'Médecine générale',
+                          rating: doctor.rating,
+                          avatarUrl: doctor.avatarUrl,
+                          onTap: () => context.push(
+                            AppRoutes.doctorDetail
+                                .replaceFirst(':id', doctor.userId),
                           ),
-                        ),
-                      ),
+                        );
+                      },
                     ),
-                ],
+                  );
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (_, __) => const SizedBox.shrink(),
+              ),
+              const SizedBox(height: 24),
+              const ClinicalSectionHeader(title: 'Historique récent'),
+              const SizedBox(height: 12),
+              appointmentsAsync.when(
+                data: (appointments) {
+                  if (appointments.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+
+                  final recent = [...appointments]
+                    ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
+
+                  return Column(
+                    children: recent
+                        .take(3)
+                        .map((appointment) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: _PatientAppointmentCard(
+                                appointment: appointment,
+                              ),
+                            ))
+                        .toList(),
+                  );
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
               ),
             ],
           ),
@@ -405,96 +209,305 @@ class _AppointmentCard extends StatelessWidget {
   }
 }
 
-// ── Status Chip ─────────────────────────────────────────────
+class _PatientHeroCard extends StatelessWidget {
+  final Appointment appointment;
 
-class _StatusChip extends StatelessWidget {
-  final AppointmentStatus status;
-
-  const _StatusChip({required this.status});
+  const _PatientHeroCard({required this.appointment});
 
   @override
   Widget build(BuildContext context) {
-    Color color;
-    String label;
-
-    switch (status) {
-      case AppointmentStatus.confirmed:
-        color = const Color(0xFF10B981);
-        label = 'Confirmé';
-      case AppointmentStatus.pending:
-        color = const Color(0xFFF59E0B);
-        label = 'En attente';
-      case AppointmentStatus.cancelled:
-        color = const Color(0xFFEF4444);
-        label = 'Annulé';
-      case AppointmentStatus.completed:
-        color = const Color(0xFF3B82F6);
-        label = 'Terminé';
-      case AppointmentStatus.noShow:
-        color = const Color(0xFF6B7280);
-        label = 'Absent';
-    }
+    final doctor = appointment.doctor;
+    final whenLabel =
+        DateFormat('EEEE d MMMM • HH:mm', 'fr_FR').format(appointment.dateTime);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
+        gradient: AppTheme.primaryGradient,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        boxShadow: AppTheme.shadowPrimary,
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const ClinicalStatusChip(
+              label: 'E2E CHIFFRÉ',
+              color: Colors.white,
+              icon: Icons.lock_rounded,
+              compact: true,
+            ),
+            const SizedBox(height: 14),
+            Text(
+              'Prochain rendez-vous',
+              style: AppTheme.labelSmall.copyWith(
+                color: Colors.white.withValues(alpha: 0.85),
+                letterSpacing: 0.8,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              doctor?.fullName ?? 'Médecin',
+              style: AppTheme.headlineSmall.copyWith(color: Colors.white),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${doctor?.specialty ?? 'Consultation'} • ${toBeginningOfSentenceCase(whenLabel)}',
+              style: AppTheme.bodyMedium.copyWith(
+                color: Colors.white.withValues(alpha: 0.88),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => context.go(AppRoutes.patientAppointments),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.primaryColor,
+                      backgroundColor: Colors.white,
+                      side: BorderSide.none,
+                    ),
+                    child: const Text('Consulter'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => context.push(
+                      AppRoutes.appointmentDetail
+                          .replaceFirst(':id', appointment.id),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      backgroundColor: Colors.white.withValues(alpha: 0.1),
+                      side: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    child: const Text('Détails'),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-// ── Quick Action Button ─────────────────────────────────────
-
-class _QuickAction extends StatelessWidget {
+class _QuickAccessCard extends StatelessWidget {
   final IconData icon;
-  final String label;
+  final String title;
   final Color color;
   final VoidCallback onTap;
 
-  const _QuickAction(
-      {required this.icon,
-      required this.label,
-      required this.color,
-      required this.onTap});
+  const _QuickAccessCard({
+    required this.icon,
+    required this.title,
+    required this.color,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return GestureDetector(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Column(
+      child: ClinicalSurface(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        child: Column(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+              ),
+              child: Icon(icon, color: color),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: AppTheme.labelSmall.copyWith(
+                color: AppTheme.neutralGray700,
+                height: 1.3,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RecommendedDoctorCard extends StatelessWidget {
+  final String doctorName;
+  final String specialty;
+  final double rating;
+  final String? avatarUrl;
+  final VoidCallback onTap;
+
+  const _RecommendedDoctorCard({
+    required this.doctorName,
+    required this.specialty,
+    required this.rating,
+    required this.avatarUrl,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 160,
+      child: ClinicalSurface(
+        onTap: onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClinicalAvatar(
+              name: doctorName,
+              imageUrl: avatarUrl,
+              radius: 28,
+            ),
+            const SizedBox(height: 12),
+            Text(doctorName, style: AppTheme.titleSmall),
+            const SizedBox(height: 6),
+            Text(
+              specialty,
+              style: AppTheme.bodySmall.copyWith(
+                color: AppTheme.neutralGray500,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const Spacer(),
+            if (rating > 0)
+              ClinicalStatusChip(
+                label: rating.toStringAsFixed(1),
+                color: AppTheme.successColor,
+                icon: Icons.star_rounded,
+                compact: true,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PatientAppointmentCard extends StatelessWidget {
+  final Appointment appointment;
+
+  const _PatientAppointmentCard({required this.appointment});
+
+  @override
+  Widget build(BuildContext context) {
+    final doctor = appointment.doctor;
+    final dateLabel =
+        DateFormat('dd MMM • HH:mm', 'fr_FR').format(appointment.dateTime);
+
+    return ClinicalSurface(
+      onTap: () => context.push(
+        AppRoutes.appointmentDetail.replaceFirst(':id', appointment.id),
+      ),
+      child: Row(
         children: [
           Container(
-            width: 64,
-            height: 64,
+            width: 52,
+            height: 52,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: color.withValues(alpha: 0.15)),
+              color: AppTheme.primarySurface,
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
             ),
-            child: Icon(icon, color: color, size: 28),
+            child: Center(
+              child: Text(
+                DateFormat('dd').format(appointment.dateTime),
+                style: AppTheme.titleMedium.copyWith(
+                  color: AppTheme.primaryColor,
+                ),
+              ),
+            ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: AppTheme.labelSmall.copyWith(
-              fontWeight: FontWeight.w600,
-              height: 1.3,
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(doctor?.fullName ?? 'Médecin', style: AppTheme.titleSmall),
+                const SizedBox(height: 4),
+                Text(
+                  doctor?.specialty ?? 'Consultation',
+                  style: AppTheme.bodySmall.copyWith(
+                    color: AppTheme.neutralGray500,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  dateLabel,
+                  style: AppTheme.labelSmall.copyWith(
+                    color: AppTheme.neutralGray400,
+                  ),
+                ),
+              ],
             ),
+          ),
+          ClinicalStatusChip(
+            label:
+                appointment.type == AppointmentType.video ? 'VIDÉO' : 'CABINET',
+            color: appointment.type == AppointmentType.video
+                ? AppTheme.primaryColor
+                : AppTheme.successColor,
+            compact: true,
           ),
         ],
       ),
+    );
+  }
+}
+
+class _BarChartPlaceholder extends StatelessWidget {
+  const _BarChartPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    const heights = [36.0, 58.0, 44.0, 70.0, 40.0, 62.0];
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: List.generate(heights.length, (index) {
+        final active = index == 3;
+
+        return Expanded(
+          child: Padding(
+            padding:
+                EdgeInsets.only(right: index == heights.length - 1 ? 0 : 8),
+            child: Column(
+              children: [
+                Container(
+                  height: heights[index],
+                  decoration: BoxDecoration(
+                    color: active
+                        ? AppTheme.primaryLight
+                        : AppTheme.secondaryLight.withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM'][index],
+                  style: AppTheme.labelSmall.copyWith(
+                    color: AppTheme.neutralGray400,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }),
     );
   }
 }

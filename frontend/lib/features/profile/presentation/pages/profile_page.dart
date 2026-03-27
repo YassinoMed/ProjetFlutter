@@ -1,4 +1,3 @@
-/// Profile Page - User profile management
 library;
 
 import 'package:flutter/material.dart';
@@ -7,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/widgets/clinical_ui.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../secretaries/presentation/widgets/acting_doctor_banner.dart';
 
@@ -18,213 +18,232 @@ class ProfilePage extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mon Profil'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () {
-              // TODO: Navigate to settings
-            },
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
           children: [
-            if (user?.isSecretary == true) const ActingDoctorBanner(compact: true),
-            if (user?.isSecretary == true) const SizedBox(height: 20),
-            // ── Avatar ────────────────────────────
-            Center(
+            if (user?.isSecretary == true)
+              const ActingDoctorBanner(compact: true),
+            if (user?.isSecretary == true) const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Mon profil',
+                    style: AppTheme.headlineSmall,
+                  ),
+                ),
+                const Icon(
+                  Icons.verified_user_outlined,
+                  color: AppTheme.primaryColor,
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            ClinicalSurface(
               child: Column(
                 children: [
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: AppTheme.medicalGradient,
-                      boxShadow: AppTheme.shadowPrimary,
-                    ),
-                    child: Center(
-                      child: Text(
-                        user?.name.isNotEmpty == true
-                            ? user!.name[0].toUpperCase()
-                            : '?',
-                        style: AppTheme.headlineLarge.copyWith(
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
+                  ClinicalAvatar(
+                    name: user?.name ?? 'Utilisateur',
+                    imageUrl: user?.avatarUrl,
+                    radius: 44,
                   ),
                   const SizedBox(height: 16),
-                  Text(
-                    user?.name ?? 'Utilisateur',
-                    style: AppTheme.titleLarge,
-                  ),
+                  Text(user?.name ?? 'Utilisateur',
+                      style: AppTheme.headlineSmall),
                   const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 4,
+                  Text(
+                    _roleSubtitle(user),
+                    style: AppTheme.bodyMedium.copyWith(
+                      color: AppTheme.neutralGray500,
                     ),
-                    decoration: BoxDecoration(
-                      color: user?.isDoctor == true
-                          ? AppTheme.secondaryColor.withValues(alpha: 0.1)
-                          : user?.isSecretary == true
-                              ? AppTheme.warningColor.withValues(alpha: 0.1)
-                              : AppTheme.primaryColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      _roleLabel(user),
-                      style: AppTheme.labelSmall.copyWith(
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.center,
+                    children: [
+                      ClinicalStatusChip(
+                        label: _roleLabel(user).toUpperCase(),
                         color: user?.isDoctor == true
-                            ? AppTheme.secondaryColor
+                            ? AppTheme.successColor
                             : user?.isSecretary == true
                                 ? AppTheme.warningColor
                                 : AppTheme.primaryColor,
+                        compact: true,
                       ),
+                      if ((user?.email ?? '').isNotEmpty)
+                        ClinicalStatusChip(
+                          label: user!.email,
+                          color: AppTheme.neutralGray500,
+                          compact: true,
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            ClinicalSurface(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Santé Pass', style: AppTheme.titleLarge),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Votre identité numérique sécurisée pour vos rendez-vous et vos échanges cliniques.',
+                          style: AppTheme.bodyMedium.copyWith(
+                            color: AppTheme.neutralGray500,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        const ClinicalStatusChip(
+                          label: 'CHIFFRÉ E2E',
+                          color: AppTheme.successColor,
+                          icon: Icons.lock_rounded,
+                          compact: true,
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    user?.email ?? '',
-                    style: AppTheme.bodySmall.copyWith(
-                      color: AppTheme.neutralGray500,
+                  const SizedBox(width: 12),
+                  Container(
+                    width: 84,
+                    height: 84,
+                    decoration: BoxDecoration(
+                      color: AppTheme.softColor(AppTheme.warningColor, 0.12),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                    ),
+                    child: const Icon(
+                      Icons.qr_code_2_rounded,
+                      color: AppTheme.warningColor,
+                      size: 34,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 32),
-
-            // ── Menu Items ────────────────────────
-            _buildMenuItem(
-              icon: Icons.person_outline_rounded,
-              title: 'Informations personnelles',
-              onTap: () {
-                context.push(AppRoutes.editProfile);
-              },
-            ),
-            if (user?.isDoctor == true)
-              _buildMenuItem(
-                icon: Icons.support_agent_rounded,
-                title: 'Mes secrétaires',
-                subtitle: 'Invitations, permissions, suspension',
-                onTap: () {
-                  context.push(AppRoutes.doctorSecretaries);
-                },
-              ),
-            if (user?.isSecretary == true)
-              _buildMenuItem(
-                icon: Icons.badge_outlined,
-                title: 'Mes délégations',
-                subtitle: 'Choisir le médecin actif',
-                onTap: () {
-                  context.go(AppRoutes.secretaryHome);
-                },
-              ),
-            _buildMenuItem(
-              icon: Icons.folder_open_rounded,
-              title: 'Dossier médical',
-              onTap: () {
-                context.push(AppRoutes.documents);
-              },
-            ),
-            _buildMenuItem(
-              icon: Icons.notifications_outlined,
-              title: 'Notifications',
-              onTap: () {},
-            ),
-            _buildMenuItem(
-              icon: Icons.shield_outlined,
-              title: 'Confidentialité & RGPD',
-              onTap: () {
-                context.push(AppRoutes.gdprSettings);
-              },
-            ),
-            _buildMenuItem(
-              icon: Icons.lock_outline_rounded,
-              title: 'Sécurité & Mot de passe',
-              onTap: () {
-                context.push(AppRoutes.changePassword);
-              },
-            ),
-            _buildMenuItem(
-              icon: Icons.dark_mode_outlined,
-              title: 'Apparence',
-              subtitle: 'Clair',
-              onTap: () {},
-            ),
-            _buildMenuItem(
-              icon: Icons.language_outlined,
-              title: 'Langue',
-              subtitle: 'Français',
-              onTap: () {},
-            ),
-            _buildMenuItem(
-              icon: Icons.help_outline_rounded,
-              title: 'Aide & Support',
-              onTap: () {},
-            ),
-            const SizedBox(height: 16),
-
-            // ── Logout Button ─────────────────────
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () async {
-                  final shouldLogout = await showDialog<bool>(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text('Déconnexion'),
-                      content: const Text(
-                        'Êtes-vous sûr de vouloir vous déconnecter ?',
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.of(ctx).pop(false),
-                          child: const Text('Annuler'),
-                        ),
-                        ElevatedButton(
-                          onPressed: () => Navigator.of(ctx).pop(true),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.errorColor,
-                          ),
-                          child: const Text('Déconnexion'),
-                        ),
-                      ],
+            const SizedBox(height: 24),
+            const ClinicalSectionHeader(title: 'Dossier médical'),
+            const SizedBox(height: 12),
+            ClinicalSurface(
+              padding: EdgeInsets.zero,
+              child: Column(
+                children: [
+                  _ProfileTile(
+                    icon: Icons.person_outline_rounded,
+                    title: 'Informations personnelles',
+                    onTap: () => context.push(AppRoutes.editProfile),
+                  ),
+                  _DividerLine(),
+                  _ProfileTile(
+                    icon: Icons.folder_open_rounded,
+                    title: 'Documents',
+                    trailing: const ClinicalStatusChip(
+                      label: '12',
+                      color: AppTheme.primaryColor,
+                      compact: true,
                     ),
-                  );
-
-                  if (shouldLogout == true) {
-                    await ref.read(authNotifierProvider.notifier).logout();
-                    if (context.mounted) {
-                      context.go(AppRoutes.login);
-                    }
-                  }
-                },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.errorColor,
-                  side: const BorderSide(color: AppTheme.errorColor),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-                icon: const Icon(Icons.logout_rounded),
-                label: const Text('Se déconnecter'),
+                    onTap: () => context.push(AppRoutes.documents),
+                  ),
+                  if (user?.isDoctor == true) ...[
+                    _DividerLine(),
+                    _ProfileTile(
+                      icon: Icons.support_agent_rounded,
+                      title: 'Mes secrétaires',
+                      subtitle: 'Invitations et permissions',
+                      onTap: () => context.push(AppRoutes.doctorSecretaries),
+                    ),
+                  ],
+                  if (user?.isSecretary == true) ...[
+                    _DividerLine(),
+                    _ProfileTile(
+                      icon: Icons.badge_outlined,
+                      title: 'Mes délégations',
+                      subtitle: 'Choisir le médecin actif',
+                      onTap: () => context.go(AppRoutes.secretaryHome),
+                    ),
+                  ],
+                ],
               ),
+            ),
+            const SizedBox(height: 24),
+            const ClinicalSectionHeader(title: 'Préférences'),
+            const SizedBox(height: 12),
+            ClinicalSurface(
+              padding: EdgeInsets.zero,
+              child: Column(
+                children: [
+                  _ProfileTile(
+                    icon: Icons.shield_outlined,
+                    title: 'Confidentialité & RGPD',
+                    onTap: () => context.push(AppRoutes.gdprSettings),
+                  ),
+                  _DividerLine(),
+                  _ProfileTile(
+                    icon: Icons.lock_outline_rounded,
+                    title: 'Sécurité & mot de passe',
+                    onTap: () => context.push(AppRoutes.changePassword),
+                  ),
+                  _DividerLine(),
+                  _ProfileTile(
+                    icon: Icons.notifications_outlined,
+                    title: 'Notifications',
+                    onTap: () {},
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () {},
+              icon: const Icon(Icons.download_rounded),
+              label: const Text('Exporter données RGPD'),
             ),
             const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: () async {
+                final shouldLogout = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Déconnexion'),
+                    content: const Text(
+                      'Voulez-vous vraiment fermer votre session ?',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        child: const Text('Annuler'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.errorColor,
+                        ),
+                        child: const Text('Déconnexion'),
+                      ),
+                    ],
+                  ),
+                );
 
-            // ── Version ───────────────────────────
-            Text(
-              'MediConnect Pro v2.0.0',
-              style: AppTheme.bodySmall.copyWith(
-                color: AppTheme.neutralGray400,
+                if (shouldLogout != true) return;
+
+                await ref.read(authNotifierProvider.notifier).logout();
+                if (context.mounted) {
+                  context.go(AppRoutes.login);
+                }
+              },
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.errorColor,
               ),
+              icon: const Icon(Icons.logout_rounded),
+              label: const Text('Déconnexion'),
             ),
-            const SizedBox(height: 32),
           ],
         ),
       ),
@@ -237,37 +256,67 @@ class ProfilePage extends ConsumerWidget {
     return 'Patient';
   }
 
-  Widget _buildMenuItem({
-    required IconData icon,
-    required String title,
-    String? subtitle,
-    required VoidCallback onTap,
-  }) {
+  String _roleSubtitle(user) {
+    if (user?.isDoctor == true) {
+      return user?.speciality ?? 'Professionnel de santé';
+    }
+    if (user?.isSecretary == true) {
+      return 'Assistante rattachée à un praticien';
+    }
+    return 'Patient depuis MediConnect Pro';
+  }
+}
+
+class _ProfileTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final Widget? trailing;
+  final VoidCallback onTap;
+
+  const _ProfileTile({
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    this.trailing,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return ListTile(
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: Container(
-        width: 40,
-        height: 40,
+        width: 42,
+        height: 42,
         decoration: BoxDecoration(
           color: AppTheme.neutralGray100,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         ),
-        child: Icon(icon, color: AppTheme.neutralGray600, size: 20),
+        child: Icon(icon, color: AppTheme.primaryColor, size: 20),
       ),
       title: Text(title, style: AppTheme.titleSmall),
-      subtitle: subtitle != null
-          ? Text(
-              subtitle,
+      subtitle: subtitle == null
+          ? null
+          : Text(
+              subtitle!,
               style: AppTheme.bodySmall.copyWith(
                 color: AppTheme.neutralGray500,
               ),
-            )
-          : null,
-      trailing: const Icon(
-        Icons.chevron_right_rounded,
-        color: AppTheme.neutralGray400,
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      onTap: onTap,
+            ),
+      trailing: trailing ??
+          const Icon(
+            Icons.chevron_right_rounded,
+            color: AppTheme.neutralGray400,
+          ),
     );
+  }
+}
+
+class _DividerLine extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return const Divider(height: 1, indent: 16, endIndent: 16);
   }
 }
