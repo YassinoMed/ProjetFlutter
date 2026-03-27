@@ -350,6 +350,43 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
     );
   }
 
+// Future<void> sendGoogleTokenToBackend(String token) async {
+
+//   final response = await http.post(
+//     Uri.parse("$baseUrl/auth/google"),
+//     body: {
+//       "token": token
+//     }
+//   );
+
+//   final data = jsonDecode(response.body);
+
+//   final jwt = data["token"];
+
+//   // stocker JWT
+// }
+
+
+//Connexion avec compte google 
+// Future<void> loginWithGoogle() async {
+//   try {
+
+//     final GoogleSignInAccount? googleUser =
+//         await GoogleSignIn().signIn();
+
+//     if (googleUser == null) return;
+
+//     final googleAuth = await googleUser.authentication;
+
+//     final idToken = googleAuth.idToken;
+
+//     await sendGoogleTokenToBackend(idToken!);
+
+//   } catch (e) {
+//     state = AsyncError(e, StackTrace.current);
+//   }
+// }
+
   /// Update Profile
   Future<Either<Failure, User>> updateProfile({
     String? name,
@@ -434,3 +471,4 @@ final isBiometricAvailableProvider = FutureProvider<bool>((ref) async {
   final biometricService = ref.read(biometricServiceProvider);
   return biometricService.isAvailable();
 });
+

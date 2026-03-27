@@ -75,7 +75,7 @@ RUN chmod -R 775 storage bootstrap/cache
 RUN rm -f .env
 
 # Exposer les ports pour Nginx (8080) et Reverb (8081) pour éviter les ports privilégiés
-EXPOSE 8080 8081
+EXPOSE 8089 8089
 
 # Lancement de Supervisor (qui va gérer Nginx, PHP-FPM, Horizon et Reverb)
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]

@@ -11,6 +11,8 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
+  google_sign_in: ^6.2.1
+  http: ^1.2.0
 
   # ── UI & Design ──────────────────────────────────────────
   cupertino_icons: ^1.0.8

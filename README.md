@@ -187,5 +187,5 @@ This project is licensed under the [MIT License](LICENSE).
 
 ---
 <div align="center">
-  <b>Built with ❤️ by Yassino</b>
+  <b>Built with ❤️ by Yassino X Chayma Mkaouar</b>
 </div>
