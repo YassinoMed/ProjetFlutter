@@ -112,13 +112,13 @@ graph TD
 
 ---
 
-## 📱 Screenshots
+## 🎨 Maquettes Figma
 
-> *(Add screenshots of your brilliant UI here)*
+> Aperçu des principales maquettes UI/UX concues sur Figma pour le parcours patient et medecin.
 
-| Patient Dashboard | Doctor Appointments | Real-Time Chat | Telehealth Video |
+| Dashboard Patient | Agenda Medecin | Chat Patient-Medecin | Visioconsultation |
 | :---: | :---: | :---: | :---: |
-| <img src="https://placehold.co/200x400/eee/999?text=Patient+Home" width="200"/> | <img src="https://placehold.co/200x400/eee/999?text=Booking" width="200"/> | <img src="https://placehold.co/200x400/eee/999?text=Chat/WebSockets" width="200"/> | <img src="https://placehold.co/200x400/eee/999?text=Video+Call" width="200"/> |
+| <a href="Figma/Dashboard Patient (V2.0).png"><img src="Figma/Dashboard Patient (V2.0).png" width="200" alt="Maquette Figma Dashboard Patient" /></a> | <a href="Figma/Agenda Médecin (V2.0).png"><img src="Figma/Agenda Médecin (V2.0).png" width="200" alt="Maquette Figma Agenda Medecin" /></a> | <a href="Figma/Chat Patient-Médecin (V2.0).png"><img src="Figma/Chat Patient-Médecin (V2.0).png" width="200" alt="Maquette Figma Chat Patient Medecin" /></a> | <a href="Figma/Visioconsultation (V2.0).png"><img src="Figma/Visioconsultation (V2.0).png" width="200" alt="Maquette Figma Visioconsultation" /></a> |
 
 ---
 
