@@ -33,12 +33,44 @@ final documentDetailProvider =
   return repository.getDocument(documentId);
 });
 
+class DocumentQuestionController
+    extends FamilyAsyncNotifier<DocumentQuestionAnswer?, String> {
+  @override
+  Future<DocumentQuestionAnswer?> build(String arg) async => null;
+
+  Future<void> ask({
+    required String question,
+    String? audience,
+  }) async {
+    state = const AsyncLoading();
+
+    state = await AsyncValue.guard(() async {
+      final repository = ref.read(documentRepositoryProvider);
+      return repository.askQuestion(
+        documentId: arg,
+        question: question,
+        audience: audience,
+      );
+    });
+  }
+
+  void clear() {
+    state = const AsyncData(null);
+  }
+}
+
+final documentQuestionControllerProvider = AsyncNotifierProviderFamily<
+    DocumentQuestionController, DocumentQuestionAnswer?, String>(
+  DocumentQuestionController.new,
+);
+
 class DocumentActionsController {
   final Ref ref;
 
   DocumentActionsController(this.ref);
 
-  DocumentRepositoryImpl get _repository => ref.read(documentRepositoryProvider);
+  DocumentRepositoryImpl get _repository =>
+      ref.read(documentRepositoryProvider);
 
   Future<MedicalDocument> upload({
     required File file,
@@ -68,6 +100,18 @@ class DocumentActionsController {
     ref.invalidate(documentsProvider);
     ref.invalidate(documentDetailProvider(documentId));
     return document;
+  }
+
+  Future<DocumentQuestionAnswer> askQuestion({
+    required String documentId,
+    required String question,
+    String? audience,
+  }) {
+    return _repository.askQuestion(
+      documentId: documentId,
+      question: question,
+      audience: audience,
+    );
   }
 
   Future<void> delete(String documentId) async {

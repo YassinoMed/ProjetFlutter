@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\RgpdController;
 use App\Http\Controllers\Api\ScheduleController;
 use App\Http\Controllers\Api\SecretaryInvitationController;
+use App\Http\Controllers\Api\TeleconsultationController;
 use App\Http\Controllers\Api\WebRtcController;
 use App\Http\Controllers\Api\WebRtcSignalingController;
 use App\Models\Tenant;
@@ -95,6 +96,20 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function (): void {
         Route::get('/appointments/{appointmentId}', [AppointmentController::class, 'show']);
         Route::post('/appointments/{appointmentId}/cancel', [AppointmentController::class, 'cancel']);
         Route::post('/appointments/{appointmentId}/confirm', [AppointmentController::class, 'confirm']);
+
+        Route::prefix('teleconsultations')->middleware('throttle:calls')->group(function (): void {
+            Route::post('/', [TeleconsultationController::class, 'store']);
+            Route::get('/', [TeleconsultationController::class, 'index']);
+            Route::get('/{teleconsultationId}', [TeleconsultationController::class, 'show']);
+            Route::post('/{teleconsultationId}/start', [TeleconsultationController::class, 'start']);
+            Route::post('/{teleconsultationId}/join', [TeleconsultationController::class, 'join']);
+            Route::post('/{teleconsultationId}/cancel', [TeleconsultationController::class, 'cancel']);
+            Route::post('/{teleconsultationId}/end', [TeleconsultationController::class, 'end']);
+            Route::post('/{teleconsultationId}/signal/offer', [TeleconsultationController::class, 'offer'])->middleware('throttle:webrtc');
+            Route::post('/{teleconsultationId}/signal/answer', [TeleconsultationController::class, 'answer'])->middleware('throttle:webrtc');
+            Route::post('/{teleconsultationId}/signal/ice-candidate', [TeleconsultationController::class, 'ice'])->middleware('throttle:webrtc');
+            Route::get('/{teleconsultationId}/events', [TeleconsultationController::class, 'events']);
+        });
     });
 
     // ── Doctor Secretaries ───────────────────────────────
@@ -156,6 +171,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function (): void {
         Route::get('/{documentId}/summary', [DocumentController::class, 'summary']);
         Route::get('/{documentId}/entities', [DocumentController::class, 'entities']);
         Route::post('/{documentId}/reanalyze', [DocumentController::class, 'reanalyze']);
+        Route::post('/{documentId}/ask', [DocumentController::class, 'ask']);
         Route::delete('/{documentId}', [DocumentController::class, 'destroy']);
     });
 

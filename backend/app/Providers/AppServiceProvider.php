@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Services\Documents\Ai\HeuristicDocumentAiAnalyzer;
+use App\Services\Documents\Ai\HeuristicGroundedDocumentQuestionAnswerer;
 use App\Services\Documents\Contracts\DocumentAiAnalyzer;
+use App\Services\Documents\Contracts\DocumentQuestionAnswerer;
 use App\Services\Documents\Contracts\DocumentTextExtractor;
 use App\Services\Documents\TextExtraction\CompositeDocumentTextExtractor;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -17,6 +19,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(DocumentTextExtractor::class, CompositeDocumentTextExtractor::class);
         $this->app->singleton(DocumentAiAnalyzer::class, HeuristicDocumentAiAnalyzer::class);
+        $this->app->singleton(DocumentQuestionAnswerer::class, HeuristicGroundedDocumentQuestionAnswerer::class);
     }
 
     public function boot(): void

@@ -13,6 +13,8 @@ class AppointmentResource extends JsonResource
             'id' => $this->id,
             'patient_user_id' => $this->patient_user_id,
             'doctor_user_id' => $this->doctor_user_id,
+            'patient_name' => trim((string) ($this->patient?->first_name ?? '').' '.(string) ($this->patient?->last_name ?? '')),
+            'doctor_name' => trim((string) ($this->doctor?->first_name ?? '').' '.(string) ($this->doctor?->last_name ?? '')),
             'starts_at_utc' => optional($this->starts_at_utc)?->setTimezone('UTC')?->toISOString(),
             'ends_at_utc' => optional($this->ends_at_utc)?->setTimezone('UTC')?->toISOString(),
             'status' => $this->status?->value ?? $this->status,

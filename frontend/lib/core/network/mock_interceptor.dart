@@ -9,9 +9,10 @@ class MockInterceptor extends Interceptor {
     // If we get a 404 or 500, check if we have mock data for this path
     if (err.response?.statusCode == 404 || err.response?.statusCode == 500) {
       final path = err.requestOptions.path;
+      final method = err.requestOptions.method.toUpperCase();
 
       if (path.contains(ApiConstants.appointments)) {
-        final isPost = err.requestOptions.method.toUpperCase() == 'POST';
+        final isPost = method == 'POST';
         // Check if path is just '/appointments' or has an ID like '/appointments/123'
         final isDetail = !path.endsWith(ApiConstants.appointments) &&
             !path.contains('/appointments?');
@@ -83,7 +84,7 @@ class MockInterceptor extends Interceptor {
       }
 
       // Handle Messages (check this BEFORE conversations to avoid collision)
-      if (path.contains('/messages')) {
+      if (method == 'GET' && path.contains('/messages')) {
         return handler.resolve(Response(
           requestOptions: err.requestOptions,
           statusCode: 200,
@@ -91,27 +92,33 @@ class MockInterceptor extends Interceptor {
             'data': [
               {
                 'id': 'msg-1',
-                'sender_id': 'doc-1',
-                'content':
+                'consultation_id':
+                    path.split('/').elementAt(path.split('/').length - 2),
+                'sender_user_id': 'doc-1',
+                'recipient_user_id': 'patient-id',
+                'ciphertext':
                     'Bonjour ! Comment puis-je vous aider aujourd\'hui ?',
-                'created_at': DateTime.now()
+                'sent_at_utc': DateTime.now()
                     .subtract(const Duration(minutes: 30))
                     .toIso8601String(),
                 'is_me': false,
                 'is_encrypted': true,
-                'status': 'read',
+                'status': 'READ',
               },
               {
                 'id': 'msg-2',
-                'sender_id': 'patient-id', // Assuming current user
-                'content':
+                'consultation_id':
+                    path.split('/').elementAt(path.split('/').length - 2),
+                'sender_user_id': 'patient-id',
+                'recipient_user_id': 'doc-1',
+                'ciphertext':
                     'Bonjour Docteur, j\'ai une question sur mon traitement.',
-                'created_at': DateTime.now()
+                'sent_at_utc': DateTime.now()
                     .subtract(const Duration(minutes: 25))
                     .toIso8601String(),
                 'is_me': true,
                 'is_encrypted': true,
-                'status': 'read',
+                'status': 'READ',
               },
             ]
           },
@@ -202,10 +209,11 @@ class MockInterceptor extends Interceptor {
         final status = err.response?.statusCode;
         if (status == 404) {
           message = 'Le service demandé est introuvable (404).';
-        } else if (status == 500)
+        } else if (status == 500) {
           message = 'Erreur interne du serveur (500).';
-        else
+        } else {
           message = 'Erreur du serveur (Code: $status).';
+        }
       default:
         message = 'Une erreur inattendue est survenue.';
     }

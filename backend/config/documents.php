@@ -21,4 +21,7 @@ return [
         'api_key' => env('DOCUMENTS_AI_API_KEY'),
         'model' => env('DOCUMENTS_AI_MODEL'),
     ],
+    'qa' => [
+        'max_evidence_lines' => (int) env('DOCUMENTS_QA_MAX_EVIDENCE_LINES', 3),
+    ],
 ];

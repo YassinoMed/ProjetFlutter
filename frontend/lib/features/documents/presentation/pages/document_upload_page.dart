@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -23,6 +24,7 @@ class _DocumentUploadPageState extends ConsumerState<DocumentUploadPage> {
   final _titleController = TextEditingController();
   File? _selectedFile;
   String? _documentType;
+  DateTime? _documentDate;
   bool _isLoading = false;
 
   static const _types = [
@@ -67,7 +69,7 @@ class _DocumentUploadPageState extends ConsumerState<DocumentUploadPage> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: _documentType,
+              initialValue: _documentType,
               decoration: const InputDecoration(
                 labelText: 'Type suggéré',
               ),
@@ -78,6 +80,35 @@ class _DocumentUploadPageState extends ConsumerState<DocumentUploadPage> {
                       ))
                   .toList(),
               onChanged: (value) => setState(() => _documentType = value),
+            ),
+            const SizedBox(height: 16),
+            InkWell(
+              onTap: _pickDocumentDate,
+              borderRadius: BorderRadius.circular(14),
+              child: InputDecorator(
+                decoration: const InputDecoration(
+                  labelText: 'Date du document',
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.event_rounded),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _documentDate == null
+                            ? 'Non renseignée'
+                            : DateFormat('dd/MM/yyyy')
+                                .format(_documentDate!.toLocal()),
+                      ),
+                    ),
+                    if (_documentDate != null)
+                      IconButton(
+                        onPressed: () => setState(() => _documentDate = null),
+                        icon: const Icon(Icons.clear_rounded),
+                      ),
+                  ],
+                ),
+              ),
             ),
             const SizedBox(height: 20),
             InkWell(
@@ -152,6 +183,7 @@ class _DocumentUploadPageState extends ConsumerState<DocumentUploadPage> {
             file: _selectedFile!,
             title: _titleController.text.trim(),
             documentTypeHint: _documentType,
+            documentDateUtc: _documentDate,
           );
 
       if (mounted) {
@@ -167,6 +199,20 @@ class _DocumentUploadPageState extends ConsumerState<DocumentUploadPage> {
       if (mounted) {
         setState(() => _isLoading = false);
       }
+    }
+  }
+
+  Future<void> _pickDocumentDate() async {
+    final now = DateTime.now();
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: _documentDate ?? now,
+      firstDate: DateTime(now.year - 10),
+      lastDate: DateTime(now.year + 1),
+    );
+
+    if (selected != null) {
+      setState(() => _documentDate = selected);
     }
   }
 }

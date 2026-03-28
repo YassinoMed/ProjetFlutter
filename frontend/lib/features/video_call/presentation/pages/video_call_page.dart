@@ -5,6 +5,7 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:mediconnect_pro/core/theme/app_theme.dart';
 import 'package:mediconnect_pro/features/video_call/domain/entities/video_call_entity.dart';
 import 'package:mediconnect_pro/features/video_call/presentation/providers/video_call_providers.dart';
+import 'package:mediconnect_pro/features/video_call/presentation/widgets/inline_call_chat_panel.dart';
 
 class VideoCallPage extends ConsumerStatefulWidget {
   final String appointmentId;
@@ -15,14 +16,16 @@ class VideoCallPage extends ConsumerStatefulWidget {
 }
 
 class _VideoCallPageState extends ConsumerState<VideoCallPage>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late AnimationController _pulseController;
   bool _showControls = true;
+  bool _showChatPanel = false;
   Timer? _hideControlsTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -47,9 +50,17 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _pulseController.dispose();
     _hideControlsTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    ref
+        .read(videoCallNotifierProvider(widget.appointmentId).notifier)
+        .handleLifecycleChange(state);
   }
 
   @override
@@ -70,7 +81,8 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
           children: [
             // ── Remote Video (Full screen) ──────────────────
             Positioned.fill(
-              child: callState.state == CallState.connected
+              child: callState.state == CallState.connected &&
+                      callState.hasRemoteVideo
                   ? RTCVideoView(
                       notifier.remoteRenderer,
                       objectFit:
@@ -105,6 +117,18 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
                 left: 0,
                 right: 0,
                 child: _buildControls(callState, notifier),
+              ),
+
+            if (_showChatPanel)
+              Positioned(
+                left: 12,
+                right: 12,
+                bottom: MediaQuery.of(context).padding.bottom + 104,
+                height: 340,
+                child: InlineCallChatPanel(
+                  appointmentId: widget.appointmentId,
+                  onClose: () => setState(() => _showChatPanel = false),
+                ),
               ),
 
             // ── Connection Quality Indicator ────────────────
@@ -153,12 +177,18 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
 
     switch (callState.state) {
       case CallState.idle:
-      case CallState.joining:
+      case CallState.resolvingSession:
         statusText = 'Connexion en cours…';
         statusIcon = Icons.wifi_calling_3_rounded;
+      case CallState.waitingHost:
+        statusText = 'En attente du médecin…';
+        statusIcon = Icons.schedule_send_rounded;
       case CallState.ringing:
         statusText = 'Appel en cours…';
         statusIcon = Icons.ring_volume_rounded;
+      case CallState.joining:
+        statusText = 'Connexion a la session…';
+        statusIcon = Icons.video_call_rounded;
       case CallState.reconnecting:
         statusText = 'Reconnexion…';
         statusIcon = Icons.wifi_off_rounded;
@@ -220,6 +250,19 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
                 backgroundColor: AppTheme.errorColor,
                 foregroundColor: Colors.white,
               ),
+            ),
+          ],
+          if (callState.state == CallState.waitingHost) ...[
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () {
+                ref
+                    .read(videoCallNotifierProvider(widget.appointmentId)
+                        .notifier)
+                    .retryJoin();
+              },
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Reessayer'),
             ),
           ],
         ],
@@ -348,10 +391,11 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
           ],
         ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 14,
+        runSpacing: 12,
         children: [
-          // Mic toggle
           _ControlBtn(
             icon: callState.isAudioMuted
                 ? Icons.mic_off_rounded
@@ -360,8 +404,6 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
             isActive: !callState.isAudioMuted,
             onPressed: () => notifier.toggleAudio(),
           ),
-
-          // Video toggle
           _ControlBtn(
             icon: callState.isVideoEnabled
                 ? Icons.videocam_rounded
@@ -370,21 +412,33 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
             isActive: callState.isVideoEnabled,
             onPressed: () => notifier.toggleVideo(),
           ),
-
-          // End call
           _ControlBtn(
             icon: Icons.call_end_rounded,
             label: 'Raccrocher',
             isDestructive: true,
             onPressed: () => _endCall(context),
           ),
-
-          // Switch camera
+          _ControlBtn(
+            icon: callState.isSpeakerOn
+                ? Icons.volume_up_rounded
+                : Icons.volume_off_rounded,
+            label: callState.isSpeakerOn ? 'Haut-parleur' : 'Ecouteur',
+            isActive: callState.isSpeakerOn,
+            onPressed: () => notifier.toggleSpeaker(),
+          ),
           _ControlBtn(
             icon: Icons.switch_camera_rounded,
             label: 'Retourner',
             isActive: true,
             onPressed: () => notifier.switchCamera(),
+          ),
+          _ControlBtn(
+            icon: _showChatPanel
+                ? Icons.chat_bubble_rounded
+                : Icons.chat_bubble_outline_rounded,
+            label: 'Chat',
+            isActive: _showChatPanel,
+            onPressed: () => setState(() => _showChatPanel = !_showChatPanel),
           ),
         ],
       ),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -64,18 +65,82 @@ class WebSocketService {
   }
 
   Future<void> subscribeToConsultation(
-      String consultationId, Function(dynamic) onMessageReceived) async {
+    String consultationId,
+    Function(dynamic) onMessageReceived,
+  ) async {
+    await subscribeToConsultationEvents(
+      consultationId,
+      (eventName, data) {
+        if (eventName == 'App\\Events\\ChatMessageSent' ||
+            data['type'] == 'CHAT_MESSAGE') {
+          onMessageReceived(data);
+        }
+      },
+    );
+  }
+
+  Future<void> unsubscribe(String consultationId) async {
+    await unsubscribeConsultation(consultationId);
+  }
+
+  Future<void> subscribeToConsultationEvents(
+    String consultationId,
+    FutureOr<void> Function(String eventName, Map<String, dynamic> data)
+        onEvent,
+  ) async {
+    await _subscribeToPrivateChannel(
+      'private-consultations.$consultationId',
+      onEvent,
+    );
+  }
+
+  Future<void> unsubscribeConsultation(String consultationId) async {
+    await _unsubscribeChannel('private-consultations.$consultationId');
+  }
+
+  Future<void> subscribeToTeleconsultation(
+    String teleconsultationId,
+    FutureOr<void> Function(String eventName, Map<String, dynamic> data)
+        onEvent,
+  ) async {
+    await _subscribeToPrivateChannel(
+      'private-teleconsultations.$teleconsultationId',
+      onEvent,
+    );
+  }
+
+  Future<void> subscribeToCallSession(
+    String callSessionId,
+    FutureOr<void> Function(String eventName, Map<String, dynamic> data)
+        onEvent,
+  ) async {
+    await _subscribeToPrivateChannel(
+      'private-calls.$callSessionId',
+      onEvent,
+    );
+  }
+
+  Future<void> unsubscribeTeleconsultation(String teleconsultationId) async {
+    await _unsubscribeChannel('private-teleconsultations.$teleconsultationId');
+  }
+
+  Future<void> unsubscribeCallSession(String callSessionId) async {
+    await _unsubscribeChannel('private-calls.$callSessionId');
+  }
+
+  Future<void> _subscribeToPrivateChannel(
+    String channelName,
+    FutureOr<void> Function(String eventName, Map<String, dynamic> data)
+        onEvent,
+  ) async {
     if (!_isInit) await init();
 
-    final channelName = 'private-consultations.$consultationId';
     try {
       await _pusher.subscribe(
         channelName: channelName,
         onEvent: (event) {
-          if (event.eventName == 'App\\Events\\ChatMessageSent') {
-            final data = jsonDecode(event.data.toString());
-            onMessageReceived(data);
-          }
+          final decoded = _decodeEventData(event.data);
+          Future.microtask(() => onEvent(event.eventName, decoded));
         },
       );
       _logger.i('Subscribed to $channelName');
@@ -84,10 +149,39 @@ class WebSocketService {
     }
   }
 
-  Future<void> unsubscribe(String consultationId) async {
-    final channelName = 'private-consultations.$consultationId';
-    await _pusher.unsubscribe(channelName: channelName);
-    _logger.i('Unsubscribed from $channelName');
+  Future<void> _unsubscribeChannel(String channelName) async {
+    try {
+      await _pusher.unsubscribe(channelName: channelName);
+      _logger.i('Unsubscribed from $channelName');
+    } catch (e) {
+      _logger.e('Failed to unsubscribe $channelName: $e');
+    }
+  }
+
+  Map<String, dynamic> _decodeEventData(dynamic rawData) {
+    if (rawData == null) {
+      return <String, dynamic>{};
+    }
+
+    if (rawData is Map<String, dynamic>) {
+      return rawData;
+    }
+
+    final data = rawData.toString();
+    if (data.isEmpty) {
+      return <String, dynamic>{};
+    }
+
+    try {
+      final decoded = jsonDecode(data);
+      if (decoded is Map<String, dynamic>) {
+        return decoded;
+      }
+    } catch (_) {
+      // Ignore malformed payloads and return an empty map.
+    }
+
+    return <String, dynamic>{'raw': data};
   }
 
   void _onConnectionStateChange(dynamic currentState, dynamic previousState) {

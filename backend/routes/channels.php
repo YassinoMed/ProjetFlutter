@@ -3,6 +3,8 @@
 use App\Models\Appointment;
 use App\Models\CallSession;
 use App\Models\Conversation;
+use App\Models\Teleconsultation;
+use App\Enums\UserRole;
 use Illuminate\Support\Facades\Broadcast;
 
 if (app()->environment('testing')) {
@@ -72,4 +74,24 @@ Broadcast::channel('calls.{callSessionId}.presence', function ($user, string $ca
         'role' => $participant->role?->value ?? $participant->role,
         'name' => trim(($user->first_name ?? '').' '.($user->last_name ?? '')),
     ];
+});
+
+Broadcast::channel('teleconsultations.{teleconsultationId}', function ($user, string $teleconsultationId): bool {
+    if (($user->role?->value ?? $user->role) === UserRole::ADMIN->value) {
+        return true;
+    }
+
+    return Teleconsultation::query()
+        ->whereKey($teleconsultationId)
+        ->where(function ($query) use ($user): void {
+            $query
+                ->where('patient_user_id', $user->id)
+                ->orWhere('doctor_user_id', $user->id)
+                ->orWhereHas('participants', function ($participantQuery) use ($user): void {
+                    $participantQuery
+                        ->where('user_id', $user->id)
+                        ->whereNull('access_revoked_at_utc');
+                });
+        })
+        ->exists();
 });

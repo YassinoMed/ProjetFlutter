@@ -44,6 +44,7 @@ class MedicalDocumentModel extends MedicalDocument {
     super.failedAtUtc,
     super.lastErrorCode,
     super.lastErrorMessage,
+    super.sourceMetadata,
     super.tags,
     super.latestExtraction,
     super.summaries,
@@ -75,6 +76,7 @@ class MedicalDocumentModel extends MedicalDocument {
       failedAtUtc: _parseDate(json['failed_at_utc']),
       lastErrorCode: json['last_error_code'] as String?,
       lastErrorMessage: json['last_error_message_sanitized'] as String?,
+      sourceMetadata: json['source_metadata'] as Map<String, dynamic>?,
       tags: ((json['tags'] as List?) ?? const [])
           .whereType<Map<String, dynamic>>()
           .toList(),
@@ -105,6 +107,7 @@ class MedicalDocumentModel extends MedicalDocument {
       structuredPayload: value['structured_payload'] as Map<String, dynamic>?,
       missingSections: value['missing_sections'] as List<dynamic>?,
       confidenceScore: _parseDouble(value['confidence_score']),
+      meta: value['meta'] as Map<String, dynamic>?,
     );
   }
 }
@@ -163,6 +166,60 @@ class DocumentExtractedEntityModel extends DocumentExtractedEntity {
       isSensitive: json['is_sensitive'] == true,
       confidenceScore: _parseDouble(json['confidence_score']),
       qualifiers: json['qualifiers'] as Map<String, dynamic>?,
+    );
+  }
+}
+
+class DocumentAnswerEvidenceModel extends DocumentAnswerEvidence {
+  const DocumentAnswerEvidenceModel({
+    required super.source,
+    super.field,
+    required super.excerpt,
+    super.certainty,
+  });
+
+  factory DocumentAnswerEvidenceModel.fromJson(Map<String, dynamic> json) {
+    return DocumentAnswerEvidenceModel(
+      source: json['source'] as String? ?? 'document_text',
+      field: json['field'] as String?,
+      excerpt: json['excerpt'] as String? ?? '',
+      certainty: json['certainty'] as String?,
+    );
+  }
+}
+
+class DocumentQuestionAnswerModel extends DocumentQuestionAnswer {
+  const DocumentQuestionAnswerModel({
+    required super.question,
+    required super.audience,
+    required super.answer,
+    required super.insufficientEvidence,
+    super.evidence,
+    super.uncertaintyNotes,
+    super.usedStructuredFields,
+    super.confidenceScore,
+    super.disclaimer,
+  });
+
+  factory DocumentQuestionAnswerModel.fromJson(Map<String, dynamic> json) {
+    return DocumentQuestionAnswerModel(
+      question: json['question'] as String? ?? '',
+      audience: json['audience'] as String? ?? 'PROFESSIONAL',
+      answer: json['answer'] as String? ?? '',
+      insufficientEvidence: json['insufficient_evidence'] == true,
+      evidence: ((json['evidence'] as List?) ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(DocumentAnswerEvidenceModel.fromJson)
+          .toList(),
+      uncertaintyNotes: ((json['uncertainty_notes'] as List?) ?? const [])
+          .map((item) => item.toString())
+          .toList(),
+      usedStructuredFields:
+          ((json['used_structured_fields'] as List?) ?? const [])
+              .map((item) => item.toString())
+              .toList(),
+      confidenceScore: _parseDouble(json['confidence_score']),
+      disclaimer: json['disclaimer'] as String?,
     );
   }
 }

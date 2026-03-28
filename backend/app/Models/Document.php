@@ -110,4 +110,19 @@ class Document extends Model
     {
         return $this->hasMany(DocumentTag::class);
     }
+
+    public function accessLogs(): HasMany
+    {
+        return $this->hasMany(DocumentAccessLog::class);
+    }
+
+    public function processingJobs(): HasMany
+    {
+        return $this->hasMany(DocumentProcessingJob::class);
+    }
+
+    public function versions(): HasMany
+    {
+        return $this->hasMany(DocumentVersion::class);
+    }
 }

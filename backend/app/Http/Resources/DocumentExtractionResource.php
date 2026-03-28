@@ -26,6 +26,7 @@ class DocumentExtractionResource extends JsonResource
             'failed_at_utc' => $this->failed_at_utc?->setTimezone('UTC')?->toISOString(),
             'error_code' => $this->error_code,
             'error_message_sanitized' => $this->error_message_sanitized,
+            'meta' => $this->meta,
         ];
     }
 }

@@ -7,14 +7,14 @@ class ApiConstants {
   ApiConstants._();
 
   // ── Base URLs ─────────────────────────────────────────────
-  static const String baseUrl = 'http://127.0.0.1:8000/api';
-  static const String baseUrlIos = 'http://127.0.0.1:8000/api';
-  static const String baseUrlProd = 'http://127.0.0.1:8000/api';
+  static const String baseUrl = 'http://51.210.243.30:8081/api';
+  static const String baseUrlIos = 'http://51.210.243.30:8081/api';
+  static const String baseUrlProd = 'http://51.210.243.30:8081/api';
 
   // ── WebSocket (Reverb – Laravel native) ───────────────────
-  static const String wsUrl = 'http://127.0.0.1:8000';
-  static const String wsUrlIos = 'http://127.0.0.1:8000';
-  static const String wsUrlProd = 'http://127.0.0.1:8000';
+  static const String wsUrl = 'http://51.210.243.30:8081';
+  static const String wsUrlIos = 'http://51.210.243.30:8081';
+  static const String wsUrlProd = 'http://51.210.243.30:8081';
 
   // Reverb app credentials (must match backend .env)
   static const String reverbAppKey = 'mediconnect-key';
@@ -76,6 +76,22 @@ class ApiConstants {
   static const String documentSummary = '/documents/{id}/summary';
   static const String documentEntities = '/documents/{id}/entities';
   static const String documentReanalyze = '/documents/{id}/reanalyze';
+  static const String documentAsk = '/documents/{id}/ask';
+
+  // ── Teleconsultations ───────────────────────────────────
+  static const String teleconsultations = '/teleconsultations';
+  static const String teleconsultationShow = '/teleconsultations/{id}';
+  static const String teleconsultationStart = '/teleconsultations/{id}/start';
+  static const String teleconsultationJoin = '/teleconsultations/{id}/join';
+  static const String teleconsultationCancel = '/teleconsultations/{id}/cancel';
+  static const String teleconsultationEnd = '/teleconsultations/{id}/end';
+  static const String teleconsultationOffer =
+      '/teleconsultations/{id}/signal/offer';
+  static const String teleconsultationAnswer =
+      '/teleconsultations/{id}/signal/answer';
+  static const String teleconsultationIce =
+      '/teleconsultations/{id}/signal/ice-candidate';
+  static const String teleconsultationEvents = '/teleconsultations/{id}/events';
 
   // ── E2EE Encrypted Attachments ────────────────────────────
   static const String attachmentUpload = '/attachments/upload';

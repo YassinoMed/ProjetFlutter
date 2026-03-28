@@ -33,6 +33,7 @@ class DocumentResource extends JsonResource
             'failed_at_utc' => $this->failed_at_utc?->setTimezone('UTC')?->toISOString(),
             'last_error_code' => $this->last_error_code,
             'last_error_message_sanitized' => $this->last_error_message_sanitized,
+            'source_metadata' => $this->source_metadata,
             'tags' => $this->whenLoaded('tags', fn () => $this->tags->map(
                 fn ($tag) => [
                     'tag' => $tag->tag,

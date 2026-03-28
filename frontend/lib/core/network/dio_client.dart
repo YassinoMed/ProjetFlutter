@@ -12,6 +12,7 @@ import '../constants/api_constants.dart';
 import '../constants/app_constants.dart';
 import '../security/secure_storage_service.dart';
 import 'mock_interceptor.dart';
+import 'response_cache_interceptor.dart';
 import 'trace_interceptor.dart';
 
 final _logger = Logger(printer: PrettyPrinter(methodCount: 0));
@@ -28,6 +29,7 @@ String get _resolvedBaseUrl {
 // ── Dio Client ──────────────────────────────────────────────
 
 Dio createDioClient(SecureStorageService secureStorage) {
+  final responseCacheInterceptor = ResponseCacheInterceptor();
   final dio = Dio(
     BaseOptions(
       baseUrl: _resolvedBaseUrl,
@@ -42,14 +44,20 @@ Dio createDioClient(SecureStorageService secureStorage) {
     ),
   );
 
+  // Auth interceptor — injects Bearer token, handles 401
+  dio.interceptors.add(AuthInterceptor(
+    secureStorage: secureStorage,
+    responseCache: responseCacheInterceptor,
+  ));
+
+  // Short-lived in-memory cache for repeated GETs
+  dio.interceptors.add(responseCacheInterceptor);
+
   // Mock data fallback & user-friendly error mapping
   dio.interceptors.add(MockInterceptor());
 
   // OpenTelemetry distributed tracing (W3C Trace Context)
   dio.interceptors.add(TraceInterceptor());
-
-  // Auth interceptor — injects Bearer token, handles 401
-  dio.interceptors.add(AuthInterceptor(secureStorage: secureStorage));
 
   // Logging (debug only)
   if (kDebugMode) {
@@ -67,9 +75,13 @@ Dio createDioClient(SecureStorageService secureStorage) {
 
 class AuthInterceptor extends Interceptor {
   final SecureStorageService _secureStorage;
+  final ResponseCacheInterceptor? _responseCache;
 
-  AuthInterceptor({required SecureStorageService secureStorage})
-      : _secureStorage = secureStorage;
+  AuthInterceptor({
+    required SecureStorageService secureStorage,
+    ResponseCacheInterceptor? responseCache,
+  })  : _secureStorage = secureStorage,
+        _responseCache = responseCache;
 
   @override
   void onRequest(
@@ -114,6 +126,7 @@ class AuthInterceptor extends Interceptor {
       await _secureStorage.delete(key: AppConstants.keyTenantId);
       await _secureStorage.delete(key: AppConstants.keyActingDoctorUserId);
       await _secureStorage.delete(key: 'cached_user');
+      _responseCache?.clearAll();
     }
     handler.next(err);
   }

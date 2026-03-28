@@ -11,11 +11,24 @@ class ChatMessageResource extends JsonResource
     {
         $userId = $request->user()?->id;
 
-        $status = null;
+        $status = 'SENT';
 
         if ($userId !== null && $this->relationLoaded('statuses')) {
-            $statusEntry = $this->statuses->firstWhere('user_id', $userId);
-            $status = $statusEntry?->status?->value;
+            if ($this->sender_user_id === $userId) {
+                $statusEntry = $this->statuses
+                    ->where('user_id', '!=', $userId)
+                    ->sortByDesc('status_at_utc')
+                    ->first();
+
+                $status = $statusEntry?->status?->value ?? 'SENT';
+            } else {
+                $statusEntry = $this->statuses
+                    ->where('user_id', $userId)
+                    ->sortByDesc('status_at_utc')
+                    ->first();
+
+                $status = $statusEntry?->status?->value ?? 'SENT';
+            }
         }
 
         return [
@@ -23,6 +36,7 @@ class ChatMessageResource extends JsonResource
             'consultation_id' => $this->consultation_id,
             'sender_user_id' => $this->sender_user_id,
             'recipient_user_id' => $this->recipient_user_id,
+            'is_me' => $userId !== null ? $this->sender_user_id === $userId : null,
             'ciphertext' => $this->ciphertext,
             'nonce' => $this->nonce,
             'algorithm' => $this->algorithm,

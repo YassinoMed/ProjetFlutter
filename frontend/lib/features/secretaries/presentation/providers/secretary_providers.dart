@@ -12,9 +12,10 @@ import '../../domain/entities/doctor_secretary_delegation_entity.dart';
 const List<String> allSecretaryPermissions = [
   'MANAGE_APPOINTMENTS',
   'MANAGE_SCHEDULE',
-  'VIEW_PATIENT_DIRECTORY',
+  'MANAGE_DOCUMENTS',
+  'VIEW_PATIENT_LIST',
   'SEND_ADMIN_MESSAGES',
-  'VIEW_ADMINISTRATIVE_DATA',
+  'VIEW_ADMIN_INFO',
 ];
 
 final doctorSecretariesProvider =
@@ -86,8 +87,8 @@ class SecretaryContextNotifier
   }
 }
 
-final secretaryContextProvider = AsyncNotifierProvider<
-    SecretaryContextNotifier, DoctorSecretaryDelegationEntity?>(
+final secretaryContextProvider = AsyncNotifierProvider<SecretaryContextNotifier,
+    DoctorSecretaryDelegationEntity?>(
   SecretaryContextNotifier.new,
 );
 
@@ -96,7 +97,8 @@ class SecretaryActionsController {
 
   SecretaryActionsController(this.ref);
 
-  SecretaryRepositoryImpl get _repository => ref.read(secretaryRepositoryProvider);
+  SecretaryRepositoryImpl get _repository =>
+      ref.read(secretaryRepositoryProvider);
 
   Future<void> invite({
     required String email,

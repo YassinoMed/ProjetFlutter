@@ -19,6 +19,7 @@ class AppRoutes {
   static const String patientProfile = '/patient/profile';
   static const String patientRecords = '/patient/records';
   static const String documents = '/documents';
+  static const String teleconsultations = '/teleconsultations';
 
   // ── Patient Sub-routes ──────────────────────────────────
   static const String doctorSearch = '/patient/search';
@@ -27,6 +28,9 @@ class AppRoutes {
   static const String appointmentDetail = '/patient/appointment/:id';
   static const String chatDetail = '/patient/chat/:conversationId';
   static const String videoCall = '/video-call/:appointmentId';
+  static const String teleconsultationDetail = '/teleconsultations/:id';
+  static const String incomingTeleconsultationCall =
+      '/teleconsultations/incoming/:id';
 
   // ── Doctor Routes ───────────────────────────────────────
   static const String doctorHome = '/doctor';

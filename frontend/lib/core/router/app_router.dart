@@ -6,13 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/appointments/presentation/pages/appointment_detail_page.dart';
 import '../../features/appointments/presentation/pages/booking_page.dart';
 import '../../features/appointments/presentation/pages/doctor_detail_page.dart';
-import '../../features/appointments/presentation/pages/appointment_detail_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
-import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/pages/trusted_devices_page.dart';
+import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/chat/presentation/pages/chat_detail_page.dart';
 import '../../features/documents/presentation/pages/document_detail_page.dart';
 import '../../features/documents/presentation/pages/document_upload_page.dart';
@@ -25,6 +25,9 @@ import '../../features/profile/presentation/pages/edit_profile_page.dart';
 import '../../features/profile/presentation/pages/gdpr_settings_page.dart';
 import '../../features/secretaries/presentation/pages/doctor_secretaries_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
+import '../../features/teleconsultations/presentation/pages/incoming_call_page.dart';
+import '../../features/teleconsultations/presentation/pages/teleconsultation_detail_page.dart';
+import '../../features/teleconsultations/presentation/pages/teleconsultations_page.dart';
 import '../../features/video_call/presentation/pages/video_call_page.dart';
 import '../constants/app_constants.dart';
 import 'app_routes.dart';
@@ -137,6 +140,31 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.documents,
         name: 'documents',
         builder: (context, state) => const DocumentsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.teleconsultations,
+        name: 'teleconsultations',
+        builder: (context, state) => const TeleconsultationsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.teleconsultationDetail,
+        name: 'teleconsultation-detail',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return TeleconsultationDetailPage(teleconsultationId: id);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.incomingTeleconsultationCall,
+        name: 'incoming-teleconsultation-call',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          final payload = state.extra as Map<String, dynamic>?;
+          return IncomingCallPage(
+            teleconsultationId: id,
+            payload: payload,
+          );
+        },
       ),
       GoRoute(
         path: AppRoutes.documentDetail,

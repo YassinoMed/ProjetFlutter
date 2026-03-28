@@ -91,6 +91,7 @@ class DocumentExtraction extends Equatable {
   final Map<String, dynamic>? structuredPayload;
   final List<dynamic>? missingSections;
   final double? confidenceScore;
+  final Map<String, dynamic>? meta;
 
   const DocumentExtraction({
     this.id,
@@ -104,6 +105,7 @@ class DocumentExtraction extends Equatable {
     this.structuredPayload,
     this.missingSections,
     this.confidenceScore,
+    this.meta,
   });
 
   @override
@@ -119,6 +121,61 @@ class DocumentExtraction extends Equatable {
         structuredPayload,
         missingSections,
         confidenceScore,
+        meta,
+      ];
+}
+
+class DocumentAnswerEvidence extends Equatable {
+  final String source;
+  final String? field;
+  final String excerpt;
+  final String? certainty;
+
+  const DocumentAnswerEvidence({
+    required this.source,
+    this.field,
+    required this.excerpt,
+    this.certainty,
+  });
+
+  @override
+  List<Object?> get props => [source, field, excerpt, certainty];
+}
+
+class DocumentQuestionAnswer extends Equatable {
+  final String question;
+  final String audience;
+  final String answer;
+  final bool insufficientEvidence;
+  final List<DocumentAnswerEvidence> evidence;
+  final List<String> uncertaintyNotes;
+  final List<String> usedStructuredFields;
+  final double? confidenceScore;
+  final String? disclaimer;
+
+  const DocumentQuestionAnswer({
+    required this.question,
+    required this.audience,
+    required this.answer,
+    required this.insufficientEvidence,
+    this.evidence = const [],
+    this.uncertaintyNotes = const [],
+    this.usedStructuredFields = const [],
+    this.confidenceScore,
+    this.disclaimer,
+  });
+
+  @override
+  List<Object?> get props => [
+        question,
+        audience,
+        answer,
+        insufficientEvidence,
+        evidence,
+        uncertaintyNotes,
+        usedStructuredFields,
+        confidenceScore,
+        disclaimer,
       ];
 }
 
@@ -146,6 +203,7 @@ class MedicalDocument extends Equatable {
   final DateTime? failedAtUtc;
   final String? lastErrorCode;
   final String? lastErrorMessage;
+  final Map<String, dynamic>? sourceMetadata;
   final List<Map<String, dynamic>> tags;
   final DocumentExtraction? latestExtraction;
   final List<DocumentSummaryItem> summaries;
@@ -175,6 +233,7 @@ class MedicalDocument extends Equatable {
     this.failedAtUtc,
     this.lastErrorCode,
     this.lastErrorMessage,
+    this.sourceMetadata,
     this.tags = const [],
     this.latestExtraction,
     this.summaries = const [],
@@ -211,6 +270,7 @@ class MedicalDocument extends Equatable {
         failedAtUtc,
         lastErrorCode,
         lastErrorMessage,
+        sourceMetadata,
         tags,
         latestExtraction,
         summaries,

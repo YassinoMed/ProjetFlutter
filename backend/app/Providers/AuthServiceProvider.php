@@ -9,12 +9,14 @@ use App\Models\Conversation;
 use App\Models\DoctorSecretaryDelegation;
 use App\Models\Document;
 use App\Models\Message;
+use App\Models\Teleconsultation;
 use App\Policies\AppointmentPolicy;
 use App\Policies\CallSessionPolicy;
 use App\Policies\ConversationPolicy;
 use App\Policies\DoctorSecretaryDelegationPolicy;
 use App\Policies\DocumentPolicy;
 use App\Policies\MessagePolicy;
+use App\Policies\TeleconsultationPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 
@@ -27,6 +29,7 @@ class AuthServiceProvider extends ServiceProvider
         CallSession::class => CallSessionPolicy::class,
         DoctorSecretaryDelegation::class => DoctorSecretaryDelegationPolicy::class,
         Document::class => DocumentPolicy::class,
+        Teleconsultation::class => TeleconsultationPolicy::class,
     ];
 
     public function boot(): void

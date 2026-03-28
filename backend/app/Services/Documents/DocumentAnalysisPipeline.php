@@ -8,6 +8,7 @@ use App\Models\DocumentEntity;
 use App\Models\DocumentExtraction;
 use App\Models\DocumentSummary;
 use App\Models\DocumentTag;
+use App\Models\DocumentVersion;
 use App\Services\AuditService;
 use App\Services\Documents\Contracts\DocumentAiAnalyzer;
 use App\Services\Documents\Contracts\DocumentTextExtractor;
@@ -108,6 +109,28 @@ class DocumentAnalysisPipeline
                     );
                 }
 
+                DocumentVersion::query()->updateOrCreate(
+                    [
+                        'document_id' => $document->id,
+                        'version' => $version,
+                    ],
+                    [
+                        'created_by_user_id' => $document->uploaded_by_user_id,
+                        'document_type' => $analysis->documentType?->value,
+                        'urgency_level' => $analysis->urgency->value,
+                        'language_code' => $analysis->languageCode ?? $extracted->languageCode,
+                        'source' => $extracted->source,
+                        'engine' => $extracted->engine,
+                        'ocr_required' => $extracted->ocrRequired,
+                        'ocr_used' => $extracted->ocrUsed,
+                        'classification_confidence' => $analysis->classificationConfidence,
+                        'structured_payload' => $analysis->structuredFields,
+                        'missing_fields' => $analysis->missingInformation,
+                        'warnings' => $analysis->warnings,
+                        'processed_at_utc' => now('UTC'),
+                    ],
+                );
+
                 $document->forceFill([
                     'document_type' => $analysis->documentType?->value,
                     'urgency_level' => $analysis->urgency->value,
@@ -120,10 +143,13 @@ class DocumentAnalysisPipeline
                     'language_code' => $analysis->languageCode ?? $extracted->languageCode,
                     'document_date_utc' => $this->parsePossibleDate($analysis->structuredFields['document_date'] ?? null),
                     'processed_at_utc' => now('UTC'),
-                    'source_metadata' => [
-                        'warnings' => $analysis->warnings,
-                        'missing_information' => $analysis->missingInformation,
-                    ],
+                    'source_metadata' => array_merge($document->source_metadata ?? [], [
+                        'analysis' => [
+                            'warnings' => $analysis->warnings,
+                            'missing_information' => $analysis->missingInformation,
+                            'processed_version' => $version,
+                        ],
+                    ]),
                 ])->save();
             });
 

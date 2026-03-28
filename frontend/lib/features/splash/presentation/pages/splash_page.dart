@@ -67,9 +67,13 @@ class _SplashPageState extends ConsumerState<SplashPage>
           final role = state.user?.role;
           if (role == AppConstants.roleDoctor) {
             context.go(AppRoutes.doctorHome);
+          } else if (role == AppConstants.roleSecretary) {
+            context.go(AppRoutes.secretaryHome);
           } else {
             context.go(AppRoutes.patientHome);
           }
+        } else if (state.canUseBiometricLogin || state.biometricEnabled) {
+          context.go(AppRoutes.login);
         } else {
           context.go(AppRoutes.onboarding);
         }

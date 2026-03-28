@@ -57,17 +57,18 @@ class _LoginPageState extends ConsumerState<LoginPage>
     }
 
     final biometricAvailableAsync = ref.read(isBiometricAvailableProvider);
-    final biometricEnabled = ref.read(isBiometricEnabledProvider);
+    final canUseBiometricLogin = ref.read(canUseBiometricLoginProvider);
+    final requiresUnlock = ref.read(requiresBiometricUnlockProvider);
 
     biometricAvailableAsync.whenData((available) {
       if (!mounted) return;
 
       setState(() {
         _biometricAvailable = available;
-        _showBiometricButton = available && biometricEnabled;
+        _showBiometricButton = available && canUseBiometricLogin;
       });
 
-      if (available && biometricEnabled) {
+      if (available && requiresUnlock && canUseBiometricLogin) {
         _handleBiometricLogin();
       }
     });
@@ -158,11 +159,11 @@ class _LoginPageState extends ConsumerState<LoginPage>
     final isLoading = authAsync.isLoading;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final biometricEnabled = ref.watch(isBiometricEnabledProvider);
+    final canUseBiometricLogin = ref.watch(canUseBiometricLoginProvider);
     final biometricAvailableAsync = ref.watch(isBiometricAvailableProvider);
 
     biometricAvailableAsync.whenData((available) {
-      final shouldShow = available && biometricEnabled;
+      final shouldShow = available && canUseBiometricLogin;
       if (_biometricAvailable != available ||
           _showBiometricButton != shouldShow) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -341,8 +342,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                         SizedBox(
                                           height: 56,
                                           child: OutlinedButton.icon(
-                                            onPressed: (_showBiometricButton ||
-                                                        _biometricAvailable) &&
+                                            onPressed: _showBiometricButton &&
                                                     !isLoading
                                                 ? _handleBiometricLogin
                                                 : null,
@@ -369,17 +369,12 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                                       .withValues(alpha: 0.32)
                                                   : AppTheme.neutralGray400,
                                             ),
-                                            icon: Icon(
-                                              isDark
-                                                  ? Icons.fingerprint_rounded
-                                                  : Icons
-                                                      .face_retouching_natural_rounded,
+                                            icon: const Icon(
+                                              Icons.fingerprint_rounded,
                                               size: 20,
                                             ),
                                             label: Text(
-                                              isDark
-                                                  ? 'Continuer par biométrie'
-                                                  : 'Continuer avec FaceID',
+                                              'Continuer par biométrie',
                                               style:
                                                   AppTheme.titleSmall.copyWith(
                                                 fontWeight: FontWeight.w600,

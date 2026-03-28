@@ -28,7 +28,7 @@ class ChatController extends Controller
             ->where('consultation_id', $appointment->id)
             ->orderByDesc('sent_at_utc')
             ->with([
-                'statuses' => fn ($q) => $q->where('user_id', $request->user()->id),
+                'statuses' => fn ($q) => $q->orderByDesc('status_at_utc'),
             ])
             ->cursorPaginate($perPage);
 
@@ -48,7 +48,7 @@ class ChatController extends Controller
 
         $message = $this->service->sendMessage($appointment, $request->user(), $request->validated());
 
-        $message->load(['statuses' => fn ($q) => $q->where('user_id', $request->user()->id)]);
+        $message->load(['statuses' => fn ($q) => $q->orderByDesc('status_at_utc')]);
 
         return $this->respondSuccess([
             'message' => new ChatMessageResource($message),

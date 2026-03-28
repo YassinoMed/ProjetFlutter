@@ -48,7 +48,7 @@ class ChatMessageService
             ]);
 
             DB::afterCommit(function () use ($message, $recipientId): void {
-                $message = $message->load(['statuses' => fn ($q) => $q->where('user_id', $message->sender_user_id)]);
+                $message = $message->load(['statuses' => fn ($q) => $q->orderByDesc('status_at_utc')]);
 
                 event(new ChatMessageSent($message));
 

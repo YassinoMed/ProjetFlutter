@@ -147,6 +147,7 @@ class HeuristicDocumentAiAnalyzer implements DocumentAiAnalyzer
     {
         $facts = $this->factLines($fields, $documentType, $urgency);
         $shortSummary = implode(' ', array_slice($facts, 0, 3));
+        $criticalAlerts = $this->criticalSummaryText($fields, $urgency);
 
         return [
             [
@@ -174,12 +175,34 @@ class HeuristicDocumentAiAnalyzer implements DocumentAiAnalyzer
             ],
             [
                 'audience' => DocumentSummaryAudience::PATIENT->value,
-                'format' => DocumentSummaryFormat::STRUCTURED->value,
+                'format' => DocumentSummaryFormat::PATIENT_FRIENDLY->value,
                 'summary_text' => $this->patientSummaryText($fields, $documentType, $urgency),
-                'structured_payload' => null,
+                'structured_payload' => [
+                    'document_type' => $documentType?->value ?? 'OTHER',
+                    'urgency' => $urgency->value,
+                ],
                 'factual_basis' => $facts,
                 'missing_fields' => $missing,
                 'confidence_score' => 0.77,
+            ],
+            [
+                'audience' => DocumentSummaryAudience::PROFESSIONAL->value,
+                'format' => DocumentSummaryFormat::PROFESSIONAL_DETAILED->value,
+                'summary_text' => $this->professionalDetailedSummaryText($fields, $documentType, $urgency, $missing),
+                'structured_payload' => [
+                    'sections' => [
+                        'diagnosis' => $fields['diagnosis'] ?? $fields['suspected_diagnosis'],
+                        'symptoms' => $fields['symptoms'] ?? [],
+                        'medical_history' => $fields['medical_history'] ?? [],
+                        'treatments' => $fields['treatments'] ?? [],
+                        'requested_exams' => $fields['requested_exams'] ?? [],
+                        'important_lab_results' => $fields['important_lab_results'] ?? [],
+                        'follow_up_date' => $fields['follow_up_date'] ?? null,
+                    ],
+                ],
+                'factual_basis' => $facts,
+                'missing_fields' => $missing,
+                'confidence_score' => 0.83,
             ],
             [
                 'audience' => DocumentSummaryAudience::PROFESSIONAL->value,
@@ -191,13 +214,27 @@ class HeuristicDocumentAiAnalyzer implements DocumentAiAnalyzer
                 'confidence_score' => 0.8,
             ],
             [
-                'audience' => DocumentSummaryAudience::ADMINISTRATIVE->value,
+                'audience' => DocumentSummaryAudience::PROFESSIONAL->value,
                 'format' => DocumentSummaryFormat::CRITICAL->value,
-                'summary_text' => $this->criticalSummaryText($fields, $urgency),
-                'structured_payload' => ['urgency' => $urgency->value],
+                'summary_text' => $criticalAlerts,
+                'structured_payload' => ['urgency' => $urgency->value, 'alerts' => [$criticalAlerts]],
                 'factual_basis' => $facts,
                 'missing_fields' => $missing,
                 'confidence_score' => 0.7,
+            ],
+            [
+                'audience' => DocumentSummaryAudience::ADMINISTRATIVE->value,
+                'format' => DocumentSummaryFormat::ADMINISTRATIVE->value,
+                'summary_text' => $this->administrativeSummaryText($fields, $documentType),
+                'structured_payload' => [
+                    'patient_name' => $fields['patient_name'] ?? null,
+                    'doctor_name' => $fields['doctor_name'] ?? null,
+                    'document_date' => $fields['document_date'] ?? null,
+                    'follow_up_date' => $fields['follow_up_date'] ?? null,
+                ],
+                'factual_basis' => $facts,
+                'missing_fields' => $missing,
+                'confidence_score' => 0.76,
             ],
         ];
     }
@@ -292,6 +329,28 @@ class HeuristicDocumentAiAnalyzer implements DocumentAiAnalyzer
         ])));
     }
 
+    private function professionalDetailedSummaryText(
+        array $fields,
+        ?DocumentType $documentType,
+        DocumentUrgency $urgency,
+        array $missing,
+    ): string {
+        return implode("\n", array_values(array_filter([
+            'Type documentaire: '.($documentType?->value ?? 'OTHER'),
+            'Niveau d’urgence détecté: '.$urgency->value,
+            'Diagnostic / hypothèse: '.($fields['diagnosis'] ?? $fields['suspected_diagnosis'] ?? 'Non documenté'),
+            ! empty($fields['symptoms']) ? 'Symptômes: '.implode('; ', $fields['symptoms']) : null,
+            ! empty($fields['medical_history']) ? 'Antécédents: '.implode('; ', $fields['medical_history']) : null,
+            ! empty($fields['treatments']) ? 'Traitements / prescription: '.implode('; ', $fields['treatments']) : null,
+            ! empty($fields['important_lab_results']) ? 'Résultats biologiques importants: '.implode('; ', $fields['important_lab_results']) : null,
+            ! empty($fields['requested_exams']) ? 'Examens demandés: '.implode('; ', $fields['requested_exams']) : null,
+            ! empty($fields['recommendations']) ? 'Recommandations: '.implode('; ', $fields['recommendations']) : null,
+            $fields['follow_up_date'] ? 'Suivi / prochain rendez-vous: '.$fields['follow_up_date'] : null,
+            $missing !== [] ? 'Champs potentiellement manquants: '.implode(', ', $missing) : null,
+            'Résumé fondé uniquement sur les éléments explicitement détectés dans le document.',
+        ])));
+    }
+
     private function criticalSummaryText(array $fields, DocumentUrgency $urgency): string
     {
         if ($urgency === DocumentUrgency::CRITICAL || $urgency === DocumentUrgency::HIGH) {
@@ -303,6 +362,19 @@ class HeuristicDocumentAiAnalyzer implements DocumentAiAnalyzer
         }
 
         return 'Aucun élément critique explicite détecté dans le document.';
+    }
+
+    private function administrativeSummaryText(array $fields, ?DocumentType $documentType): string
+    {
+        return implode("\n", [
+            'Type: '.($documentType?->value ?? 'OTHER'),
+            'Patient: '.($fields['patient_name'] ?? 'Non mentionné'),
+            'Date document: '.($fields['document_date'] ?? 'Non mentionnée'),
+            'Médecin / émetteur: '.($fields['doctor_name'] ?? $fields['establishment'] ?? 'Non mentionné'),
+            'Spécialité: '.($fields['specialty'] ?? 'Non mentionnée'),
+            'Suivi: '.($fields['follow_up_date'] ?? 'Non mentionné'),
+            'Résumé administratif limité aux éléments factuels du document.',
+        ]);
     }
 
     private function matchOne(string $text, array $patterns): ?string

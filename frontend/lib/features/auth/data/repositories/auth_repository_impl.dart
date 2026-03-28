@@ -125,9 +125,9 @@ class AuthRepositoryImpl implements AuthRepository {
     await secureStorage.delete(key: AppConstants.keyUserId);
     await secureStorage.delete(key: AppConstants.keyUserRole);
     await secureStorage.delete(key: AppConstants.keyTenantId);
-    await secureStorage.delete(key: AppConstants.keyBiometricEnabled);
     await secureStorage.delete(key: 'cached_user');
-    // NOTE: We keep keyBiometricDeviceId — it's the device's identity, not a secret.
+    // NOTE: We intentionally keep the biometric preference + logical device id.
+    // Biometrics remain a local unlock preference, while the server token is gone.
 
     return const Right(null);
   }

@@ -1,16 +1,17 @@
-import 'dart:typed_data';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:mediconnect_pro/core/network/websocket_service.dart';
+import 'package:mediconnect_pro/core/security/encrypted_attachment_service.dart';
 import 'package:mediconnect_pro/core/theme/app_theme.dart';
 import 'package:mediconnect_pro/core/voice/voice_service.dart';
-import 'package:mediconnect_pro/core/security/encrypted_attachment_service.dart';
-import 'package:mediconnect_pro/features/chat/presentation/providers/chat_providers.dart';
 import 'package:mediconnect_pro/features/chat/domain/entities/chat_entities.dart';
+import 'package:mediconnect_pro/features/chat/presentation/providers/chat_providers.dart';
 import 'package:mediconnect_pro/shared/widgets/clinical_ui.dart';
 import '../../../../shared/widgets/error_display.dart';
 
@@ -26,10 +27,27 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
     with TickerProviderStateMixin {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final Set<String> _readAckedMessageIds = <String>{};
 
   bool _isVoiceMode = false;
   bool _isListening = false;
   bool _showAttachOptions = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(_subscribeToRealtime);
+  }
+
+  @override
+  void dispose() {
+    ref.read(websocketServiceProvider).unsubscribeConsultation(
+          widget.conversationId,
+        );
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -118,23 +136,31 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
           ).animate().fadeIn(duration: 500.ms),
           Expanded(
             child: messagesAsync.when(
-              data: (messages) => ListView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
-                itemCount: messages.length,
-                itemBuilder: (context, index) {
-                  final message = messages[index];
-                  return _MessageBubble(
-                    message: message,
-                    onSpeak: () => _speakMessage(message.content),
-                  );
-                },
-              ),
+              data: (messages) {
+                final ordered = [...messages]
+                  ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+                _scheduleReadAcknowledgements(ordered);
+
+                return ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+                  itemCount: ordered.length,
+                  itemBuilder: (context, index) {
+                    final message = ordered[index];
+                    return _MessageBubble(
+                      message: message,
+                      onSpeak: () => _speakMessage(message.content),
+                    );
+                  },
+                );
+              },
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (err, st) => ErrorDisplay(
                 message: err.toString(),
-                onRetry: () =>
-                    ref.refresh(messagesProvider(widget.conversationId)),
+                onRetry: () => ref.invalidate(
+                  messagesProvider(widget.conversationId),
+                ),
               ),
             ),
           ),
@@ -365,6 +391,47 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
 
   // ── Actions ───────────────────────────────────────────────
 
+  Future<void> _subscribeToRealtime() async {
+    await ref.read(websocketServiceProvider).subscribeToConsultationEvents(
+      widget.conversationId,
+      (eventName, data) {
+        if (eventName == 'App\\Events\\ChatMessageSent' ||
+            eventName == 'App\\Events\\ChatMessageAcknowledged' ||
+            data['type'] == 'CHAT_MESSAGE' ||
+            data['type'] == 'CHAT_ACK') {
+          ref.invalidate(messagesProvider(widget.conversationId));
+        }
+      },
+    );
+  }
+
+  void _scheduleReadAcknowledgements(List<ChatMessage> messages) {
+    final unreadIncoming = messages.where(
+      (message) => !message.isMe && message.status != MessageStatus.read,
+    );
+
+    for (final message in unreadIncoming) {
+      if (_readAckedMessageIds.contains(message.id)) {
+        continue;
+      }
+
+      _readAckedMessageIds.add(message.id);
+      Future.microtask(() => _markMessageAsRead(message));
+    }
+  }
+
+  Future<void> _markMessageAsRead(ChatMessage message) async {
+    try {
+      await ref.read(chatRemoteDataSourceProvider).acknowledgeMessage(
+            consultationId: widget.conversationId,
+            messageId: message.id,
+            status: MessageStatus.read,
+          );
+    } catch (_) {
+      _readAckedMessageIds.remove(message.id);
+    }
+  }
+
   Future<void> _sendMessage() async {
     final content = _controller.text.trim();
     if (content.isEmpty) return;
@@ -374,7 +441,7 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
       await dataSource.sendMessage(widget.conversationId, content, true);
       _controller.clear();
       setState(() {});
-      final _ = ref.refresh(messagesProvider(widget.conversationId));
+      ref.invalidate(messagesProvider(widget.conversationId));
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -414,7 +481,9 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
     final messages = ref.read(messagesProvider(widget.conversationId));
     messages.whenData((msgs) {
       if (msgs.isNotEmpty) {
-        final last = msgs.last;
+        final ordered = [...msgs]
+          ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+        final last = ordered.last;
         _speakMessage(last.content);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

@@ -19,6 +19,8 @@ use App\Models\User;
 use App\Notifications\IncomingCallSessionNotification;
 use App\Services\AuditService;
 use App\Services\Conversations\ConversationService;
+use App\Services\Teleconsultations\TeleconsultationEventLogger;
+use App\Services\Teleconsultations\TeleconsultationStateSynchronizer;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -28,6 +30,8 @@ class CallSessionService
     public function __construct(
         private readonly ConversationService $conversationService,
         private readonly AuditService $auditService,
+        private readonly TeleconsultationEventLogger $teleconsultationEventLogger,
+        private readonly TeleconsultationStateSynchronizer $teleconsultationStateSynchronizer,
     ) {}
 
     public function initiate(User $actor, array $payload): CallSession
@@ -81,6 +85,18 @@ class CallSessionService
                 'call_type' => $call->call_type?->value ?? $call->call_type,
             ]);
 
+            $this->teleconsultationStateSynchronizer->syncFromCallSession($call);
+            $this->teleconsultationEventLogger->recordForCallSession(
+                $call,
+                'webrtc.ringing',
+                $actor,
+                payload: [
+                    'conversation_id' => $conversation->id,
+                    'call_type' => $call->call_type?->value ?? $call->call_type,
+                ],
+                direction: 'server_to_client',
+            );
+
             DB::afterCommit(function () use ($call, $conversation, $actor): void {
                 $call = $call->load('participants');
 
@@ -118,6 +134,13 @@ class CallSessionService
                 ]);
 
             $this->auditService->log($user, 'call.accepted', $call);
+            $this->teleconsultationStateSynchronizer->syncFromCallSession($call);
+            $this->teleconsultationEventLogger->recordForCallSession(
+                $call,
+                'webrtc.accepted',
+                $user,
+                direction: 'server_to_client',
+            );
 
             DB::afterCommit(fn () => event(new CallSessionAccepted($call->fresh('participants'))));
 
@@ -182,6 +205,13 @@ class CallSessionService
             ])->save();
 
             $this->auditService->log(null, 'call.timeout', $call);
+            $this->teleconsultationStateSynchronizer->syncFromCallSession($call);
+            $this->teleconsultationEventLogger->recordForCallSession(
+                $call,
+                'webrtc.timeout',
+                payload: ['reason' => 'timeout'],
+                direction: 'server_to_client',
+            );
 
             DB::afterCommit(fn () => event(new CallSessionTimedOut($call->fresh('participants'))));
 
@@ -197,6 +227,17 @@ class CallSessionService
         $this->auditService->log($user, 'webrtc.offer.relayed', $call, [
             'target_user_id' => $targetUserId,
         ]);
+
+        $this->teleconsultationEventLogger->recordForCallSession(
+            $call,
+            'webrtc.offer',
+            $user,
+            $targetUserId,
+            payload: [
+                'sdp' => $payload['sdp'],
+            ],
+            direction: 'client_to_client',
+        );
 
         event(new WebRtcOfferRelayed(
             $call->id,
@@ -217,6 +258,17 @@ class CallSessionService
             'target_user_id' => $targetUserId,
         ]);
 
+        $this->teleconsultationEventLogger->recordForCallSession(
+            $call,
+            'webrtc.answer',
+            $user,
+            $targetUserId,
+            payload: [
+                'sdp' => $payload['sdp'],
+            ],
+            direction: 'client_to_client',
+        );
+
         event(new WebRtcAnswerRelayed(
             $call->id,
             $call->conversation_id,
@@ -235,6 +287,17 @@ class CallSessionService
         $this->auditService->log($user, 'webrtc.ice_candidate.relayed', $call, [
             'target_user_id' => $targetUserId,
         ]);
+
+        $this->teleconsultationEventLogger->recordForCallSession(
+            $call,
+            'webrtc.ice_candidate',
+            $user,
+            $targetUserId,
+            payload: [
+                'candidate' => $payload['candidate'],
+            ],
+            direction: 'client_to_client',
+        );
 
         event(new WebRtcIceCandidateRelayed(
             $call->id,
@@ -264,6 +327,14 @@ class CallSessionService
                 ]);
 
             $this->auditService->log($user, 'call.'.$reason, $call);
+            $this->teleconsultationStateSynchronizer->syncFromCallSession($call);
+            $this->teleconsultationEventLogger->recordForCallSession(
+                $call,
+                $state === CallSessionState::REJECTED ? 'webrtc.rejected' : 'webrtc.ended',
+                $user,
+                payload: ['reason' => $reason],
+                direction: 'server_to_client',
+            );
 
             DB::afterCommit(function () use ($call, $state): void {
                 $call = $call->fresh('participants');

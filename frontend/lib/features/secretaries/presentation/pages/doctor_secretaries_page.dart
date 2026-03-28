@@ -188,7 +188,8 @@ class _DelegationCard extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(delegation.inviteeDisplayName, style: AppTheme.titleMedium),
+                    Text(delegation.inviteeDisplayName,
+                        style: AppTheme.titleMedium),
                     const SizedBox(height: 4),
                     Text(
                       delegation.secretary?.email ?? delegation.invitedEmail,
@@ -217,7 +218,8 @@ class _DelegationCard extends ConsumerWidget {
           Row(
             children: [
               OutlinedButton.icon(
-                onPressed: () => _showPermissionEditor(context, ref, delegation),
+                onPressed: () =>
+                    _showPermissionEditor(context, ref, delegation),
                 icon: const Icon(Icons.tune_rounded),
                 label: const Text('Permissions'),
               ),
@@ -304,7 +306,9 @@ class _DelegationCard extends ConsumerWidget {
                       width: double.infinity,
                       child: FilledButton(
                         onPressed: () async {
-                          await ref.read(secretaryActionsProvider).updatePermissions(
+                          await ref
+                              .read(secretaryActionsProvider)
+                              .updatePermissions(
                                 delegationId: delegation.id,
                                 permissions: draft.toList(),
                               );
@@ -399,9 +403,10 @@ String _permissionLabel(String permission) {
   return switch (permission) {
     'MANAGE_APPOINTMENTS' => 'Gérer les rendez-vous',
     'MANAGE_SCHEDULE' => 'Gérer le planning',
-    'VIEW_PATIENT_DIRECTORY' => 'Voir les patients',
+    'MANAGE_DOCUMENTS' => 'Gérer les documents',
+    'VIEW_PATIENT_LIST' => 'Voir les patients',
     'SEND_ADMIN_MESSAGES' => 'Messages administratifs',
-    'VIEW_ADMINISTRATIVE_DATA' => 'Données administratives',
+    'VIEW_ADMIN_INFO' => 'Données administratives',
     _ => permission,
   };
 }

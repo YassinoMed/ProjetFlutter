@@ -12,6 +12,8 @@ class AuthStateEntity extends Equatable {
   final bool isLoading;
   final String? errorMessage;
   final bool biometricEnabled;
+  final bool canUseBiometricLogin;
+  final bool requiresBiometricUnlock;
 
   const AuthStateEntity({
     this.user,
@@ -19,6 +21,8 @@ class AuthStateEntity extends Equatable {
     this.isLoading = false,
     this.errorMessage,
     this.biometricEnabled = false,
+    this.canUseBiometricLogin = false,
+    this.requiresBiometricUnlock = false,
   });
 
   const AuthStateEntity.initial()
@@ -26,14 +30,18 @@ class AuthStateEntity extends Equatable {
         isAuthenticated = false,
         isLoading = false,
         errorMessage = null,
-        biometricEnabled = false;
+        biometricEnabled = false,
+        canUseBiometricLogin = false,
+        requiresBiometricUnlock = false;
 
   const AuthStateEntity.loading()
       : user = null,
         isAuthenticated = false,
         isLoading = true,
         errorMessage = null,
-        biometricEnabled = false;
+        biometricEnabled = false,
+        canUseBiometricLogin = false,
+        requiresBiometricUnlock = false;
 
   AuthStateEntity copyWith({
     User? user,
@@ -41,6 +49,8 @@ class AuthStateEntity extends Equatable {
     bool? isLoading,
     String? errorMessage,
     bool? biometricEnabled,
+    bool? canUseBiometricLogin,
+    bool? requiresBiometricUnlock,
   }) {
     return AuthStateEntity(
       user: user ?? this.user,
@@ -48,6 +58,9 @@ class AuthStateEntity extends Equatable {
       isLoading: isLoading ?? this.isLoading,
       errorMessage: errorMessage,
       biometricEnabled: biometricEnabled ?? this.biometricEnabled,
+      canUseBiometricLogin: canUseBiometricLogin ?? this.canUseBiometricLogin,
+      requiresBiometricUnlock:
+          requiresBiometricUnlock ?? this.requiresBiometricUnlock,
     );
   }
 
@@ -58,5 +71,7 @@ class AuthStateEntity extends Equatable {
         isLoading,
         errorMessage,
         biometricEnabled,
+        canUseBiometricLogin,
+        requiresBiometricUnlock,
       ];
 }

@@ -33,11 +33,13 @@ class AppointmentController extends Controller
         $user = $request->user();
 
         $query = Appointment::query()
+            ->with(['patient:id,first_name,last_name', 'doctor:id,first_name,last_name'])
             ->when($request->filled('doctor_user_id'), fn ($q) => $q->where('doctor_user_id', $request->string('doctor_user_id')))
             ->when($request->filled('patient_user_id'), fn ($q) => $q->where('patient_user_id', $request->string('patient_user_id')))
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')))
             ->when($request->filled('from_utc'), fn ($q) => $q->where('starts_at_utc', '>=', Carbon::parse($request->string('from_utc'), 'UTC')))
-            ->when($request->filled('to_utc'), fn ($q) => $q->where('starts_at_utc', '<=', Carbon::parse($request->string('to_utc'), 'UTC')));
+            ->when($request->filled('to_utc'), fn ($q) => $q->where('starts_at_utc', '<=', Carbon::parse($request->string('to_utc'), 'UTC')))
+            ->when($request->filled('updated_since_utc'), fn ($q) => $q->where('updated_at', '>', Carbon::parse($request->string('updated_since_utc'), 'UTC')));
 
         if ($user->role === UserRole::SECRETARY) {
             $doctorUserId = $this->delegationContextService
@@ -99,7 +101,9 @@ class AppointmentController extends Controller
 
     public function show(string $appointmentId, Request $request): JsonResponse
     {
-        $appointment = Appointment::query()->findOrFail($appointmentId);
+        $appointment = Appointment::query()
+            ->with(['patient:id,first_name,last_name', 'doctor:id,first_name,last_name'])
+            ->findOrFail($appointmentId);
 
         $this->authorizeAppointmentAccess($request, $appointment);
 

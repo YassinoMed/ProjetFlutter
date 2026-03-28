@@ -1,70 +1,98 @@
 import 'package:dio/dio.dart';
 import 'package:mediconnect_pro/core/constants/api_constants.dart';
+import 'package:mediconnect_pro/core/network/api_response.dart';
+import 'package:mediconnect_pro/features/chat/data/models/chat_message_model.dart';
 import 'package:mediconnect_pro/features/chat/domain/entities/chat_entities.dart';
 
 abstract class ChatRemoteDataSource {
   Future<List<Conversation>> getConversations();
   Future<List<ChatMessage>> getMessages(String consultationId);
   Future<ChatMessage> sendMessage(
-      String consultationId, String content, bool isEncrypted);
+    String consultationId,
+    String content,
+    bool isEncrypted,
+  );
+  Future<void> acknowledgeMessage({
+    required String consultationId,
+    required String messageId,
+    required MessageStatus status,
+  });
 }
 
 class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
   final Dio dio;
+  final String currentUserId;
 
-  ChatRemoteDataSourceImpl({required this.dio});
+  ChatRemoteDataSourceImpl({
+    required this.dio,
+    required this.currentUserId,
+  });
 
   @override
   Future<List<Conversation>> getConversations() async {
-    // Conversations are based on appointments
-    final response = await dio.get(ApiConstants.appointments);
-    final List<dynamic> data = response.data['data'] ?? response.data;
+    final response = await dio.get(
+      ApiConstants.appointments,
+      queryParameters: {'per_page': 20},
+    );
 
-    return data
-        .map((json) => Conversation(
-              id: json['id'].toString(),
-              otherMemberName:
-                  json['doctor_name'] ?? json['patient_name'] ?? 'Unknown',
-              otherMemberAvatar: null,
-              lastMessage: json['status']?.toString() ?? '',
-              lastMessageTime: DateTime.parse(json['starts_at_utc'] ??
-                  json['updated_at'] ??
-                  DateTime.now().toIso8601String()),
-              unreadCount: json['unread_count'] ?? 0,
-            ))
-        .toList();
+    final payload = extractPayloadMap(response.data);
+    final List<dynamic> data = payload['data'] as List? ?? const [];
+
+    return data.map((item) {
+      final json = item as Map<String, dynamic>;
+      final patientId = json['patient_user_id']?.toString() ?? '';
+      final isPatientView = patientId == currentUserId;
+      final remoteName = isPatientView
+          ? (json['doctor_name']?.toString() ?? 'Médecin')
+          : (json['patient_name']?.toString() ?? 'Patient');
+
+      return Conversation(
+        id: json['id']?.toString() ?? '',
+        otherMemberName: remoteName,
+        otherMemberAvatar: null,
+        lastMessage: json['status']?.toString() ?? '',
+        lastMessageTime: DateTime.parse(
+          (json['updated_at_utc'] ??
+                  json['starts_at_utc'] ??
+                  DateTime.now().toIso8601String())
+              .toString(),
+        ),
+        unreadCount: (json['unread_count'] as int?) ?? 0,
+      );
+    }).toList();
   }
 
   @override
   Future<List<ChatMessage>> getMessages(String consultationId) async {
     final response = await dio.get(
       ApiConstants.consultationMessages.replaceFirst('{id}', consultationId),
+      queryParameters: {'per_page': ApiConstants.messagesPageSize},
     );
-    final List<dynamic> data = response.data['data'] ?? response.data;
 
-    return data
-        .map((json) => ChatMessage(
-              id: json['id']?.toString() ?? '',
-              conversationId: consultationId,
-              senderId: json['sender_user_id']?.toString() ?? '',
-              content: json['ciphertext'] as String? ?? '',
-              timestamp: DateTime.parse(
-                  json['sent_at_utc'] ?? DateTime.now().toIso8601String()),
-              isMe: json['is_me'] ?? false,
-              isEncrypted: true,
-              status: MessageStatus.values.firstWhere(
-                (e) =>
-                    e.name ==
-                    (json['status'] ?? 'sent').toString().toLowerCase(),
-                orElse: () => MessageStatus.sent,
-              ),
-            ))
-        .toList();
+    final payload = extractPayloadMap(response.data);
+    final List<dynamic> data = payload['data'] as List? ?? const [];
+
+    final messages = data
+        .whereType<Map<String, dynamic>>()
+        .map(
+          (json) => ChatMessageModel.fromJson(
+            json,
+            currentUserId: currentUserId,
+            consultationId: consultationId,
+          ),
+        )
+        .toList()
+      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+    return messages;
   }
 
   @override
   Future<ChatMessage> sendMessage(
-      String consultationId, String content, bool isEncrypted) async {
+    String consultationId,
+    String content,
+    bool isEncrypted,
+  ) async {
     final response = await dio.post(
       ApiConstants.consultationMessages.replaceFirst('{id}', consultationId),
       data: {
@@ -73,16 +101,35 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
         'algorithm': 'AES-256-GCM',
       },
     );
-    final json = response.data['message'] ?? response.data;
 
-    return ChatMessage(
-      id: json['id'].toString(),
-      conversationId: consultationId,
-      senderId: json['sender_user_id'].toString(),
-      content: json['ciphertext'],
-      timestamp: DateTime.parse(json['sent_at_utc']),
-      isMe: true,
-      isEncrypted: isEncrypted,
+    final payload = extractPayloadMap(response.data);
+    final data = extractDataMap(payload);
+    final messageJson = data['message'] as Map<String, dynamic>? ?? const {};
+
+    return ChatMessageModel.fromJson(
+      messageJson,
+      currentUserId: currentUserId,
+      consultationId: consultationId,
+    );
+  }
+
+  @override
+  Future<void> acknowledgeMessage({
+    required String consultationId,
+    required String messageId,
+    required MessageStatus status,
+  }) async {
+    final statusValue = switch (status) {
+      MessageStatus.sent => 'DELIVERED',
+      MessageStatus.delivered => 'DELIVERED',
+      MessageStatus.read => 'READ',
+    };
+
+    await dio.post(
+      ApiConstants.consultationMessageAck
+          .replaceFirst('{id}', consultationId)
+          .replaceFirst('{msgId}', messageId),
+      data: {'status': statusValue},
     );
   }
 }

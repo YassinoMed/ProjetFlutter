@@ -43,7 +43,10 @@ class AppointmentRemoteDataSourceImpl implements AppointmentRemoteDataSource {
 
   @override
   Future<List<AppointmentModel>> getMyAppointments() async {
-    final response = await dio.get(ApiConstants.appointments);
+    final response = await dio.get(
+      ApiConstants.appointments,
+      queryParameters: {'per_page': 20},
+    );
 
     final List<dynamic> data =
         (response.data is Map && response.data.containsKey('data'))

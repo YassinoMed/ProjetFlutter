@@ -49,6 +49,28 @@ class ChatMessage extends Equatable {
     this.status = MessageStatus.sent,
   });
 
+  ChatMessage copyWith({
+    String? id,
+    String? conversationId,
+    String? senderId,
+    String? content,
+    DateTime? timestamp,
+    bool? isMe,
+    bool? isEncrypted,
+    MessageStatus? status,
+  }) {
+    return ChatMessage(
+      id: id ?? this.id,
+      conversationId: conversationId ?? this.conversationId,
+      senderId: senderId ?? this.senderId,
+      content: content ?? this.content,
+      timestamp: timestamp ?? this.timestamp,
+      isMe: isMe ?? this.isMe,
+      isEncrypted: isEncrypted ?? this.isEncrypted,
+      status: status ?? this.status,
+    );
+  }
+
   @override
   List<Object?> get props => [
         id,

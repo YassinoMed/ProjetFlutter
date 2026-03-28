@@ -24,11 +24,20 @@ class DocumentsPage extends ConsumerWidget {
     'OTHER',
   ];
 
+  static const _statuses = <String?>[
+    null,
+    'PENDING',
+    'PROCESSING',
+    'COMPLETED',
+    'FAILED',
+  ];
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final documentsAsync = ref.watch(documentsProvider);
     final query = ref.watch(documentSearchQueryProvider);
     final selectedType = ref.watch(documentTypeFilterProvider);
+    final selectedStatus = ref.watch(documentStatusFilterProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -52,7 +61,7 @@ class DocumentsPage extends ConsumerWidget {
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: AppTheme.neutralGray200),
+                  borderSide: const BorderSide(color: AppTheme.neutralGray200),
                 ),
               ),
               onChanged: (value) =>
@@ -76,6 +85,28 @@ class DocumentsPage extends ConsumerWidget {
                   onSelected: (_) => ref
                       .read(documentTypeFilterProvider.notifier)
                       .state = type,
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 44,
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              scrollDirection: Axis.horizontal,
+              itemCount: _statuses.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final status = _statuses[index];
+                final isSelected = selectedStatus == status;
+
+                return ChoiceChip(
+                  label: Text(_statusLabel(status)),
+                  selected: isSelected,
+                  onSelected: (_) => ref
+                      .read(documentStatusFilterProvider.notifier)
+                      .state = status,
                 );
               },
             ),
@@ -127,8 +158,8 @@ class _DocumentCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: InkWell(
-        onTap: () =>
-            context.push(AppRoutes.documentDetail.replaceFirst(':id', document.id)),
+        onTap: () => context
+            .push(AppRoutes.documentDetail.replaceFirst(':id', document.id)),
         borderRadius: BorderRadius.circular(18),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -296,5 +327,16 @@ String _typeLabel(String? type) {
     'RADIOLOGY_REPORT' => 'Imagerie',
     'MEDICAL_CERTIFICATE' => 'Certificats',
     _ => 'Autres',
+  };
+}
+
+String _statusLabel(String? status) {
+  return switch (status) {
+    null => 'Tous statuts',
+    'PENDING' => 'En attente',
+    'PROCESSING' => 'Analyse',
+    'COMPLETED' => 'Terminés',
+    'FAILED' => 'Échec',
+    _ => status,
   };
 }

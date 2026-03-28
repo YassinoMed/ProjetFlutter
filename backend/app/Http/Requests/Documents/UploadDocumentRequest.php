@@ -29,14 +29,18 @@ class UploadDocumentRequest extends FormRequest
                 'mimetypes:'.implode(',', config('documents.allowed_mimes', [])),
             ],
             'patient_user_id' => [
-                Rule::requiredIf($user?->role === UserRole::DOCTOR || $user?->role === UserRole::ADMIN),
+                Rule::requiredIf(
+                    in_array($user?->role, [UserRole::DOCTOR, UserRole::ADMIN, UserRole::SECRETARY], true)
+                ),
                 Rule::prohibitedIf($user?->role === UserRole::PATIENT),
                 'nullable',
                 'uuid',
                 $patientRule,
             ],
             'doctor_user_id' => [
-                Rule::prohibitedIf($user?->role === UserRole::DOCTOR),
+                Rule::prohibitedIf(
+                    in_array($user?->role, [UserRole::DOCTOR, UserRole::SECRETARY], true)
+                ),
                 'nullable',
                 'uuid',
                 $doctorRule,

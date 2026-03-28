@@ -22,6 +22,7 @@ class DocumentRemoteDataSource {
     final response = await dio.get(
       ApiConstants.documents,
       queryParameters: {
+        'per_page': 20,
         if (query != null && query.isNotEmpty) 'q': query,
         if (status != null && status.isNotEmpty) 'status': status,
         if (documentType != null && documentType.isNotEmpty)
@@ -55,9 +56,9 @@ class DocumentRemoteDataSource {
       ApiConstants.documentSummary.replaceFirst('{id}', documentId),
     );
 
-    final data =
-        ((response.data['data'] as Map<String, dynamic>?)?['summaries'] as List?) ??
-            const [];
+    final data = ((response.data['data'] as Map<String, dynamic>?)?['summaries']
+            as List?) ??
+        const [];
 
     return data
         .whereType<Map<String, dynamic>>()
@@ -65,14 +66,15 @@ class DocumentRemoteDataSource {
         .toList();
   }
 
-  Future<List<DocumentExtractedEntityModel>> getEntities(String documentId) async {
+  Future<List<DocumentExtractedEntityModel>> getEntities(
+      String documentId) async {
     final response = await dio.get(
       ApiConstants.documentEntities.replaceFirst('{id}', documentId),
     );
 
-    final data =
-        ((response.data['data'] as Map<String, dynamic>?)?['entities'] as List?) ??
-            const [];
+    final data = ((response.data['data'] as Map<String, dynamic>?)?['entities']
+            as List?) ??
+        const [];
 
     return data
         .whereType<Map<String, dynamic>>()
@@ -123,7 +125,27 @@ class DocumentRemoteDataSource {
     return MedicalDocumentModel.fromJson(data);
   }
 
+  Future<DocumentQuestionAnswerModel> askQuestion({
+    required String documentId,
+    required String question,
+    String? audience,
+  }) async {
+    final response = await dio.post(
+      ApiConstants.documentAsk.replaceFirst('{id}', documentId),
+      data: {
+        'question': question,
+        if (audience != null && audience.isNotEmpty) 'audience': audience,
+      },
+    );
+
+    final data = (response.data['data'] as Map<String, dynamic>?)?['answer']
+        as Map<String, dynamic>;
+
+    return DocumentQuestionAnswerModel.fromJson(data);
+  }
+
   Future<void> deleteDocument(String documentId) async {
-    await dio.delete(ApiConstants.documentShow.replaceFirst('{id}', documentId));
+    await dio
+        .delete(ApiConstants.documentShow.replaceFirst('{id}', documentId));
   }
 }

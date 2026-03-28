@@ -60,6 +60,7 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
     try {
       final repository = ref.watch(authRepositoryProvider);
       final hasToken = await repository.hasValidToken();
+      final biometricEnabled = await repository.isBiometricEnabled();
 
       if (hasToken) {
         final cachedUser = await repository.getCachedUser();
@@ -70,15 +71,24 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
                 .delete(key: AppConstants.keyActingDoctorUserId);
           }
 
-          // Check if biometric is enabled for this device
-          final biometricEnabled = await repository.isBiometricEnabled();
+          final canUseBiometricLogin = biometricEnabled;
 
           return AuthStateEntity(
             user: cachedUser,
-            isAuthenticated: true,
+            isAuthenticated: !canUseBiometricLogin,
             biometricEnabled: biometricEnabled,
+            canUseBiometricLogin: canUseBiometricLogin,
+            requiresBiometricUnlock: canUseBiometricLogin,
           );
         }
+      }
+
+      if (biometricEnabled) {
+        return const AuthStateEntity(
+          biometricEnabled: true,
+          canUseBiometricLogin: false,
+          requiresBiometricUnlock: false,
+        );
       }
     } catch (e) {
       // Gracefully handle — no stored session means unauthenticated
@@ -124,6 +134,8 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
             user: data.user,
             isAuthenticated: true,
             biometricEnabled: biometricEnabled,
+            canUseBiometricLogin: biometricEnabled,
+            requiresBiometricUnlock: false,
           ));
         },
       );
@@ -143,6 +155,7 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
   /// 3. Validate token with server (/me endpoint)
   /// 4. If token expired or revoked, fallback to password
   Future<void> loginWithBiometric() async {
+    final previousState = state.valueOrNull ?? const AuthStateEntity.initial();
     state = const AsyncValue.loading();
 
     try {
@@ -154,7 +167,7 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
 
       if (!authenticated) {
         state = AsyncValue.data(
-          state.valueOrNull ?? const AuthStateEntity.initial(),
+          previousState,
         );
         return; // User cancelled
       }
@@ -176,6 +189,8 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
           user: user,
           isAuthenticated: true,
           biometricEnabled: true,
+          canUseBiometricLogin: true,
+          requiresBiometricUnlock: false,
         )),
       );
     } on BiometricLockedOutException {
@@ -291,7 +306,11 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
         final current = state.valueOrNull;
         if (current != null) {
           state = AsyncValue.data(
-            current.copyWith(biometricEnabled: true),
+            current.copyWith(
+              biometricEnabled: true,
+              canUseBiometricLogin: true,
+              requiresBiometricUnlock: false,
+            ),
           );
         }
       },
@@ -314,7 +333,11 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
         final current = state.valueOrNull;
         if (current != null) {
           state = AsyncValue.data(
-            current.copyWith(biometricEnabled: false),
+            current.copyWith(
+              biometricEnabled: false,
+              canUseBiometricLogin: false,
+              requiresBiometricUnlock: false,
+            ),
           );
         }
       },
@@ -331,7 +354,14 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
         .read(secureStorageProvider)
         .delete(key: AppConstants.keyActingDoctorUserId);
 
-    state = const AsyncValue.data(AuthStateEntity.initial());
+    final repository = ref.read(authRepositoryProvider);
+    final biometricEnabled = await repository.isBiometricEnabled();
+
+    state = AsyncValue.data(AuthStateEntity(
+      biometricEnabled: biometricEnabled,
+      canUseBiometricLogin: false,
+      requiresBiometricUnlock: false,
+    ));
   }
 
   /// Refresh profile
@@ -366,8 +396,7 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
 //   // stocker JWT
 // }
 
-
-//Connexion avec compte google 
+//Connexion avec compte google
 // Future<void> loginWithGoogle() async {
 //   try {
 
@@ -466,9 +495,20 @@ final isBiometricEnabledProvider = Provider<bool>((ref) {
   return ref.watch(authNotifierProvider).valueOrNull?.biometricEnabled ?? false;
 });
 
+/// Whether the current device can actually unlock a stored session via biometrics
+final canUseBiometricLoginProvider = Provider<bool>((ref) {
+  return ref.watch(authNotifierProvider).valueOrNull?.canUseBiometricLogin ??
+      false;
+});
+
+/// Whether a stored session is waiting for a biometric unlock gate
+final requiresBiometricUnlockProvider = Provider<bool>((ref) {
+  return ref.watch(authNotifierProvider).valueOrNull?.requiresBiometricUnlock ??
+      false;
+});
+
 /// Check if biometric hardware is available on this device
 final isBiometricAvailableProvider = FutureProvider<bool>((ref) async {
   final biometricService = ref.read(biometricServiceProvider);
   return biometricService.isAvailable();
 });
-

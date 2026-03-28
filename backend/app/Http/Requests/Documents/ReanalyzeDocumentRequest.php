@@ -13,6 +13,9 @@ class ReanalyzeDocumentRequest extends FormRequest
 
     public function rules(): array
     {
-        return [];
+        return [
+            'reason' => ['nullable', 'string', 'max:500'],
+            'force_ocr' => ['sometimes', 'boolean'],
+        ];
     }
 }

@@ -61,12 +61,25 @@ class DocumentRepositoryImpl {
     return remoteDataSource.reanalyze(documentId);
   }
 
+  Future<DocumentQuestionAnswer> askQuestion({
+    required String documentId,
+    required String question,
+    String? audience,
+  }) {
+    return remoteDataSource.askQuestion(
+      documentId: documentId,
+      question: question,
+      audience: audience,
+    );
+  }
+
   Future<void> deleteDocument(String documentId) {
     return remoteDataSource.deleteDocument(documentId);
   }
 }
 
-final documentRemoteDataSourceProvider = Provider<DocumentRemoteDataSource>((ref) {
+final documentRemoteDataSourceProvider =
+    Provider<DocumentRemoteDataSource>((ref) {
   final dio = ref.watch(dioProvider);
   return DocumentRemoteDataSource(dio: dio);
 });
