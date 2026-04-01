@@ -416,9 +416,15 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
       Future.microtask(() => _markMessageAsRead(message));
     }
 
-    ref.read(conversationsProvider.notifier).markConversationRead(
-          widget.conversationId,
-        );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+
+      ref
+          .read(conversationsProvider.notifier)
+          .markConversationRead(widget.conversationId);
+    });
   }
 
   Future<void> _markMessageAsRead(ChatMessage message) async {

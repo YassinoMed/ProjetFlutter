@@ -72,6 +72,18 @@ class ConversationsNotifier extends AsyncNotifier<List<Conversation>> {
       return;
     }
 
+    Conversation? targetConversation;
+    for (final conversation in current) {
+      if (conversation.id == conversationId) {
+        targetConversation = conversation;
+        break;
+      }
+    }
+
+    if (targetConversation == null || targetConversation.unreadCount == 0) {
+      return;
+    }
+
     state = AsyncData([
       for (final conversation in current)
         if (conversation.id == conversationId)
