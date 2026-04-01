@@ -31,6 +31,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>La camera est necessaire pour permettre la teleconsultation video avec votre medecin.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Le microphone est necessaire pour permettre la teleconsultation audio avec votre medecin.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

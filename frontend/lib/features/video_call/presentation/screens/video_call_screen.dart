@@ -33,8 +33,8 @@ class VideoCallScreen extends StatefulWidget {
 }
 
 class VideoCallScreenState extends State<VideoCallScreen> {
-  RTCVideoRenderer _localRenderer = RTCVideoRenderer();
-  RTCVideoRenderer _remoteRenderer = RTCVideoRenderer();
+  final RTCVideoRenderer _localRenderer = RTCVideoRenderer();
+  final RTCVideoRenderer _remoteRenderer = RTCVideoRenderer();
   late WebRTCBloc _webRTCBloc;
   WebSocketChannel? _echoChannel;
 

@@ -10,6 +10,7 @@ class ChatMessageModel extends ChatMessage {
     required super.isMe,
     super.isEncrypted = true,
     super.status = MessageStatus.sent,
+    super.isPending = false,
     this.recipientId,
     this.ciphertext,
     this.nonce,

@@ -25,8 +25,7 @@ class ConversationsPage extends ConsumerWidget {
           data: (conversations) {
             return RefreshIndicator(
               onRefresh: () async {
-                ref.invalidate(conversationsProvider);
-                await ref.read(conversationsProvider.future);
+                await ref.read(conversationsProvider.notifier).refresh();
               },
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -82,7 +81,7 @@ class ConversationsPage extends ConsumerWidget {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (err, stack) => ErrorDisplay(
             message: err.toString(),
-            onRetry: () => ref.invalidate(conversationsProvider),
+            onRetry: () => ref.read(conversationsProvider.notifier).refresh(),
           ),
         ),
       ),

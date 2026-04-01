@@ -17,6 +17,24 @@ class Conversation extends Equatable {
     this.unreadCount = 0,
   });
 
+  Conversation copyWith({
+    String? id,
+    String? otherMemberName,
+    String? otherMemberAvatar,
+    String? lastMessage,
+    DateTime? lastMessageTime,
+    int? unreadCount,
+  }) {
+    return Conversation(
+      id: id ?? this.id,
+      otherMemberName: otherMemberName ?? this.otherMemberName,
+      otherMemberAvatar: otherMemberAvatar ?? this.otherMemberAvatar,
+      lastMessage: lastMessage ?? this.lastMessage,
+      lastMessageTime: lastMessageTime ?? this.lastMessageTime,
+      unreadCount: unreadCount ?? this.unreadCount,
+    );
+  }
+
   @override
   List<Object?> get props => [
         id,
@@ -37,6 +55,7 @@ class ChatMessage extends Equatable {
   final bool isMe;
   final bool isEncrypted;
   final MessageStatus status;
+  final bool isPending;
 
   const ChatMessage({
     required this.id,
@@ -47,6 +66,7 @@ class ChatMessage extends Equatable {
     required this.isMe,
     this.isEncrypted = true,
     this.status = MessageStatus.sent,
+    this.isPending = false,
   });
 
   ChatMessage copyWith({
@@ -58,6 +78,7 @@ class ChatMessage extends Equatable {
     bool? isMe,
     bool? isEncrypted,
     MessageStatus? status,
+    bool? isPending,
   }) {
     return ChatMessage(
       id: id ?? this.id,
@@ -68,6 +89,7 @@ class ChatMessage extends Equatable {
       isMe: isMe ?? this.isMe,
       isEncrypted: isEncrypted ?? this.isEncrypted,
       status: status ?? this.status,
+      isPending: isPending ?? this.isPending,
     );
   }
 
@@ -81,6 +103,8 @@ class ChatMessage extends Equatable {
         isMe,
         isEncrypted,
         status
+        ,
+        isPending
       ];
 }
 

@@ -95,7 +95,7 @@ class WebRTCService {
 
   Future<void> createOffer() async {
     if (_peerConnection == null) return;
-    RTCSessionDescription offer = await _peerConnection!.createOffer({});
+    final RTCSessionDescription offer = await _peerConnection!.createOffer({});
     await _peerConnection!.setLocalDescription(offer);
 
     await http.post(
@@ -116,7 +116,8 @@ class WebRTCService {
     if (_peerConnection == null) return;
     await _peerConnection!.setRemoteDescription(offer);
 
-    RTCSessionDescription answer = await _peerConnection!.createAnswer({});
+    final RTCSessionDescription answer =
+        await _peerConnection!.createAnswer({});
     await _peerConnection!.setLocalDescription(answer);
 
     await http.post(

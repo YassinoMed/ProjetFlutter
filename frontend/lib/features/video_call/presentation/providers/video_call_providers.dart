@@ -57,6 +57,8 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
   bool _joiningInProgress = false;
   bool _iceRestartInProgress = false;
   bool _offerInFlight = false;
+  bool _isInitializingCall = false;
+  bool _awaitingPermissionSettingsResult = false;
 
   RTCVideoRenderer localRenderer = RTCVideoRenderer();
   RTCVideoRenderer remoteRenderer = RTCVideoRenderer();
@@ -70,15 +72,40 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
     required this.isDoctor,
   }) : super(VideoCallEntity(appointmentId: appointmentId));
 
-  Future<void> initializeCall() async {
+  Future<void> initializeCall({
+    bool requestPermissions = true,
+  }) async {
+    if (_isInitializingCall) {
+      return;
+    }
+
+    _isInitializingCall = true;
     state = state.copyWith(
       state: CallState.resolvingSession,
+      mediaPermissionState: CallMediaPermissionState.checking,
+      clearMediaPermissionMessage: true,
       clearErrorMessage: true,
     );
 
     try {
       await _ensureRenderersInitialized();
-      await permissionService.ensureMediaPermissions();
+      final permissionResult = await permissionService.ensureMediaPermissions(
+        requestIfNeeded: requestPermissions,
+      );
+
+      _applyPermissionResult(permissionResult);
+      if (!permissionResult.isGranted) {
+        return;
+      }
+
+      _awaitingPermissionSettingsResult = false;
+
+      final missingDeviceMessage = await _validateRequiredMediaDevices();
+      if (missingDeviceMessage != null) {
+        await _setError(missingDeviceMessage);
+        return;
+      }
+
       await _ensureLocalMedia();
 
       final teleconsultationResult =
@@ -88,7 +115,8 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
         (failure) async => _setError(failure.message),
         (teleconsultation) async {
           _applySessionContext(teleconsultation);
-          await _subscribeToTeleconsultation(teleconsultation.teleconsultationId);
+          await _subscribeToTeleconsultation(
+              teleconsultation.teleconsultationId);
 
           var currentContext = teleconsultation;
 
@@ -130,12 +158,30 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
           );
         },
       );
+    } on _LocalMediaAccessException catch (error) {
+      if (error.permissionState != null) {
+        state = state.copyWith(
+          state: CallState.idle,
+          mediaPermissionState: error.permissionState!,
+          mediaPermissionMessage: error.userMessage,
+          clearErrorMessage: true,
+        );
+      } else {
+        await _setError(error.userMessage);
+      }
     } catch (e) {
-      await _setError(e.toString());
+      await _setError(_resolveFriendlyCallError(e));
+    } finally {
+      _isInitializingCall = false;
     }
   }
 
   Future<void> retryJoin() async {
+    if (!state.hasMediaPermissions) {
+      await requestPermissionsAndRetry();
+      return;
+    }
+
     if (state.teleconsultationId == null) {
       await initializeCall();
       return;
@@ -147,6 +193,28 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
     }
 
     state = state.copyWith(state: CallState.waitingHost);
+  }
+
+  Future<void> requestPermissionsAndRetry() async {
+    await initializeCall(requestPermissions: true);
+  }
+
+  Future<void> openPermissionSettings() async {
+    _awaitingPermissionSettingsResult = true;
+    await permissionService.openPermissionSettings();
+  }
+
+  Future<void> refreshPermissionsAfterSettings() async {
+    final result = await permissionService.checkMediaPermissions();
+    _applyPermissionResult(result);
+
+    if (!result.isGranted) {
+      return;
+    }
+
+    if (_localStream == null) {
+      await initializeCall(requestPermissions: false);
+    }
   }
 
   Future<void> createOffer({bool iceRestart = false}) async {
@@ -280,7 +348,15 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
     state = state.copyWith(state: CallState.ended, hasRemoteVideo: false);
   }
 
-  Future<void> handleLifecycleChange(AppLifecycleState appLifecycleState) async {
+  Future<void> handleLifecycleChange(
+      AppLifecycleState appLifecycleState) async {
+    if (appLifecycleState == AppLifecycleState.resumed &&
+        (_awaitingPermissionSettingsResult || !state.hasMediaPermissions) &&
+        _localStream == null) {
+      await refreshPermissionsAfterSettings();
+      _awaitingPermissionSettingsResult = false;
+    }
+
     final videoTracks = _localStream?.getVideoTracks() ?? const [];
     final videoTrack = videoTracks.isNotEmpty ? videoTracks.first : null;
 
@@ -360,14 +436,18 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
       return;
     }
 
-    _localStream = await navigator.mediaDevices.getUserMedia({
-      'audio': true,
-      'video': {
-        'facingMode': 'user',
-        'width': {'ideal': 1280},
-        'height': {'ideal': 720},
-      },
-    });
+    try {
+      _localStream = await navigator.mediaDevices.getUserMedia({
+        'audio': true,
+        'video': {
+          'facingMode': 'user',
+          'width': {'ideal': 1280},
+          'height': {'ideal': 720},
+        },
+      });
+    } catch (error) {
+      throw await _mapLocalMediaError(error);
+    }
 
     localRenderer.srcObject = _localStream;
     await Helper.setSpeakerphoneOn(state.isSpeakerOn);
@@ -498,8 +578,7 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
         final callSession = data['call_session'] as Map<String, dynamic>? ?? {};
         state = state.copyWith(
           state: CallState.ringing,
-          callSessionId:
-              callSession['id']?.toString() ?? state.callSessionId,
+          callSessionId: callSession['id']?.toString() ?? state.callSessionId,
         );
         break;
       case 'webrtc.accepted':
@@ -507,8 +586,7 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
         state = state.copyWith(
           state: CallState.joining,
           teleconsultationStatus: 'active',
-          callSessionId:
-              callSession['id']?.toString() ?? state.callSessionId,
+          callSessionId: callSession['id']?.toString() ?? state.callSessionId,
         );
         if (isDoctor) {
           await createOffer();
@@ -615,6 +693,18 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
           : (context.teleconsultationStatus == 'active'
               ? CallState.joining
               : CallState.ringing),
+      mediaPermissionState: CallMediaPermissionState.granted,
+      clearMediaPermissionMessage: true,
+      clearErrorMessage: true,
+    );
+  }
+
+  void _applyPermissionResult(CallPermissionResult result) {
+    state = state.copyWith(
+      state: result.isGranted ? state.state : CallState.idle,
+      mediaPermissionState: result.state,
+      mediaPermissionMessage: result.isGranted ? null : result.userMessage,
+      clearMediaPermissionMessage: result.isGranted,
       clearErrorMessage: true,
     );
   }
@@ -650,6 +740,87 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
       state: CallState.error,
       errorMessage: message,
     );
+  }
+
+  Future<_LocalMediaAccessException> _mapLocalMediaError(Object error) async {
+    final rawMessage = error.toString().toLowerCase();
+    final permissionResult = await permissionService.checkMediaPermissions();
+
+    if (rawMessage.contains('notallowederror') ||
+        rawMessage.contains('permission denied')) {
+      final permissionState =
+          permissionResult.isGranted ? CallMediaPermissionState.denied : permissionResult.state;
+      final userMessage = permissionResult.isGranted
+          ? 'L’accès à la caméra ou au microphone a été refusé par l’appareil. '
+              'Vérifiez les autorisations et les réglages de confidentialité, puis réessayez.'
+          : permissionResult.userMessage;
+
+      return _LocalMediaAccessException(
+        userMessage: userMessage,
+        permissionState: permissionState,
+      );
+    }
+
+    if (rawMessage.contains('notfounderror')) {
+      return const _LocalMediaAccessException(
+        userMessage:
+            'Aucune caméra ou aucun microphone compatible n’a été détecté sur cet appareil.',
+      );
+    }
+
+    if (rawMessage.contains('notreadableerror') ||
+        rawMessage.contains('trackstarterror')) {
+      return const _LocalMediaAccessException(
+        userMessage:
+            'La caméra ou le microphone est déjà utilisé par une autre application. Fermez-la puis réessayez.',
+      );
+    }
+
+    return _LocalMediaAccessException(
+      userMessage: _resolveFriendlyCallError(error),
+      permissionState:
+          permissionResult.isGranted ? null : permissionResult.state,
+    );
+  }
+
+  String _resolveFriendlyCallError(Object error) {
+    final rawMessage = error.toString().toLowerCase();
+
+    if (rawMessage.contains('notallowederror')) {
+      return 'La caméra et le microphone sont nécessaires pour la téléconsultation.';
+    }
+
+    if (rawMessage.contains('notreadableerror') ||
+        rawMessage.contains('trackstarterror')) {
+      return 'Impossible d’utiliser la caméra ou le microphone pour le moment. Fermez les autres applications qui les utilisent puis réessayez.';
+    }
+
+    if (rawMessage.contains('notfounderror')) {
+      return 'Aucune caméra ou aucun microphone compatible n’a été détecté sur cet appareil.';
+    }
+
+    return 'Impossible de démarrer la téléconsultation. Vérifiez la caméra et le microphone puis réessayez.';
+  }
+
+  Future<String?> _validateRequiredMediaDevices() async {
+    final devices = await navigator.mediaDevices.enumerateDevices();
+
+    final hasCamera = devices.any((device) => device.kind == 'videoinput');
+    final hasMicrophone = devices.any((device) => device.kind == 'audioinput');
+
+    if (!hasCamera && !hasMicrophone) {
+      return 'Aucune caméra ni aucun microphone ne sont disponibles sur cet appareil.';
+    }
+
+    if (!hasCamera) {
+      return 'Aucune caméra disponible sur cet appareil pour la téléconsultation.';
+    }
+
+    if (!hasMicrophone) {
+      return 'Aucun microphone disponible sur cet appareil pour la téléconsultation.';
+    }
+
+    return null;
   }
 
   void _startDurationTimer() {
@@ -716,4 +887,14 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
     unawaited(_teardownCallResources(disposeRenderers: true));
     super.dispose();
   }
+}
+
+class _LocalMediaAccessException implements Exception {
+  final String userMessage;
+  final CallMediaPermissionState? permissionState;
+
+  const _LocalMediaAccessException({
+    required this.userMessage,
+    this.permissionState,
+  });
 }

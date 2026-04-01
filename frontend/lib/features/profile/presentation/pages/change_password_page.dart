@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../auth/presentation/widgets/biometric_settings_card.dart';
 
 class ChangePasswordPage extends ConsumerStatefulWidget {
   const ChangePasswordPage({super.key});
@@ -91,6 +93,46 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
                     AppTheme.bodySmall.copyWith(color: AppTheme.neutralGray500),
               ),
               const SizedBox(height: 24),
+              Text(
+                'Connexion biométrique',
+                style: AppTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Activez Face ID, Touch ID ou l’empreinte pour déverrouiller plus rapidement votre session sur cet appareil.',
+                style:
+                    AppTheme.bodySmall.copyWith(color: AppTheme.neutralGray500),
+              ),
+              const SizedBox(height: 12),
+              const BiometricSettingsCard(),
+              const SizedBox(height: 12),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primarySurface,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.devices_rounded,
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
+                title: const Text('Appareils de confiance'),
+                subtitle: const Text(
+                  'Gérer les appareils autorisés et révoquer un accès.',
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => context.push(AppRoutes.trustedDevices),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Changer le mot de passe',
+                style: AppTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
               TextFormField(
                 controller: _currentPasswordCtrl,
                 obscureText: _obscureCurrent,

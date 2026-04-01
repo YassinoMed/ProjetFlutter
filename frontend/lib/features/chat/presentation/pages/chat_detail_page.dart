@@ -158,9 +158,9 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (err, st) => ErrorDisplay(
                 message: err.toString(),
-                onRetry: () => ref.invalidate(
-                  messagesProvider(widget.conversationId),
-                ),
+                onRetry: () => ref
+                    .read(messagesProvider(widget.conversationId).notifier)
+                    .syncFromRemote(),
               ),
             ),
           ),
@@ -395,12 +395,9 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
     await ref.read(websocketServiceProvider).subscribeToConsultationEvents(
       widget.conversationId,
       (eventName, data) {
-        if (eventName == 'App\\Events\\ChatMessageSent' ||
-            eventName == 'App\\Events\\ChatMessageAcknowledged' ||
-            data['type'] == 'CHAT_MESSAGE' ||
-            data['type'] == 'CHAT_ACK') {
-          ref.invalidate(messagesProvider(widget.conversationId));
-        }
+        ref
+            .read(messagesProvider(widget.conversationId).notifier)
+            .applyRealtimeEvent(eventName, data);
       },
     );
   }
@@ -418,14 +415,18 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
       _readAckedMessageIds.add(message.id);
       Future.microtask(() => _markMessageAsRead(message));
     }
+
+    ref.read(conversationsProvider.notifier).markConversationRead(
+          widget.conversationId,
+        );
   }
 
   Future<void> _markMessageAsRead(ChatMessage message) async {
     try {
-      await ref.read(chatRemoteDataSourceProvider).acknowledgeMessage(
-            consultationId: widget.conversationId,
-            messageId: message.id,
-            status: MessageStatus.read,
+      await ref.read(messagesProvider(widget.conversationId).notifier)
+          .acknowledgeMessage(
+            message.id,
+            MessageStatus.read,
           );
     } catch (_) {
       _readAckedMessageIds.remove(message.id);
@@ -436,12 +437,12 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
     final content = _controller.text.trim();
     if (content.isEmpty) return;
 
-    final dataSource = ref.read(chatRemoteDataSourceProvider);
     try {
-      await dataSource.sendMessage(widget.conversationId, content, true);
+      await ref
+          .read(messagesProvider(widget.conversationId).notifier)
+          .sendMessage(content);
       _controller.clear();
       setState(() {});
-      ref.invalidate(messagesProvider(widget.conversationId));
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

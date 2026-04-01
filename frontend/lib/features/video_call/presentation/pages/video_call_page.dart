@@ -69,6 +69,10 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
         ref.watch(videoCallNotifierProvider(widget.appointmentId));
     final notifier =
         ref.read(videoCallNotifierProvider(widget.appointmentId).notifier);
+    final showCallControls = _showControls &&
+        callState.hasMediaPermissions &&
+        callState.state != CallState.error &&
+        callState.state != CallState.ended;
 
     return Scaffold(
       backgroundColor: AppTheme.darkBackground,
@@ -88,11 +92,11 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
                       objectFit:
                           RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
                     )
-                  : _buildWaitingState(callState),
+                  : _buildWaitingState(callState, notifier),
             ),
 
             // ── Local Video (PiP overlay) ───────────────────
-            if (callState.isVideoEnabled)
+            if (callState.isVideoEnabled && callState.hasMediaPermissions)
               Positioned(
                 top: MediaQuery.of(context).padding.top + 16,
                 right: 16,
@@ -111,7 +115,7 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
               ),
 
             // ── Bottom Controls ─────────────────────────────
-            if (_showControls)
+            if (showCallControls)
               Positioned(
                 bottom: 0,
                 left: 0,
@@ -171,36 +175,50 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
     );
   }
 
-  Widget _buildWaitingState(VideoCallEntity callState) {
+  Widget _buildWaitingState(
+    VideoCallEntity callState,
+    VideoCallNotifier notifier,
+  ) {
+    if (!callState.hasMediaPermissions &&
+        callState.mediaPermissionState != CallMediaPermissionState.unknown &&
+        callState.mediaPermissionState != CallMediaPermissionState.checking) {
+      return _buildPermissionBlockedState(callState, notifier);
+    }
+
     String statusText;
     IconData statusIcon;
 
-    switch (callState.state) {
-      case CallState.idle:
-      case CallState.resolvingSession:
-        statusText = 'Connexion en cours…';
-        statusIcon = Icons.wifi_calling_3_rounded;
-      case CallState.waitingHost:
-        statusText = 'En attente du médecin…';
-        statusIcon = Icons.schedule_send_rounded;
-      case CallState.ringing:
-        statusText = 'Appel en cours…';
-        statusIcon = Icons.ring_volume_rounded;
-      case CallState.joining:
-        statusText = 'Connexion a la session…';
-        statusIcon = Icons.video_call_rounded;
-      case CallState.reconnecting:
-        statusText = 'Reconnexion…';
-        statusIcon = Icons.wifi_off_rounded;
-      case CallState.error:
-        statusText = callState.errorMessage ?? 'Erreur de connexion';
-        statusIcon = Icons.error_outline_rounded;
-      case CallState.ended:
-        statusText = 'Appel terminé';
-        statusIcon = Icons.call_end_rounded;
-      default:
-        statusText = 'En attente…';
-        statusIcon = Icons.hourglass_top_rounded;
+    if (callState.mediaPermissionState == CallMediaPermissionState.checking) {
+      statusText = 'Verification de la caméra et du microphone…';
+      statusIcon = Icons.perm_camera_mic_rounded;
+    } else {
+      switch (callState.state) {
+        case CallState.idle:
+        case CallState.resolvingSession:
+          statusText = 'Connexion en cours…';
+          statusIcon = Icons.wifi_calling_3_rounded;
+        case CallState.waitingHost:
+          statusText = 'En attente du médecin…';
+          statusIcon = Icons.schedule_send_rounded;
+        case CallState.ringing:
+          statusText = 'Appel en cours…';
+          statusIcon = Icons.ring_volume_rounded;
+        case CallState.joining:
+          statusText = 'Connexion a la session…';
+          statusIcon = Icons.video_call_rounded;
+        case CallState.reconnecting:
+          statusText = 'Reconnexion…';
+          statusIcon = Icons.wifi_off_rounded;
+        case CallState.error:
+          statusText = callState.errorMessage ?? 'Erreur de connexion';
+          statusIcon = Icons.error_outline_rounded;
+        case CallState.ended:
+          statusText = 'Appel terminé';
+          statusIcon = Icons.call_end_rounded;
+        default:
+          statusText = 'En attente…';
+          statusIcon = Icons.hourglass_top_rounded;
+      }
     }
 
     return Container(
@@ -266,6 +284,100 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildPermissionBlockedState(
+    VideoCallEntity callState,
+    VideoCallNotifier notifier,
+  ) {
+    return Container(
+      decoration: const BoxDecoration(gradient: AppTheme.darkGradient),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Card(
+              color: Colors.white.withValues(alpha: 0.08),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
+                      child: const Icon(
+                        Icons.perm_camera_mic_rounded,
+                        color: Colors.white,
+                        size: 36,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'Autorisations requises',
+                      textAlign: TextAlign.center,
+                      style: AppTheme.titleLarge.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      callState.mediaPermissionMessage ??
+                          'La caméra et le microphone sont nécessaires pour la téléconsultation.',
+                      textAlign: TextAlign.center,
+                      style: AppTheme.bodyLarge.copyWith(
+                        color: Colors.white70,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: () => notifier.requestPermissionsAndRetry(),
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('Réessayer'),
+                      ),
+                    ),
+                    if (callState.shouldOpenPermissionSettings) ...[
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => notifier.openPermissionSettings(),
+                          icon: const Icon(Icons.settings_rounded),
+                          label: const Text('Ouvrir les paramètres'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.24),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    TextButton.icon(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.arrow_back_rounded),
+                      label: const Text('Retour'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.white70,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

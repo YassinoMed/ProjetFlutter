@@ -12,6 +12,15 @@ enum CallState {
   error,
 }
 
+enum CallMediaPermissionState {
+  unknown,
+  checking,
+  granted,
+  denied,
+  permanentlyDenied,
+  restricted,
+}
+
 class VideoCallIceServer extends Equatable {
   final List<String> urls;
   final String? username;
@@ -93,6 +102,8 @@ class VideoCallEntity extends Equatable {
   final bool hasRemoteVideo;
   final Duration duration;
   final String? errorMessage;
+  final CallMediaPermissionState mediaPermissionState;
+  final String? mediaPermissionMessage;
 
   const VideoCallEntity({
     required this.appointmentId,
@@ -108,7 +119,15 @@ class VideoCallEntity extends Equatable {
     this.hasRemoteVideo = false,
     this.duration = Duration.zero,
     this.errorMessage,
+    this.mediaPermissionState = CallMediaPermissionState.unknown,
+    this.mediaPermissionMessage,
   });
+
+  bool get hasMediaPermissions =>
+      mediaPermissionState == CallMediaPermissionState.granted;
+
+  bool get shouldOpenPermissionSettings =>
+      mediaPermissionState == CallMediaPermissionState.permanentlyDenied;
 
   VideoCallEntity copyWith({
     CallState? state,
@@ -123,7 +142,10 @@ class VideoCallEntity extends Equatable {
     bool? hasRemoteVideo,
     Duration? duration,
     String? errorMessage,
+    CallMediaPermissionState? mediaPermissionState,
+    String? mediaPermissionMessage,
     bool clearErrorMessage = false,
+    bool clearMediaPermissionMessage = false,
   }) {
     return VideoCallEntity(
       appointmentId: appointmentId,
@@ -141,6 +163,10 @@ class VideoCallEntity extends Equatable {
       duration: duration ?? this.duration,
       errorMessage:
           clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
+      mediaPermissionState: mediaPermissionState ?? this.mediaPermissionState,
+      mediaPermissionMessage: clearMediaPermissionMessage
+          ? null
+          : (mediaPermissionMessage ?? this.mediaPermissionMessage),
     );
   }
 
@@ -159,5 +185,7 @@ class VideoCallEntity extends Equatable {
         hasRemoteVideo,
         duration,
         errorMessage,
+        mediaPermissionState,
+        mediaPermissionMessage,
       ];
 }

@@ -40,10 +40,12 @@ class _InlineCallChatPanelState extends ConsumerState<InlineCallChatPanel> {
   }
 
   Future<void> _subscribeToRealtime() async {
-    await ref.read(websocketServiceProvider).subscribeToConsultation(
+    await ref.read(websocketServiceProvider).subscribeToConsultationEvents(
       widget.appointmentId,
-      (_) {
-        ref.invalidate(messagesProvider(widget.appointmentId));
+      (eventName, data) {
+        ref
+            .read(messagesProvider(widget.appointmentId).notifier)
+            .applyRealtimeEvent(eventName, data);
       },
     );
   }
@@ -57,10 +59,9 @@ class _InlineCallChatPanelState extends ConsumerState<InlineCallChatPanel> {
     setState(() => _sending = true);
 
     try {
-      final dataSource = ref.read(chatRemoteDataSourceProvider);
-      await dataSource.sendMessage(widget.appointmentId, content, true);
+      await ref.read(messagesProvider(widget.appointmentId).notifier)
+          .sendMessage(content);
       _controller.clear();
-      ref.invalidate(messagesProvider(widget.appointmentId));
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
