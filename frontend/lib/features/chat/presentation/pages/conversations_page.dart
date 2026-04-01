@@ -96,7 +96,7 @@ class _ConversationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final timeStr = DateFormat('HH:mm').format(conversation.lastMessageTime);
+    final timeStr = _formatConversationTime(conversation.lastMessageTime);
 
     return ClinicalSurface(
       onTap: () => context.push(
@@ -172,5 +172,23 @@ class _ConversationTile extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _formatConversationTime(DateTime timestamp) {
+    final local = timestamp.toLocal();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final targetDay = DateTime(local.year, local.month, local.day);
+
+    if (targetDay == today) {
+      return DateFormat('HH:mm').format(local);
+    }
+
+    if (targetDay == yesterday) {
+      return 'Hier';
+    }
+
+    return DateFormat('dd/MM').format(local);
   }
 }

@@ -33,6 +33,9 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
 
     // Initialize the call
     Future.microtask(() {
+      if (!mounted) {
+        return;
+      }
       ref
           .read(videoCallNotifierProvider(widget.appointmentId).notifier)
           .initializeCall();
@@ -58,6 +61,10 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!mounted) {
+      return;
+    }
+
     ref
         .read(videoCallNotifierProvider(widget.appointmentId).notifier)
         .handleLifecycleChange(state);

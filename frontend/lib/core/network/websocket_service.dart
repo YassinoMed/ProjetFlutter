@@ -14,12 +14,20 @@ final websocketServiceProvider = Provider<WebSocketService>((ref) {
   return WebSocketService(secureStorage);
 });
 
+typedef WebSocketEventHandler = FutureOr<void> Function(
+  String eventName,
+  Map<String, dynamic> data,
+);
+
 /// CDC: Client WebSocket (Pusher Protocol) pour se connecter au serveur Reverb Laravel
 class WebSocketService {
   final SecureStorageService _secureStorage;
   final PusherChannelsFlutter _pusher = PusherChannelsFlutter.getInstance();
   final Logger _logger = Logger(printer: PrettyPrinter(methodCount: 0));
+  final Map<String, Map<String, WebSocketEventHandler>> _channelListeners = {};
+  final Set<String> _activeChannels = <String>{};
   bool _isInit = false;
+  int _listenerSequence = 0;
 
   WebSocketService(this._secureStorage);
 
@@ -64,11 +72,11 @@ class WebSocketService {
     return ApiConstants.baseUrl; // Android emulator
   }
 
-  Future<void> subscribeToConsultation(
+  Future<String> subscribeToConsultation(
     String consultationId,
     Function(dynamic) onMessageReceived,
   ) async {
-    await subscribeToConsultationEvents(
+    return subscribeToConsultationEvents(
       consultationId,
       (eventName, data) {
         if (eventName == 'App\\Events\\ChatMessageSent' ||
@@ -83,75 +91,147 @@ class WebSocketService {
     await unsubscribeConsultation(consultationId);
   }
 
-  Future<void> subscribeToConsultationEvents(
+  Future<String> subscribeToConsultationEvents(
     String consultationId,
-    FutureOr<void> Function(String eventName, Map<String, dynamic> data)
-        onEvent,
+    WebSocketEventHandler onEvent,
   ) async {
-    await _subscribeToPrivateChannel(
+    return _subscribeToPrivateChannel(
       'private-consultations.$consultationId',
       onEvent,
     );
   }
 
-  Future<void> unsubscribeConsultation(String consultationId) async {
-    await _unsubscribeChannel('private-consultations.$consultationId');
+  Future<void> unsubscribeConsultation(
+    String consultationId, {
+    String? listenerId,
+  }) async {
+    await _unsubscribeChannel(
+      'private-consultations.$consultationId',
+      listenerId: listenerId,
+    );
   }
 
-  Future<void> subscribeToTeleconsultation(
+  Future<String> subscribeToTeleconsultation(
     String teleconsultationId,
-    FutureOr<void> Function(String eventName, Map<String, dynamic> data)
-        onEvent,
+    WebSocketEventHandler onEvent,
   ) async {
-    await _subscribeToPrivateChannel(
+    return _subscribeToPrivateChannel(
       'private-teleconsultations.$teleconsultationId',
       onEvent,
     );
   }
 
-  Future<void> subscribeToCallSession(
+  Future<String> subscribeToCallSession(
     String callSessionId,
-    FutureOr<void> Function(String eventName, Map<String, dynamic> data)
-        onEvent,
+    WebSocketEventHandler onEvent,
   ) async {
-    await _subscribeToPrivateChannel(
+    return _subscribeToPrivateChannel(
       'private-calls.$callSessionId',
       onEvent,
     );
   }
 
-  Future<void> unsubscribeTeleconsultation(String teleconsultationId) async {
-    await _unsubscribeChannel('private-teleconsultations.$teleconsultationId');
+  Future<void> unsubscribeTeleconsultation(
+    String teleconsultationId, {
+    String? listenerId,
+  }) async {
+    await _unsubscribeChannel(
+      'private-teleconsultations.$teleconsultationId',
+      listenerId: listenerId,
+    );
   }
 
-  Future<void> unsubscribeCallSession(String callSessionId) async {
-    await _unsubscribeChannel('private-calls.$callSessionId');
+  Future<void> unsubscribeCallSession(
+    String callSessionId, {
+    String? listenerId,
+  }) async {
+    await _unsubscribeChannel(
+      'private-calls.$callSessionId',
+      listenerId: listenerId,
+    );
   }
 
-  Future<void> _subscribeToPrivateChannel(
+  Future<String> _subscribeToPrivateChannel(
     String channelName,
-    FutureOr<void> Function(String eventName, Map<String, dynamic> data)
-        onEvent,
+    WebSocketEventHandler onEvent,
   ) async {
     if (!_isInit) await init();
+
+    final listenerId = 'listener-${_listenerSequence++}';
+    final listeners =
+        _channelListeners.putIfAbsent(channelName, () => <String, WebSocketEventHandler>{});
+    listeners[listenerId] = onEvent;
+
+    if (_activeChannels.contains(channelName)) {
+      _logger.i('Attached listener to $channelName');
+      return listenerId;
+    }
 
     try {
       await _pusher.subscribe(
         channelName: channelName,
         onEvent: (event) {
           final decoded = _decodeEventData(event.data);
-          Future.microtask(() => onEvent(event.eventName, decoded));
+          final channel = event.channelName;
+          final callbacks =
+              _channelListeners[channel]?.values.toList(growable: false) ??
+                  const <WebSocketEventHandler>[];
+
+          for (final callback in callbacks) {
+            Future.microtask(() async {
+              try {
+                await callback(event.eventName, decoded);
+              } catch (error) {
+                _logger.e(
+                  'Failed to dispatch ${event.eventName} on $channel: $error',
+                );
+              }
+            });
+          }
         },
       );
+      _activeChannels.add(channelName);
       _logger.i('Subscribed to $channelName');
     } catch (e) {
+      listeners.remove(listenerId);
+      if (listeners.isEmpty) {
+        _channelListeners.remove(channelName);
+      }
       _logger.e('Failed to subscribe $channelName: $e');
     }
+
+    return listenerId;
   }
 
-  Future<void> _unsubscribeChannel(String channelName) async {
+  Future<void> _unsubscribeChannel(
+    String channelName, {
+    String? listenerId,
+  }) async {
+    final listeners = _channelListeners[channelName];
+    if (listeners == null) {
+      return;
+    }
+
+    if (listenerId == null) {
+      listeners.clear();
+    } else {
+      listeners.remove(listenerId);
+    }
+
+    if (listeners.isNotEmpty) {
+      _logger.i('Detached listener from $channelName');
+      return;
+    }
+
+    _channelListeners.remove(channelName);
+
+    if (!_activeChannels.contains(channelName)) {
+      return;
+    }
+
     try {
       await _pusher.unsubscribe(channelName: channelName);
+      _activeChannels.remove(channelName);
       _logger.i('Unsubscribed from $channelName');
     } catch (e) {
       _logger.e('Failed to unsubscribe $channelName: $e');

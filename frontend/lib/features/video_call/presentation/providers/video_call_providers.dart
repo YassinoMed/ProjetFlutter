@@ -53,6 +53,8 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
   VideoCallSessionContext? _sessionContext;
   String? _subscribedTeleconsultationId;
   String? _subscribedCallSessionId;
+  String? _teleconsultationListenerId;
+  String? _callSessionListenerId;
   bool _renderersInitialized = false;
   bool _joiningInProgress = false;
   bool _iceRestartInProgress = false;
@@ -536,12 +538,14 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
 
     if (_subscribedTeleconsultationId != null) {
       await websocketService
-          .unsubscribeTeleconsultation(_subscribedTeleconsultationId!);
+          .unsubscribeTeleconsultation(
+        _subscribedTeleconsultationId!,
+        listenerId: _teleconsultationListenerId,
+      );
     }
 
     _subscribedTeleconsultationId = teleconsultationId;
-
-    await websocketService.subscribeToTeleconsultation(
+    _teleconsultationListenerId = await websocketService.subscribeToTeleconsultation(
       teleconsultationId,
       _handleRealtimeEvent,
     );
@@ -553,12 +557,14 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
     }
 
     if (_subscribedCallSessionId != null) {
-      await websocketService.unsubscribeCallSession(_subscribedCallSessionId!);
+      await websocketService.unsubscribeCallSession(
+        _subscribedCallSessionId!,
+        listenerId: _callSessionListenerId,
+      );
     }
 
     _subscribedCallSessionId = callSessionId;
-
-    await websocketService.subscribeToCallSession(
+    _callSessionListenerId = await websocketService.subscribeToCallSession(
       callSessionId,
       _handleRealtimeEvent,
     );
@@ -845,14 +851,22 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
     _durationTimer?.cancel();
 
     if (_subscribedCallSessionId != null) {
-      await websocketService.unsubscribeCallSession(_subscribedCallSessionId!);
+      await websocketService.unsubscribeCallSession(
+        _subscribedCallSessionId!,
+        listenerId: _callSessionListenerId,
+      );
       _subscribedCallSessionId = null;
+      _callSessionListenerId = null;
     }
 
     if (_subscribedTeleconsultationId != null) {
       await websocketService
-          .unsubscribeTeleconsultation(_subscribedTeleconsultationId!);
+          .unsubscribeTeleconsultation(
+        _subscribedTeleconsultationId!,
+        listenerId: _teleconsultationListenerId,
+      );
       _subscribedTeleconsultationId = null;
+      _teleconsultationListenerId = null;
     }
 
     await _peerConnection?.close();

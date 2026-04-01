@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -28,6 +29,10 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final Set<String> _readAckedMessageIds = <String>{};
+  late final WebSocketService _websocketService;
+  String? _lastVisibleMessageId;
+  String? _consultationListenerId;
+  StreamSubscription<VoiceInputResult>? _voiceResultSubscription;
 
   bool _isVoiceMode = false;
   bool _isListening = false;
@@ -36,16 +41,23 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
   @override
   void initState() {
     super.initState();
+    _websocketService = ref.read(websocketServiceProvider);
     Future.microtask(_subscribeToRealtime);
   }
 
   @override
   void dispose() {
-    ref.read(websocketServiceProvider).unsubscribeConsultation(
+    if (_consultationListenerId != null) {
+      unawaited(
+        _websocketService.unsubscribeConsultation(
           widget.conversationId,
-        );
+          listenerId: _consultationListenerId,
+        ),
+      );
+    }
     _controller.dispose();
     _scrollController.dispose();
+    _voiceResultSubscription?.cancel();
     super.dispose();
   }
 
@@ -137,17 +149,24 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
           Expanded(
             child: messagesAsync.when(
               data: (messages) {
-                final ordered = [...messages]
-                  ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+                final ordered = [...messages];
+                final timeline = _buildTimelineEntries(ordered);
 
+                _maybeScrollToLatest(ordered);
                 _scheduleReadAcknowledgements(ordered);
 
                 return ListView.builder(
                   controller: _scrollController,
                   padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
-                  itemCount: ordered.length,
+                  itemCount: timeline.length,
                   itemBuilder: (context, index) {
-                    final message = ordered[index];
+                    final entry = timeline[index];
+
+                    if (entry.isDateSeparator) {
+                      return _DateSeparator(label: entry.label!);
+                    }
+
+                    final message = entry.message!;
                     return _MessageBubble(
                       message: message,
                       onSpeak: () => _speakMessage(message.content),
@@ -392,14 +411,32 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
   // ── Actions ───────────────────────────────────────────────
 
   Future<void> _subscribeToRealtime() async {
-    await ref.read(websocketServiceProvider).subscribeToConsultationEvents(
+    if (!mounted || _consultationListenerId != null) {
+      return;
+    }
+
+    final listenerId = await _websocketService.subscribeToConsultationEvents(
       widget.conversationId,
       (eventName, data) {
+        if (!mounted) {
+          return;
+        }
+
         ref
             .read(messagesProvider(widget.conversationId).notifier)
             .applyRealtimeEvent(eventName, data);
       },
     );
+
+    if (!mounted) {
+      await _websocketService.unsubscribeConsultation(
+        widget.conversationId,
+        listenerId: listenerId,
+      );
+      return;
+    }
+
+    _consultationListenerId = listenerId;
   }
 
   void _scheduleReadAcknowledgements(List<ChatMessage> messages) {
@@ -413,7 +450,14 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
       }
 
       _readAckedMessageIds.add(message.id);
-      Future.microtask(() => _markMessageAsRead(message));
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          _readAckedMessageIds.remove(message.id);
+          return;
+        }
+
+        unawaited(_markMessageAsRead(message));
+      });
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -427,7 +471,60 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
     });
   }
 
+  void _maybeScrollToLatest(List<ChatMessage> messages) {
+    if (messages.isEmpty) {
+      return;
+    }
+
+    final latestMessage = messages.last;
+    final shouldScroll = _lastVisibleMessageId == null ||
+        _isNearBottom() ||
+        latestMessage.isMe;
+
+    _lastVisibleMessageId = latestMessage.id;
+
+    if (!shouldScroll) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) {
+        return;
+      }
+
+      final target = _scrollController.position.maxScrollExtent;
+      if ((_scrollController.offset - target).abs() < 4) {
+        return;
+      }
+
+      if (latestMessage.isMe || _scrollController.position.maxScrollExtent > 0) {
+        _scrollController.animateTo(
+          target,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+        );
+      } else {
+        _scrollController.jumpTo(target);
+      }
+    });
+  }
+
+  bool _isNearBottom() {
+    if (!_scrollController.hasClients) {
+      return true;
+    }
+
+    return (_scrollController.position.maxScrollExtent - _scrollController.offset)
+            .abs() <
+        160;
+  }
+
   Future<void> _markMessageAsRead(ChatMessage message) async {
+    if (!mounted) {
+      _readAckedMessageIds.remove(message.id);
+      return;
+    }
+
     try {
       await ref.read(messagesProvider(widget.conversationId).notifier)
           .acknowledgeMessage(
@@ -439,6 +536,49 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
     }
   }
 
+  List<_ChatTimelineEntry> _buildTimelineEntries(List<ChatMessage> messages) {
+    final entries = <_ChatTimelineEntry>[];
+    DateTime? currentDay;
+
+    for (final message in messages) {
+      final localTimestamp = message.timestamp.toLocal();
+      final messageDay = DateTime(
+        localTimestamp.year,
+        localTimestamp.month,
+        localTimestamp.day,
+      );
+
+      if (currentDay == null || currentDay != messageDay) {
+        currentDay = messageDay;
+        entries.add(
+          _ChatTimelineEntry.date(
+            _formatDayLabel(messageDay),
+          ),
+        );
+      }
+
+      entries.add(_ChatTimelineEntry.message(message));
+    }
+
+    return entries;
+  }
+
+  String _formatDayLabel(DateTime day) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    if (day == today) {
+      return 'Aujourd’hui';
+    }
+
+    if (day == yesterday) {
+      return 'Hier';
+    }
+
+    return DateFormat('dd MMM yyyy').format(day);
+  }
+
   Future<void> _sendMessage() async {
     final content = _controller.text.trim();
     if (content.isEmpty) return;
@@ -447,6 +587,9 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
       await ref
           .read(messagesProvider(widget.conversationId).notifier)
           .sendMessage(content);
+      if (!mounted) {
+        return;
+      }
       _controller.clear();
       setState(() {});
     } catch (e) {
@@ -464,7 +607,8 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
     voiceService.startListening();
 
     // Listen for results
-    voiceService.onResult.listen((result) {
+    _voiceResultSubscription?.cancel();
+    _voiceResultSubscription = voiceService.onResult.listen((result) {
       if (result.isFinal && mounted) {
         setState(() {
           _controller.text = result.text;
@@ -488,9 +632,7 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
     final messages = ref.read(messagesProvider(widget.conversationId));
     messages.whenData((msgs) {
       if (msgs.isNotEmpty) {
-        final ordered = [...msgs]
-          ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
-        final last = ordered.last;
+        final last = msgs.last;
         _speakMessage(last.content);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -511,6 +653,7 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
     );
 
     if (result == null || result.files.isEmpty) return;
+    if (!mounted) return;
 
     final filePath = result.files.first.path;
     if (filePath == null) return;
@@ -538,6 +681,10 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
     }
 
     try {
+      if (!mounted) {
+        return;
+      }
+
       // TODO: Use actual shared key from ECDH key exchange
       // For now, use a placeholder key
       final dummyKey = List.filled(32, 0x42);
@@ -625,18 +772,14 @@ class _MessageBubble extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    DateFormat('HH:mm').format(message.timestamp),
+                    DateFormat('HH:mm').format(message.timestamp.toLocal()),
                     style: AppTheme.bodySmall.copyWith(
                       color: message.isMe ? Colors.white60 : Colors.black38,
                     ),
                   ),
                   if (message.isMe) ...[
                     const SizedBox(width: 4),
-                    const Icon(
-                      Icons.done_all_rounded,
-                      size: 14,
-                      color: Colors.white60,
-                    ),
+                    _MessageStatusIcon(message: message),
                   ],
                   // TTS button for received messages
                   if (!message.isMe) ...[
@@ -661,6 +804,93 @@ class _MessageBubble extends StatelessWidget {
           duration: 300.ms,
         );
   }
+}
+
+class _MessageStatusIcon extends StatelessWidget {
+  final ChatMessage message;
+
+  const _MessageStatusIcon({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    if (message.isPending) {
+      return const Icon(
+        Icons.schedule_rounded,
+        size: 14,
+        color: Colors.white70,
+      );
+    }
+
+    switch (message.status) {
+      case MessageStatus.sent:
+        return const Icon(
+          Icons.done_rounded,
+          size: 14,
+          color: Colors.white70,
+        );
+      case MessageStatus.delivered:
+        return const Icon(
+          Icons.done_all_rounded,
+          size: 14,
+          color: Colors.white70,
+        );
+      case MessageStatus.read:
+        return const Icon(
+          Icons.done_all_rounded,
+          size: 14,
+          color: Color(0xFFBFE3FF),
+        );
+    }
+  }
+}
+
+class _DateSeparator extends StatelessWidget {
+  final String label;
+
+  const _DateSeparator({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppTheme.neutralGray200.withValues(alpha: 0.9),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            label,
+            style: AppTheme.labelSmall.copyWith(
+              color: AppTheme.neutralGray500,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ChatTimelineEntry {
+  final ChatMessage? message;
+  final String? label;
+
+  const _ChatTimelineEntry._({
+    this.message,
+    this.label,
+  });
+
+  factory _ChatTimelineEntry.message(ChatMessage message) {
+    return _ChatTimelineEntry._(message: message);
+  }
+
+  factory _ChatTimelineEntry.date(String label) {
+    return _ChatTimelineEntry._(label: label);
+  }
+
+  bool get isDateSeparator => label != null;
 }
 
 // ── Pulsing Voice Dot ───────────────────────────────────────

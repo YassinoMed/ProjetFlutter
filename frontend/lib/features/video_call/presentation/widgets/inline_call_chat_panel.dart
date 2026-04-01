@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -23,11 +25,14 @@ class InlineCallChatPanel extends ConsumerStatefulWidget {
 class _InlineCallChatPanelState extends ConsumerState<InlineCallChatPanel> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  late final WebSocketService _websocketService;
+  String? _consultationListenerId;
   bool _sending = false;
 
   @override
   void initState() {
     super.initState();
+    _websocketService = ref.read(websocketServiceProvider);
     Future.microtask(_subscribeToRealtime);
   }
 
@@ -35,19 +40,44 @@ class _InlineCallChatPanelState extends ConsumerState<InlineCallChatPanel> {
   void dispose() {
     _controller.dispose();
     _scrollController.dispose();
-    ref.read(websocketServiceProvider).unsubscribe(widget.appointmentId);
+    if (_consultationListenerId != null) {
+      unawaited(
+        _websocketService.unsubscribeConsultation(
+          widget.appointmentId,
+          listenerId: _consultationListenerId,
+        ),
+      );
+    }
     super.dispose();
   }
 
   Future<void> _subscribeToRealtime() async {
-    await ref.read(websocketServiceProvider).subscribeToConsultationEvents(
+    if (!mounted || _consultationListenerId != null) {
+      return;
+    }
+
+    final listenerId = await _websocketService.subscribeToConsultationEvents(
       widget.appointmentId,
       (eventName, data) {
+        if (!mounted) {
+          return;
+        }
+
         ref
             .read(messagesProvider(widget.appointmentId).notifier)
             .applyRealtimeEvent(eventName, data);
       },
     );
+
+    if (!mounted) {
+      await _websocketService.unsubscribeConsultation(
+        widget.appointmentId,
+        listenerId: listenerId,
+      );
+      return;
+    }
+
+    _consultationListenerId = listenerId;
   }
 
   Future<void> _sendMessage() async {

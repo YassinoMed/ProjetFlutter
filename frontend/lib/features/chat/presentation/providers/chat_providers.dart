@@ -21,10 +21,16 @@ class ConversationsNotifier extends AsyncNotifier<List<Conversation>> {
   ChatRemoteDataSource get _dataSource => ref.read(chatRemoteDataSourceProvider);
 
   @override
-  Future<List<Conversation>> build() => _dataSource.getConversations();
+  Future<List<Conversation>> build() async {
+    final conversations = await _dataSource.getConversations();
+    return _sortConversations(conversations);
+  }
 
   Future<void> refresh() async {
-    state = await AsyncValue.guard(_dataSource.getConversations);
+    state = await AsyncValue.guard(() async {
+      final conversations = await _dataSource.getConversations();
+      return _sortConversations(conversations);
+    });
   }
 
   void applyMessagePreview(
@@ -47,10 +53,15 @@ class ConversationsNotifier extends AsyncNotifier<List<Conversation>> {
       }
 
       found = true;
+      final shouldRefreshPreview =
+          _compareInstants(message.timestamp, conversation.lastMessageTime) >= 0;
       updated.add(
         conversation.copyWith(
-          lastMessage: message.content,
-          lastMessageTime: message.timestamp,
+          lastMessage:
+              shouldRefreshPreview ? message.content : conversation.lastMessage,
+          lastMessageTime: shouldRefreshPreview
+              ? message.timestamp
+              : conversation.lastMessageTime,
           unreadCount: incrementUnread
               ? conversation.unreadCount + 1
               : conversation.unreadCount,
@@ -62,8 +73,7 @@ class ConversationsNotifier extends AsyncNotifier<List<Conversation>> {
       return;
     }
 
-    updated.sort((a, b) => b.lastMessageTime.compareTo(a.lastMessageTime));
-    state = AsyncData(updated);
+    state = AsyncData(_sortConversations(updated));
   }
 
   void markConversationRead(String conversationId) {
@@ -91,6 +101,24 @@ class ConversationsNotifier extends AsyncNotifier<List<Conversation>> {
         else
           conversation,
     ]);
+  }
+
+  List<Conversation> _sortConversations(List<Conversation> conversations) {
+    final sorted = [...conversations]
+      ..sort((a, b) {
+        final byDate = _compareInstants(b.lastMessageTime, a.lastMessageTime);
+        if (byDate != 0) {
+          return byDate;
+        }
+
+        return a.id.compareTo(b.id);
+      });
+
+    return sorted;
+  }
+
+  int _compareInstants(DateTime left, DateTime right) {
+    return left.toUtc().compareTo(right.toUtc());
   }
 }
 
@@ -289,7 +317,23 @@ class MessageThreadNotifier
 
   List<ChatMessage> _normalize(Iterable<ChatMessage> messages) {
     final normalized = messages.toList()
-      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+      ..sort((a, b) {
+        final byDate = _compareInstants(a.timestamp, b.timestamp);
+        if (byDate != 0) {
+          return byDate;
+        }
+
+        if (a.isPending != b.isPending) {
+          return a.isPending ? 1 : -1;
+        }
+
+        final bySender = a.senderId.compareTo(b.senderId);
+        if (bySender != 0) {
+          return bySender;
+        }
+
+        return a.id.compareTo(b.id);
+      });
 
     return normalized;
   }
@@ -309,6 +353,10 @@ class MessageThreadNotifier
       MessageStatus.delivered => 1,
       MessageStatus.read => 2,
     };
+  }
+
+  int _compareInstants(DateTime left, DateTime right) {
+    return left.toUtc().compareTo(right.toUtc());
   }
 }
 
