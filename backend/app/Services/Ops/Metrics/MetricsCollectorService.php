@@ -8,6 +8,7 @@ use App\Models\DocumentProcessingJob;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Schema;
+use Throwable;
 
 class MetricsCollectorService
 {
@@ -74,19 +75,29 @@ class MetricsCollectorService
             $queue = (string) $queue;
             $baseKey = 'queues:'.$queue;
 
+            try {
+                $ready = (float) Redis::llen($baseKey);
+                $reserved = (float) Redis::zcard($baseKey.':reserved');
+                $delayed = (float) Redis::zcard($baseKey.':delayed');
+            } catch (Throwable) {
+                $ready = 0.0;
+                $reserved = 0.0;
+                $delayed = 0.0;
+            }
+
             $series[] = [
                 'labels' => ['queue' => $queue, 'state' => 'ready'],
-                'value' => (float) Redis::llen($baseKey),
+                'value' => $ready,
             ];
 
             $series[] = [
                 'labels' => ['queue' => $queue, 'state' => 'reserved'],
-                'value' => (float) Redis::zcard($baseKey.':reserved'),
+                'value' => $reserved,
             ];
 
             $series[] = [
                 'labels' => ['queue' => $queue, 'state' => 'delayed'],
-                'value' => (float) Redis::zcard($baseKey.':delayed'),
+                'value' => $delayed,
             ];
         }
 

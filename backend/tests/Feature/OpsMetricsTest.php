@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Schema;
 use Mockery;
 use RuntimeException;
 use Tests\Concerns\UsesTenantMigrations;
+use Tests\Fakes\FailingMetricsStore;
 use Tests\Fakes\InMemoryMetricsStore;
 use Tests\TestCase;
 
@@ -260,6 +261,18 @@ class OpsMetricsTest extends TestCase
         $response->assertOk();
         $response->assertDontSee('mediconnect_http_requests_total{', false);
         $this->assertSame([], $this->metricsStore->readSeries('counter', 'mediconnect_http_requests_total'));
+    }
+
+    public function test_requests_do_not_fail_when_metrics_backend_is_unavailable(): void
+    {
+        $this->app->instance(MetricsStore::class, new FailingMetricsStore());
+
+        $this->getJson('/api/test/metrics/success')
+            ->assertOk()
+            ->assertJson(['ok' => true]);
+
+        $this->postJson('/api/auth/login', [])
+            ->assertStatus(422);
     }
 
     private function registerTestRoutes(): void

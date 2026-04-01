@@ -3,75 +3,93 @@
 namespace App\Services\Ops\Metrics;
 
 use Illuminate\Redis\Connections\Connection;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
+use Throwable;
 
 class MetricsStore
 {
     private const PREFIX = 'mediconnect:metrics';
 
+    private bool $reportedUnavailable = false;
+
     public function incrementCounter(string $metric, array $labels = [], float|int $value = 1): void
     {
-        $this->redis()->hIncrByFloat(
-            $this->key('counter', $metric),
-            $this->encodeLabels($labels),
-            (float) $value
-        );
+        $this->safely(function () use ($metric, $labels, $value): void {
+            $this->redis()->hIncrByFloat(
+                $this->key('counter', $metric),
+                $this->encodeLabels($labels),
+                (float) $value
+            );
+        });
     }
 
     public function setGauge(string $metric, array $labels = [], float|int $value = 0): void
     {
-        $this->redis()->hSet(
-            $this->key('gauge', $metric),
-            $this->encodeLabels($labels),
-            (string) $value
-        );
+        $this->safely(function () use ($metric, $labels, $value): void {
+            $this->redis()->hSet(
+                $this->key('gauge', $metric),
+                $this->encodeLabels($labels),
+                (string) $value
+            );
+        });
     }
 
     public function observeHistogram(string $metric, float $value, array $labels = []): void
     {
-        $baseLabels = $this->normalizeLabels($labels);
-        $baseField = $this->encodeLabels($baseLabels);
-        $buckets = (array) (config("metrics.definitions.{$metric}.buckets") ?? config('metrics.default_histogram_buckets', []));
+        $this->safely(function () use ($metric, $value, $labels): void {
+            $baseLabels = $this->normalizeLabels($labels);
+            $baseField = $this->encodeLabels($baseLabels);
+            $buckets = (array) (config("metrics.definitions.{$metric}.buckets") ?? config('metrics.default_histogram_buckets', []));
 
-        sort($buckets);
+            sort($buckets);
 
-        foreach ($buckets as $bucket) {
-            if ($value <= (float) $bucket) {
-                $this->redis()->hIncrByFloat(
-                    $this->key('histogram_bucket', $metric),
-                    $this->encodeLabels([...$baseLabels, 'le' => $this->formatNumber((float) $bucket)]),
-                    1.0
-                );
+            foreach ($buckets as $bucket) {
+                if ($value <= (float) $bucket) {
+                    $this->redis()->hIncrByFloat(
+                        $this->key('histogram_bucket', $metric),
+                        $this->encodeLabels([...$baseLabels, 'le' => $this->formatNumber((float) $bucket)]),
+                        1.0
+                    );
+                }
             }
-        }
 
-        $this->redis()->hIncrByFloat(
-            $this->key('histogram_bucket', $metric),
-            $this->encodeLabels([...$baseLabels, 'le' => '+Inf']),
-            1.0
-        );
+            $this->redis()->hIncrByFloat(
+                $this->key('histogram_bucket', $metric),
+                $this->encodeLabels([...$baseLabels, 'le' => '+Inf']),
+                1.0
+            );
 
-        $this->redis()->hIncrByFloat($this->key('histogram_sum', $metric), $baseField, $value);
-        $this->redis()->hIncrByFloat($this->key('histogram_count', $metric), $baseField, 1.0);
+            $this->redis()->hIncrByFloat($this->key('histogram_sum', $metric), $baseField, $value);
+            $this->redis()->hIncrByFloat($this->key('histogram_count', $metric), $baseField, 1.0);
+        });
     }
 
     public function putTemporaryValue(string $namespace, string $identifier, float|int|string $value, int $ttlSeconds = 86400): void
     {
-        $key = sprintf('%s:tmp:%s:%s', self::PREFIX, $namespace, $identifier);
-        $this->redis()->setex($key, $ttlSeconds, (string) $value);
+        $this->safely(function () use ($namespace, $identifier, $value, $ttlSeconds): void {
+            $key = sprintf('%s:tmp:%s:%s', self::PREFIX, $namespace, $identifier);
+            $this->redis()->setex($key, $ttlSeconds, (string) $value);
+        });
     }
 
     public function pullTemporaryValue(string $namespace, string $identifier): ?float
     {
-        $key = sprintf('%s:tmp:%s:%s', self::PREFIX, $namespace, $identifier);
-        $value = $this->redis()->getDel($key);
+        $value = $this->safely(function () use ($namespace, $identifier): ?string {
+            $key = sprintf('%s:tmp:%s:%s', self::PREFIX, $namespace, $identifier);
+
+            return $this->redis()->getDel($key);
+        });
 
         return $value === null ? null : (float) $value;
     }
 
     public function readSeries(string $type, string $metric): array
     {
-        $rows = $this->redis()->hGetAll($this->key($type, $metric));
+        $rows = $this->safely(
+            fn (): array => $this->redis()->hGetAll($this->key($type, $metric)),
+            [],
+        );
         $series = [];
 
         foreach ($rows as $field => $value) {
@@ -90,6 +108,31 @@ class MetricsStore
         $connection = Redis::connection((string) config('metrics.redis_connection', 'cache'));
 
         return $connection;
+    }
+
+    /**
+     * @template T
+     *
+     * @param  callable(): T  $callback
+     * @param  T|null  $default
+     * @return T|null
+     */
+    private function safely(callable $callback, mixed $default = null): mixed
+    {
+        try {
+            return $callback();
+        } catch (Throwable $exception) {
+            if (! $this->reportedUnavailable) {
+                $this->reportedUnavailable = true;
+
+                Log::warning('metrics_store_unavailable', [
+                    'message' => $exception->getMessage(),
+                    'exception' => $exception::class,
+                ]);
+            }
+
+            return $default;
+        }
     }
 
     private function key(string $type, string $metric): string

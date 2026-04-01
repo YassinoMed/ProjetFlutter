@@ -5,7 +5,9 @@ namespace App\Services\Ops\Metrics;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Throwable;
 
 class QueueMetricsRecorder
 {
@@ -13,58 +15,74 @@ class QueueMetricsRecorder
 
     public function onJobProcessing(JobProcessing $event): void
     {
-        $this->metricsStore->putTemporaryValue(
+        $this->recordSafely(fn () => $this->metricsStore->putTemporaryValue(
             'job_started_at',
             $this->jobIdentifier($event->job),
             microtime(true)
-        );
+        ));
     }
 
     public function onJobProcessed(JobProcessed $event): void
     {
-        $jobClass = $this->jobClassName($event->job);
-        $queue = $event->job->getQueue() ?: $event->connectionName ?: 'default';
-        $durationSeconds = $this->resolveDurationSeconds($event->job);
+        $this->recordSafely(function () use ($event): void {
+            $jobClass = $this->jobClassName($event->job);
+            $queue = $event->job->getQueue() ?: $event->connectionName ?: 'default';
+            $durationSeconds = $this->resolveDurationSeconds($event->job);
 
-        $this->metricsStore->incrementCounter('mediconnect_job_processed_total', [
-            'job' => class_basename($jobClass),
-            'queue' => $queue,
-        ]);
-
-        if ($durationSeconds !== null) {
-            $this->metricsStore->observeHistogram('mediconnect_job_duration_seconds', $durationSeconds, [
+            $this->metricsStore->incrementCounter('mediconnect_job_processed_total', [
                 'job' => class_basename($jobClass),
                 'queue' => $queue,
-                'status' => 'processed',
-                'domain' => $this->classifyDomain($jobClass),
             ]);
-        }
+
+            if ($durationSeconds !== null) {
+                $this->metricsStore->observeHistogram('mediconnect_job_duration_seconds', $durationSeconds, [
+                    'job' => class_basename($jobClass),
+                    'queue' => $queue,
+                    'status' => 'processed',
+                    'domain' => $this->classifyDomain($jobClass),
+                ]);
+            }
+        });
     }
 
     public function onJobFailed(JobFailed $event): void
     {
-        $jobClass = $this->jobClassName($event->job);
-        $queue = $event->job->getQueue() ?: $event->connectionName ?: 'default';
-        $domain = $this->classifyDomain($jobClass);
-        $durationSeconds = $this->resolveDurationSeconds($event->job);
+        $this->recordSafely(function () use ($event): void {
+            $jobClass = $this->jobClassName($event->job);
+            $queue = $event->job->getQueue() ?: $event->connectionName ?: 'default';
+            $domain = $this->classifyDomain($jobClass);
+            $durationSeconds = $this->resolveDurationSeconds($event->job);
 
-        $this->metricsStore->incrementCounter('mediconnect_job_failed_total', [
-            'job' => class_basename($jobClass),
-            'queue' => $queue,
-        ]);
-
-        $this->metricsStore->incrementCounter('mediconnect_business_job_failures_total', [
-            'domain' => $domain,
-            'job' => class_basename($jobClass),
-            'queue' => $queue,
-        ]);
-
-        if ($durationSeconds !== null) {
-            $this->metricsStore->observeHistogram('mediconnect_job_duration_seconds', $durationSeconds, [
+            $this->metricsStore->incrementCounter('mediconnect_job_failed_total', [
                 'job' => class_basename($jobClass),
                 'queue' => $queue,
-                'status' => 'failed',
+            ]);
+
+            $this->metricsStore->incrementCounter('mediconnect_business_job_failures_total', [
                 'domain' => $domain,
+                'job' => class_basename($jobClass),
+                'queue' => $queue,
+            ]);
+
+            if ($durationSeconds !== null) {
+                $this->metricsStore->observeHistogram('mediconnect_job_duration_seconds', $durationSeconds, [
+                    'job' => class_basename($jobClass),
+                    'queue' => $queue,
+                    'status' => 'failed',
+                    'domain' => $domain,
+                ]);
+            }
+        });
+    }
+
+    private function recordSafely(callable $callback): void
+    {
+        try {
+            $callback();
+        } catch (Throwable $exception) {
+            Log::warning('queue_metrics_recording_failed', [
+                'message' => $exception->getMessage(),
+                'exception' => $exception::class,
             ]);
         }
     }
