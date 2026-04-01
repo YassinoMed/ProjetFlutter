@@ -8,16 +8,41 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (! Schema::hasTable('doctors')) {
+            return;
+        }
+
         Schema::table('doctors', function (Blueprint $table) {
-            $table->boolean('is_approved')->default(false)->after('specialty');
-            $table->boolean('is_rejected')->default(false)->after('is_approved');
+            if (! Schema::hasColumn('doctors', 'is_approved')) {
+                $table->boolean('is_approved')->default(false)->after('specialty');
+            }
+
+            if (! Schema::hasColumn('doctors', 'is_rejected')) {
+                $table->boolean('is_rejected')->default(false)->after('is_approved');
+            }
         });
     }
 
     public function down(): void
     {
+        if (! Schema::hasTable('doctors')) {
+            return;
+        }
+
         Schema::table('doctors', function (Blueprint $table) {
-            $table->dropColumn(['is_approved', 'is_rejected']);
+            $columns = [];
+
+            if (Schema::hasColumn('doctors', 'is_approved')) {
+                $columns[] = 'is_approved';
+            }
+
+            if (Schema::hasColumn('doctors', 'is_rejected')) {
+                $columns[] = 'is_rejected';
+            }
+
+            if ($columns !== []) {
+                $table->dropColumn($columns);
+            }
         });
     }
 };
