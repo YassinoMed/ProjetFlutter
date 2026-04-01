@@ -5,6 +5,7 @@ use App\Models\CallSession;
 use App\Models\Conversation;
 use App\Models\Teleconsultation;
 use App\Enums\UserRole;
+use App\Services\Teleconsultations\TeleconsultationSchemaGuard;
 use Illuminate\Support\Facades\Broadcast;
 
 if (app()->environment('testing')) {
@@ -77,6 +78,10 @@ Broadcast::channel('calls.{callSessionId}.presence', function ($user, string $ca
 });
 
 Broadcast::channel('teleconsultations.{teleconsultationId}', function ($user, string $teleconsultationId): bool {
+    if (! app(TeleconsultationSchemaGuard::class)->isAvailable()) {
+        return false;
+    }
+
     if (($user->role?->value ?? $user->role) === UserRole::ADMIN->value) {
         return true;
     }

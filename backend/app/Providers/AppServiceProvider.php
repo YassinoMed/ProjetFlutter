@@ -8,8 +8,13 @@ use App\Services\Documents\Contracts\DocumentAiAnalyzer;
 use App\Services\Documents\Contracts\DocumentQuestionAnswerer;
 use App\Services\Documents\Contracts\DocumentTextExtractor;
 use App\Services\Documents\TextExtraction\CompositeDocumentTextExtractor;
+use App\Services\Ops\Metrics\QueueMetricsRecorder;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Queue\Events\JobProcessed;
+use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -20,6 +25,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(DocumentTextExtractor::class, CompositeDocumentTextExtractor::class);
         $this->app->singleton(DocumentAiAnalyzer::class, HeuristicDocumentAiAnalyzer::class);
         $this->app->singleton(DocumentQuestionAnswerer::class, HeuristicGroundedDocumentQuestionAnswerer::class);
+        $this->app->singleton(QueueMetricsRecorder::class);
     }
 
     public function boot(): void
@@ -48,5 +54,9 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('secretaries', fn (Request $request) => Limit::perMinute(30)->by('secretaries:'.$request->user()?->id.':'.$request->ip()));
         RateLimiter::for('documents', fn (Request $request) => Limit::perMinute(30)->by('documents:'.$request->user()?->id.':'.$request->ip()));
         RateLimiter::for('rgpd', fn (Request $request) => Limit::perMinute(10)->by('rgpd:'.$request->user()?->id.':'.$request->ip()));
+
+        Event::listen(JobProcessing::class, fn (JobProcessing $event) => app(QueueMetricsRecorder::class)->onJobProcessing($event));
+        Event::listen(JobProcessed::class, fn (JobProcessed $event) => app(QueueMetricsRecorder::class)->onJobProcessed($event));
+        Event::listen(JobFailed::class, fn (JobFailed $event) => app(QueueMetricsRecorder::class)->onJobFailed($event));
     }
 }

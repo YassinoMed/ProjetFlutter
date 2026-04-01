@@ -11,8 +11,16 @@ use Illuminate\Support\Facades\DB;
 
 class TeleconsultationStateSynchronizer
 {
+    public function __construct(
+        private readonly TeleconsultationSchemaGuard $schemaGuard,
+    ) {}
+
     public function syncFromCallSession(CallSession $callSession): ?Teleconsultation
     {
+        if (! $this->schemaGuard->isAvailable()) {
+            return null;
+        }
+
         $teleconsultation = Teleconsultation::query()
             ->where('current_call_session_id', $callSession->id)
             ->orWhere(fn ($query) => $query->where('appointment_id', $callSession->consultation_id))

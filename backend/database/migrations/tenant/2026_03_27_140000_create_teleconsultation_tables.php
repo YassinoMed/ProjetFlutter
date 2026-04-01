@@ -36,8 +36,14 @@ return new class extends Migration
             $table->foreign('patient_user_id')->references('id')->on('users')->cascadeOnDelete();
             $table->foreign('doctor_user_id')->references('id')->on('users')->cascadeOnDelete();
             $table->foreign('created_by_user_id')->references('id')->on('users')->nullOnDelete();
-            $table->index(['doctor_user_id', 'status', 'scheduled_starts_at_utc']);
-            $table->index(['patient_user_id', 'status', 'scheduled_starts_at_utc']);
+            $table->index(
+                ['doctor_user_id', 'status', 'scheduled_starts_at_utc'],
+                'telecons_doctor_status_start_idx',
+            );
+            $table->index(
+                ['patient_user_id', 'status', 'scheduled_starts_at_utc'],
+                'telecons_patient_status_start_idx',
+            );
         });
 
         Schema::create('teleconsultation_participants', function (Blueprint $table) {

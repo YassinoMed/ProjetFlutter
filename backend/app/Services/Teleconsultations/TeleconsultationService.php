@@ -35,6 +35,7 @@ class TeleconsultationService
         private readonly TurnCredentialsService $turnCredentialsService,
         private readonly TeleconsultationEventLogger $eventLogger,
         private readonly TeleconsultationStateSynchronizer $stateSynchronizer,
+        private readonly TeleconsultationSchemaGuard $schemaGuard,
         private readonly AuditService $auditService,
     ) {}
 
@@ -44,6 +45,8 @@ class TeleconsultationService
         ?string $actingDoctorUserId = null,
         int $perPage = 20,
     ): CursorPaginator {
+        $this->schemaGuard->ensureAvailable();
+
         $query = Teleconsultation::query()
             ->with(['participants', 'currentCallSession.participants'])
             ->when(! empty($filters['status']), fn (Builder $builder) => $builder->where('status', $filters['status']))
@@ -89,6 +92,8 @@ class TeleconsultationService
         ?string $delegationId = null,
         ?Request $request = null,
     ): Teleconsultation {
+        $this->schemaGuard->ensureAvailable();
+
         $appointment = $this->resolveOrCreateAppointment($actor, $payload, $actingDoctorUserId);
 
         $existing = Teleconsultation::query()

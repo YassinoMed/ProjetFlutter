@@ -1,0 +1,226 @@
+groups:
+  - name: mediconnect-availability
+    rules:
+      - alert: MediConnectApiLiveEndpointDown
+        expr: probe_success{job="blackbox-http", instance="http://nginx/up"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: api
+          team: platform
+        annotations:
+          summary: "Endpoint live indisponible"
+          description: "Le endpoint /up ne répond plus depuis plus de 2 minutes."
+
+      - alert: MediConnectApiReadinessFailed
+        expr: probe_success{job="blackbox-http", instance="http://nginx/api/ops/health/ready"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: api
+          team: platform
+        annotations:
+          summary: "Readiness API en échec"
+          description: "Le endpoint readiness échoue, une dépendance critique est probablement indisponible."
+
+      - alert: MediConnectApiProbeLatencyHigh
+        expr: probe_duration_seconds{job="blackbox-http", instance="http://nginx/api/ops/health/ready"} > 1
+        for: 10m
+        labels:
+          severity: warning
+          service: api
+          team: platform
+        annotations:
+          summary: "Latence du readiness API élevée"
+          description: "Le readiness API dépasse 1 seconde depuis plus de 10 minutes."
+
+      - alert: MediConnectReverbUnavailable
+        expr: probe_success{job="blackbox-tcp", instance="reverb:8080"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: reverb
+          team: realtime
+        annotations:
+          summary: "Reverb indisponible"
+          description: "Le serveur WebSocket Reverb ne répond plus sur le port 8080."
+
+      - alert: MediConnectCoturnUnavailable
+        expr: probe_success{job="blackbox-tcp", instance="coturn:3478"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          service: coturn
+          team: realtime
+        annotations:
+          summary: "Coturn indisponible"
+          description: "Le service TURN/STUN ne répond plus sur le port 3478."
+
+      - alert: MediConnectExporterDown
+        expr: up{job=~"otel-collector|postgres-exporter|redis-exporter|prometheus|alertmanager"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          service: observability
+          team: platform
+        annotations:
+          summary: "Composant d'observabilité indisponible"
+          description: "Un exporter ou un composant d'observabilité ne répond plus."
+
+  - name: mediconnect-data-services
+    rules:
+      - alert: MediConnectPostgresDown
+        expr: pg_up == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: postgres
+          team: data
+        annotations:
+          summary: "PostgreSQL indisponible"
+          description: "L'exporter PostgreSQL indique une indisponibilité de la base."
+
+      - alert: MediConnectPostgresConnectionsHigh
+        expr: sum(pg_stat_database_numbackends) > 120
+        for: 10m
+        labels:
+          severity: warning
+          service: postgres
+          team: data
+        annotations:
+          summary: "Nombre de connexions PostgreSQL élevé"
+          description: "Le nombre de backends PostgreSQL dépasse le seuil de 120 depuis plus de 10 minutes."
+
+      - alert: MediConnectPostgresDeadlocksDetected
+        expr: increase(pg_stat_database_deadlocks[10m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+          service: postgres
+          team: data
+        annotations:
+          summary: "Deadlock PostgreSQL détecté"
+          description: "Au moins un deadlock a été détecté sur les 10 dernières minutes."
+
+      - alert: MediConnectRedisDown
+        expr: redis_up == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: redis
+          team: platform
+        annotations:
+          summary: "Redis indisponible"
+          description: "Redis n'est plus joignable par l'exporter."
+
+      - alert: MediConnectRedisMemoryPressure
+        expr: (redis_config_maxmemory > 0) and ((redis_memory_used_bytes / redis_config_maxmemory) > 0.80)
+        for: 10m
+        labels:
+          severity: warning
+          service: redis
+          team: platform
+        annotations:
+          summary: "Pression mémoire Redis élevée"
+          description: "Redis consomme plus de 80% de la mémoire maximale configurée."
+
+      - alert: MediConnectRedisRejectedConnections
+        expr: increase(redis_rejected_connections_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          service: redis
+          team: platform
+        annotations:
+          summary: "Connexions Redis rejetées"
+          description: "Redis a rejeté de nouvelles connexions sur les 5 dernières minutes."
+
+  - name: mediconnect-laravel-application
+    rules:
+      - alert: MediConnectApi5xxRateHigh
+        expr: (sum(rate(mediconnect_http_requests_total{status_class="5xx"}[5m])) / clamp_min(sum(rate(mediconnect_http_requests_total[5m])), 1)) > 0.02
+        for: 10m
+        labels:
+          severity: critical
+          service: laravel
+          team: backend
+        annotations:
+          summary: "Taux de réponses 5xx trop élevé"
+          description: "Plus de 2% des requêtes Laravel répondent en 5xx sur les 10 dernières minutes."
+
+      - alert: MediConnectApiLatencyP95High
+        expr: histogram_quantile(0.95, sum(rate(mediconnect_http_request_duration_seconds_bucket[5m])) by (le)) > 1
+        for: 10m
+        labels:
+          severity: warning
+          service: laravel
+          team: backend
+        annotations:
+          summary: "Latence API p95 élevée"
+          description: "Le p95 de latence Laravel dépasse 1 seconde depuis plus de 10 minutes."
+
+      - alert: MediConnectAuthFailuresSpike
+        expr: sum(increase(mediconnect_auth_failures_total[10m])) > 20
+        for: 5m
+        labels:
+          severity: warning
+          service: auth
+          team: security
+        annotations:
+          summary: "Pic d'échecs d'authentification"
+          description: "Les erreurs d'authentification ou de limitation dépassent 20 sur 10 minutes."
+
+      - alert: MediConnectQueueBacklogHigh
+        expr: sum(mediconnect_queue_backlog_jobs{state="ready"}) by (queue) > 50
+        for: 10m
+        labels:
+          severity: warning
+          service: queue
+          team: backend
+        annotations:
+          summary: "Backlog queue élevé"
+          description: "Le backlog Redis dépasse 50 jobs pour au moins une queue depuis 10 minutes."
+
+      - alert: MediConnectQueueStuck
+        expr: (sum(mediconnect_queue_backlog_jobs{state="ready"}) by (queue) > 20) and (sum(mediconnect_queue_backlog_jobs{state="reserved"}) by (queue) == 0)
+        for: 10m
+        labels:
+          severity: critical
+          service: queue
+          team: backend
+        annotations:
+          summary: "Queue bloquée"
+          description: "Une queue accumule des jobs prêts sans jobs réservés depuis plus de 10 minutes."
+
+      - alert: MediConnectFailedJobsIncreasing
+        expr: sum(increase(mediconnect_job_failed_total[15m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+          service: queue
+          team: backend
+        annotations:
+          summary: "Jobs en échec détectés"
+          description: "Au moins un job Laravel a échoué sur les 15 dernières minutes."
+
+      - alert: MediConnectDocumentAiFailures
+        expr: increase(mediconnect_business_job_failures_total{domain="document_ai"}[15m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          service: documents
+          team: ai
+        annotations:
+          summary: "Échec de traitement document IA"
+          description: "Un ou plusieurs jobs de traitement documentaire ont échoué sur les 15 dernières minutes."
+
+      - alert: MediConnectPostConsultationJobsFailing
+        expr: increase(mediconnect_business_job_failures_total{domain="post_consultation"}[15m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          service: post-consultation
+          team: ai
+        annotations:
+          summary: "Jobs post-consultation en échec"
+          description: "Des jobs post-consultation ont échoué sur les 15 dernières minutes."

@@ -6,6 +6,7 @@ use App\Models\CallSession;
 use App\Models\Teleconsultation;
 use App\Models\User;
 use App\Notifications\Channels\FcmChannel;
+use App\Services\Teleconsultations\TeleconsultationSchemaGuard;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
@@ -26,10 +27,12 @@ class IncomingCallSessionNotification extends Notification implements ShouldQueu
 
     public function toFcm(User $notifiable): array
     {
-        $teleconsultation = Teleconsultation::query()
-            ->where('current_call_session_id', $this->callSession->id)
-            ->orWhere('appointment_id', $this->callSession->consultation_id)
-            ->first();
+        $teleconsultation = app(TeleconsultationSchemaGuard::class)->isAvailable()
+            ? Teleconsultation::query()
+                ->where('current_call_session_id', $this->callSession->id)
+                ->orWhere('appointment_id', $this->callSession->consultation_id)
+                ->first()
+            : null;
 
         $callerName = trim("{$this->caller->first_name} {$this->caller->last_name}");
 

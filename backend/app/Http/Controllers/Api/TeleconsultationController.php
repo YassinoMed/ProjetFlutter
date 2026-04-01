@@ -19,6 +19,7 @@ use App\Http\Resources\TeleconsultationResource;
 use App\Models\Teleconsultation;
 use App\Services\AuditService;
 use App\Services\DelegationContextService;
+use App\Services\Teleconsultations\TeleconsultationSchemaGuard;
 use App\Services\Teleconsultations\TeleconsultationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -29,11 +30,13 @@ class TeleconsultationController extends Controller
     public function __construct(
         private readonly TeleconsultationService $teleconsultationService,
         private readonly DelegationContextService $delegationContextService,
+        private readonly TeleconsultationSchemaGuard $schemaGuard,
         private readonly AuditService $auditService,
     ) {}
 
     public function store(CreateTeleconsultationRequest $request): JsonResponse
     {
+        $this->schemaGuard->ensureAvailable();
         $this->authorizeTeleconsultationCreation($request);
 
         $teleconsultation = $this->teleconsultationService->create(
@@ -51,6 +54,8 @@ class TeleconsultationController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $this->schemaGuard->ensureAvailable();
+
         if (($request->user()?->role?->value ?? $request->user()?->role) === UserRole::SECRETARY->value) {
             $this->delegationContextService->assertSecretaryPermission($request, SecretaryPermission::MANAGE_APPOINTMENTS);
         }
@@ -227,6 +232,8 @@ class TeleconsultationController extends Controller
 
     private function findTeleconsultation(string $teleconsultationId): Teleconsultation
     {
+        $this->schemaGuard->ensureAvailable();
+
         return Teleconsultation::query()
             ->with(['appointment', 'participants', 'currentCallSession.participants'])
             ->findOrFail($teleconsultationId);

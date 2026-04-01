@@ -17,6 +17,8 @@ use App\Http\Controllers\Api\FcmTokenController;
 use App\Http\Controllers\Api\MeDelegationController;
 use App\Http\Controllers\Api\MedicalRecordMetadataController;
 use App\Http\Controllers\Api\MessageController;
+use App\Http\Controllers\Api\Ops\HealthController;
+use App\Http\Controllers\Api\Ops\MetricsController;
 use App\Http\Controllers\Api\PresenceController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\RgpdController;
@@ -38,6 +40,12 @@ Route::get('/tenants', function () {
         'meta' => null,
     ]);
 });
+
+Route::prefix('ops/health')->group(function (): void {
+    Route::get('/live', [HealthController::class, 'live']);
+    Route::get('/ready', [HealthController::class, 'ready']);
+});
+Route::get('/ops/metrics', MetricsController::class);
 
 Route::prefix('auth')->group(function (): void {
     Route::get('/register', function () {

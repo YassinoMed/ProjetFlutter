@@ -1,0 +1,116 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "id": 1,
+      "targets": [
+        {
+          "expr": "sum(mediconnect_queue_backlog_jobs{state=\"ready\"}) by (queue)",
+          "legendFormat": "{{queue}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Queue Backlog Ready",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "id": 2,
+      "targets": [
+        {
+          "expr": "sum(mediconnect_queue_backlog_jobs{state=\"reserved\"}) by (queue)",
+          "legendFormat": "{{queue}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(mediconnect_queue_backlog_jobs{state=\"delayed\"}) by (queue)",
+          "legendFormat": "{{queue}} delayed",
+          "refId": "B"
+        }
+      ],
+      "title": "Reserved / Delayed Jobs",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "id": 3,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(mediconnect_job_duration_seconds_bucket[5m])) by (le, queue))",
+          "legendFormat": "{{queue}} p95",
+          "refId": "A"
+        }
+      ],
+      "title": "Queue Job Duration p95",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "id": 4,
+      "targets": [
+        {
+          "expr": "sum(increase(mediconnect_job_failed_total[15m])) by (queue, job)",
+          "legendFormat": "{{queue}} / {{job}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Failed Jobs (15m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+      "id": 5,
+      "targets": [
+        {
+          "expr": "mediconnect_failed_jobs_records_total",
+          "legendFormat": "failed job records",
+          "refId": "A"
+        }
+      ],
+      "title": "Persisted Failed Jobs",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+      "id": 6,
+      "targets": [
+        {
+          "expr": "sum(increase(mediconnect_business_job_failures_total[15m])) by (domain)",
+          "legendFormat": "{{domain}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Business Job Failures by Domain",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": ["mediconnect", "laravel", "queues"],
+  "templating": {"list": []},
+  "time": {"from": "now-6h", "to": "now"},
+  "timezone": "browser",
+  "title": "MediConnect Laravel Queues",
+  "uid": "mediconnect-laravel-queues",
+  "version": 1,
+  "weekStart": ""
+}

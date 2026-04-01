@@ -9,6 +9,10 @@ use App\Models\User;
 
 class TeleconsultationEventLogger
 {
+    public function __construct(
+        private readonly TeleconsultationSchemaGuard $schemaGuard,
+    ) {}
+
     public function record(
         Teleconsultation $teleconsultation,
         string $eventName,
@@ -18,6 +22,10 @@ class TeleconsultationEventLogger
         array $payload = [],
         ?string $direction = null,
     ): void {
+        if (! $this->schemaGuard->isAvailable()) {
+            return;
+        }
+
         CallEvent::query()->create([
             'teleconsultation_id' => $teleconsultation->id,
             'call_session_id' => $callSession?->id ?? $teleconsultation->current_call_session_id,
@@ -57,6 +65,10 @@ class TeleconsultationEventLogger
 
     public function resolveForCallSession(CallSession $callSession): ?Teleconsultation
     {
+        if (! $this->schemaGuard->isAvailable()) {
+            return null;
+        }
+
         return Teleconsultation::query()
             ->where('current_call_session_id', $callSession->id)
             ->orWhere(fn ($query) => $query->where('appointment_id', $callSession->consultation_id))

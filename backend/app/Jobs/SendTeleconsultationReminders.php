@@ -6,6 +6,7 @@ use App\Enums\TeleconsultationStatus;
 use App\Models\CallEvent;
 use App\Models\Teleconsultation;
 use App\Notifications\TeleconsultationReminderNotification;
+use App\Services\Teleconsultations\TeleconsultationSchemaGuard;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -21,6 +22,10 @@ class SendTeleconsultationReminders implements ShouldQueue
 
     public function handle(): void
     {
+        if (! app(TeleconsultationSchemaGuard::class)->isAvailable()) {
+            return;
+        }
+
         $this->dispatchWindow('24h', now('UTC')->addHours(23)->addMinutes(30), now('UTC')->addHours(24)->addMinutes(30));
         $this->dispatchWindow('1h', now('UTC')->addMinutes(50), now('UTC')->addMinutes(70));
     }
