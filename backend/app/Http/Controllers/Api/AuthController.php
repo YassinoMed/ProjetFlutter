@@ -158,6 +158,18 @@ class AuthController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
+        $tokenName = $user->currentAccessToken()?->name;
+
+        if ($tokenName !== null) {
+            TrustedDevice::query()
+                ->where('user_id', $user->id)
+                ->whereNull('revoked_at')
+                ->where(function ($query) use ($tokenName): void {
+                    $query->where('device_id', $tokenName)
+                        ->orWhere('device_name', $tokenName);
+                })
+                ->update(['last_login_at' => now()]);
+        }
 
         return $this->respondSuccess([
             'user' => new UserResource($user),

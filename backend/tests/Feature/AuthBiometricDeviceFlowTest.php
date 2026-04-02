@@ -118,6 +118,74 @@ class AuthBiometricDeviceFlowTest extends TestCase
         );
     }
 
+    public function test_me_updates_last_login_at_for_the_current_trusted_device(): void
+    {
+        User::query()->create([
+            'email' => 'doctor.lastlogin@example.com',
+            'password' => 'VeryStrongPassword123!',
+            'first_name' => 'Doc',
+            'last_name' => 'LastLogin',
+            'role' => 'DOCTOR',
+        ]);
+
+        $loginResponse = $this->postJson('/api/auth/login', [
+            'login' => 'doctor.lastlogin@example.com',
+            'password' => 'VeryStrongPassword123!',
+            'device_id' => 'device-ios-last-login',
+            'device_name' => 'iPhone 17',
+            'platform' => 'ios',
+        ])->assertOk();
+
+        $token = $loginResponse->json('data.token');
+        $device = TrustedDevice::query()
+            ->where('device_id', 'device-ios-last-login')
+            ->firstOrFail();
+
+        $originalLastLoginAt = $device->last_login_at;
+        $this->assertNotNull($originalLastLoginAt);
+
+        sleep(1);
+
+        $this->withToken($token)->getJson('/api/auth/me')
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $device->refresh();
+
+        $this->assertNotNull($device->last_login_at);
+        $this->assertTrue($device->last_login_at->greaterThan($originalLastLoginAt));
+    }
+
+    public function test_revoking_the_current_device_deletes_its_sanctum_token(): void
+    {
+        User::query()->create([
+            'email' => 'doctor.revoked@example.com',
+            'password' => 'VeryStrongPassword123!',
+            'first_name' => 'Doc',
+            'last_name' => 'Revoked',
+            'role' => 'DOCTOR',
+        ]);
+
+        $loginResponse = $this->postJson('/api/auth/login', [
+            'login' => 'doctor.revoked@example.com',
+            'password' => 'VeryStrongPassword123!',
+            'device_id' => 'device-android-revoked',
+            'device_name' => 'Galaxy S26',
+            'platform' => 'android',
+        ])->assertOk();
+
+        $token = $loginResponse->json('data.token');
+        $device = TrustedDevice::query()
+            ->where('device_id', 'device-android-revoked')
+            ->firstOrFail();
+
+        $this->withToken($token)->deleteJson("/api/auth/devices/{$device->id}")
+            ->assertOk()
+            ->assertJsonPath('data.current_device_revoked', true);
+
+        $this->assertNull(PersonalAccessToken::findToken($token));
+    }
+
     public function test_login_accepts_phone_identifier_when_phone_is_registered(): void
     {
         User::query()->create([

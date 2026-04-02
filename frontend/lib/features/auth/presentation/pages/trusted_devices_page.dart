@@ -112,6 +112,7 @@ class _TrustedDevicesPageState extends ConsumerState<TrustedDevicesPage> {
       },
       (_) async {
         if (isCurrentDevice) {
+          await notifier.clearLocalBiometricBinding();
           await notifier.logout();
 
           if (!mounted) return;

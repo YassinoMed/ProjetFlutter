@@ -60,7 +60,7 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
     try {
       final repository = ref.watch(authRepositoryProvider);
       final hasToken = await repository.hasValidToken();
-      final biometricEnabled = await repository.isBiometricEnabled();
+      final biometricEnabled = await _isBiometricSessionAvailable();
 
       if (hasToken) {
         final cachedUser = await repository.getCachedUser();
@@ -81,6 +81,35 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
             requiresBiometricUnlock: canUseBiometricLogin,
           );
         }
+
+        if (!biometricEnabled) {
+          final profileResult = await repository.getProfile();
+          return await profileResult.fold(
+            (_) async => const AuthStateEntity.initial(),
+            (user) async {
+              if (!user.isSecretary) {
+                await ref
+                    .read(secureStorageProvider)
+                    .delete(key: AppConstants.keyActingDoctorUserId);
+              }
+
+              return AuthStateEntity(
+                user: user,
+                isAuthenticated: true,
+                biometricEnabled: false,
+                canUseBiometricLogin: false,
+                requiresBiometricUnlock: false,
+              );
+            },
+          );
+        }
+
+        return const AuthStateEntity(
+          isAuthenticated: false,
+          biometricEnabled: true,
+          canUseBiometricLogin: true,
+          requiresBiometricUnlock: true,
+        );
       }
 
       if (biometricEnabled) {
@@ -123,8 +152,7 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
             failure.message, StackTrace.current),
         (data) async {
           // Only do post-login work on success
-          final repository = ref.read(authRepositoryProvider);
-          final biometricEnabled = await repository.isBiometricEnabled();
+          final biometricEnabled = await _isBiometricSessionAvailable();
 
           await ref
               .read(secureStorageProvider)
@@ -173,8 +201,9 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
       }
 
       // Step 2: Validate stored token with server
+      final deviceId = await ref.read(deviceInfoHelperProvider).getDeviceId();
       final repository = ref.read(authRepositoryProvider);
-      final result = await repository.loginWithBiometric();
+      final result = await repository.loginWithBiometric(deviceId: deviceId);
 
       final user = result.fold((_) => null, (user) => user);
       if (user?.isSecretary != true) {
@@ -292,11 +321,11 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
     final deviceHelper = ref.read(deviceInfoHelperProvider);
     final deviceInfo = await deviceHelper.getDeviceInfo();
 
-    final repository = ref.read(authRepositoryProvider);
-    final result = await repository.enableBiometric(
-      deviceId: deviceInfo.deviceId,
-      deviceName: deviceInfo.deviceName,
-      platform: deviceInfo.platform,
+      final repository = ref.read(authRepositoryProvider);
+      final result = await repository.enableBiometric(
+        deviceId: deviceInfo.deviceId,
+        deviceName: deviceInfo.deviceName,
+        platform: deviceInfo.platform,
     );
 
     // Step 4: Update state
@@ -326,6 +355,7 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
 
     final repository = ref.read(authRepositoryProvider);
     final result = await repository.disableBiometric(deviceId: deviceId);
+    final biometricEnabled = await _isBiometricSessionAvailable();
 
     result.fold(
       (_) {},
@@ -334,7 +364,7 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
         if (current != null) {
           state = AsyncValue.data(
             current.copyWith(
-              biometricEnabled: false,
+              biometricEnabled: biometricEnabled,
               canUseBiometricLogin: false,
               requiresBiometricUnlock: false,
             ),
@@ -354,8 +384,7 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
         .read(secureStorageProvider)
         .delete(key: AppConstants.keyActingDoctorUserId);
 
-    final repository = ref.read(authRepositoryProvider);
-    final biometricEnabled = await repository.isBiometricEnabled();
+    final biometricEnabled = await _isBiometricSessionAvailable();
 
     state = AsyncValue.data(AuthStateEntity(
       biometricEnabled: biometricEnabled,
@@ -468,6 +497,52 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
   Future<Either<Failure, void>> revokeDevice(String deviceId) async {
     final repository = ref.read(authRepositoryProvider);
     return await repository.revokeDevice(deviceId: deviceId);
+  }
+
+  Future<void> clearLocalBiometricBinding() async {
+    await ref
+        .read(secureStorageProvider)
+        .delete(key: AppConstants.keyBiometricEnabled);
+    await ref
+        .read(secureStorageProvider)
+        .delete(key: AppConstants.keyBiometricDeviceId);
+    await ref
+        .read(secureStorageProvider)
+        .delete(key: AppConstants.keyBiometricUserId);
+
+    final current = state.valueOrNull;
+    if (current != null) {
+      state = AsyncValue.data(
+        current.copyWith(
+          biometricEnabled: false,
+          canUseBiometricLogin: false,
+          requiresBiometricUnlock: false,
+        ),
+      );
+    }
+  }
+
+  Future<bool> _isBiometricSessionAvailable() async {
+    final repository = ref.read(authRepositoryProvider);
+    final biometricEnabled = await repository.isBiometricEnabled();
+    if (!biometricEnabled) {
+      return false;
+    }
+
+    final secureStorage = ref.read(secureStorageProvider);
+    final currentDeviceId = await ref.read(deviceInfoHelperProvider).getDeviceId();
+    final storedDeviceId = await secureStorage.read(
+      key: AppConstants.keyBiometricDeviceId,
+    );
+    final boundUserId = await secureStorage.read(
+      key: AppConstants.keyBiometricUserId,
+    );
+    final storedUserId = await secureStorage.read(key: AppConstants.keyUserId);
+
+    return storedDeviceId != null &&
+        storedDeviceId == currentDeviceId &&
+        boundUserId != null &&
+        boundUserId == storedUserId;
   }
 }
 

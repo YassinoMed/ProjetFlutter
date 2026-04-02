@@ -95,5 +95,7 @@ abstract class AuthRepository {
   /// Login with biometric (local auth → read stored token → validate with server)
   /// Returns the user profile if the stored token is still valid.
   /// If token is expired/revoked → returns failure → user must enter password.
-  Future<Either<Failure, User>> loginWithBiometric();
+  Future<Either<Failure, User>> loginWithBiometric({
+    required String deviceId,
+  });
 }

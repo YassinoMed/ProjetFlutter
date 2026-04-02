@@ -50,6 +50,10 @@ class AuthRepositoryImpl implements AuthRepository {
 
       // Store Sanctum token
       await _storeAuthData(response);
+      await _synchronizeBiometricBinding(
+        userId: response.user.id,
+        deviceId: deviceId,
+      );
 
       return Right((
         user: response.user.toEntity(),
@@ -98,6 +102,10 @@ class AuthRepositoryImpl implements AuthRepository {
       );
 
       await _storeAuthData(response);
+      await _synchronizeBiometricBinding(
+        userId: response.user.id,
+        deviceId: deviceId,
+      );
 
       return Right((
         user: response.user.toEntity(),
@@ -298,6 +306,19 @@ class AuthRepositoryImpl implements AuthRepository {
         key: AppConstants.keyBiometricEnabled,
         value: 'true',
       );
+      await secureStorage.write(
+        key: AppConstants.keyBiometricDeviceId,
+        value: deviceId,
+      );
+
+      final currentUserId =
+          await secureStorage.read(key: AppConstants.keyUserId);
+      if (currentUserId != null && currentUserId.isNotEmpty) {
+        await secureStorage.write(
+          key: AppConstants.keyBiometricUserId,
+          value: currentUserId,
+        );
+      }
 
       return const Right(null);
     } on ServerException catch (e) {
@@ -316,7 +337,7 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       await remoteDataSource.disableBiometric(deviceId: deviceId);
 
-      await secureStorage.delete(key: AppConstants.keyBiometricEnabled);
+      await _clearBiometricBinding();
 
       return const Right(null);
     } on ServerException catch (e) {
@@ -355,7 +376,9 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<Failure, User>> loginWithBiometric() async {
+  Future<Either<Failure, User>> loginWithBiometric({
+    required String deviceId,
+  }) async {
     // Step 1: Check if biometric is enabled locally
     final biometricEnabled = await isBiometricEnabled();
     if (!biometricEnabled) {
@@ -370,6 +393,26 @@ class AuthRepositoryImpl implements AuthRepository {
       return const Left(AuthFailure(
         message:
             'Session expirée. Veuillez vous connecter avec votre mot de passe.',
+      ));
+    }
+
+    final boundDeviceId = await secureStorage.read(
+      key: AppConstants.keyBiometricDeviceId,
+    );
+    final boundUserId = await secureStorage.read(
+      key: AppConstants.keyBiometricUserId,
+    );
+    final storedUserId = await secureStorage.read(key: AppConstants.keyUserId);
+
+    if (boundDeviceId == null ||
+        boundDeviceId != deviceId ||
+        boundUserId == null ||
+        storedUserId == null ||
+        boundUserId != storedUserId) {
+      await _clearBiometricBinding();
+      return const Left(AuthFailure(
+        message:
+            'La biométrie doit être réactivée sur cet appareil. Veuillez vous connecter avec votre mot de passe.',
       ));
     }
 
@@ -394,6 +437,7 @@ class AuthRepositoryImpl implements AuthRepository {
       if (e.statusCode == 401) {
         // Token expired or revoked → clear it
         await secureStorage.delete(key: AppConstants.keyAccessToken);
+        await secureStorage.delete(key: 'cached_user');
         return const Left(AuthFailure(
           message:
               'Session expirée. Veuillez vous connecter avec votre mot de passe.',
@@ -428,5 +472,35 @@ class AuthRepositoryImpl implements AuthRepository {
       key: 'cached_user',
       value: jsonEncode(response.user.toJson()),
     );
+  }
+
+  Future<void> _synchronizeBiometricBinding({
+    required String userId,
+    required String? deviceId,
+  }) async {
+    final biometricEnabled = await isBiometricEnabled();
+    if (!biometricEnabled) {
+      return;
+    }
+
+    final boundUserId = await secureStorage.read(
+      key: AppConstants.keyBiometricUserId,
+    );
+    final boundDeviceId = await secureStorage.read(
+      key: AppConstants.keyBiometricDeviceId,
+    );
+
+    if (boundUserId != userId ||
+        (deviceId != null &&
+            boundDeviceId != null &&
+            boundDeviceId != deviceId)) {
+      await _clearBiometricBinding();
+    }
+  }
+
+  Future<void> _clearBiometricBinding() async {
+    await secureStorage.delete(key: AppConstants.keyBiometricEnabled);
+    await secureStorage.delete(key: AppConstants.keyBiometricDeviceId);
+    await secureStorage.delete(key: AppConstants.keyBiometricUserId);
   }
 }

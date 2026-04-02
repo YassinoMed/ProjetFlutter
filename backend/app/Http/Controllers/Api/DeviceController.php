@@ -8,6 +8,7 @@ use App\Services\AuditService;
 use App\Services\Auth\AuthTokenService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Laravel\Sanctum\PersonalAccessToken;
 
 /**
  * DeviceController — manage trusted devices for a user.
@@ -66,6 +67,7 @@ class DeviceController extends Controller
         /** @var \App\Models\User $user */
         $user = $request->user();
         $currentTokenName = $user->currentAccessToken()?->name;
+        $currentTokenId = $user->currentAccessToken()?->id;
 
         $device = TrustedDevice::query()
             ->where('user_id', $user->id)
@@ -84,6 +86,10 @@ class DeviceController extends Controller
 
         // Delete all Sanctum tokens issued for this logical device
         $this->tokens->revokeTokensForDevice($user, $device->device_id, $device->device_name);
+
+        if ($currentDeviceRevoked && $currentTokenId !== null) {
+            PersonalAccessToken::query()->whereKey($currentTokenId)->delete();
+        }
 
         $this->audit->log(
             actor: $user,
