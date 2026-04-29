@@ -2,9 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Events\ConsultationJoined;
+use App\Events\WebRtcAnswerSent;
+use App\Events\WebRtcIceCandidateSent;
+use App\Events\WebRtcOfferSent;
 use App\Models\Appointment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class WebRtcEndpointsTest extends TestCase
@@ -13,6 +19,13 @@ class WebRtcEndpointsTest extends TestCase
 
     public function test_user_can_send_webrtc_signaling_events(): void
     {
+        Event::fake([
+            ConsultationJoined::class,
+            WebRtcAnswerSent::class,
+            WebRtcIceCandidateSent::class,
+            WebRtcOfferSent::class,
+        ]);
+
         $patient = User::query()->create([
             'email' => 'patient@example.com',
             'password' => 'VeryStrongPassword123!',
@@ -37,34 +50,38 @@ class WebRtcEndpointsTest extends TestCase
             'status' => 'CONFIRMED',
         ]);
 
-        $this->actingAs($patient, 'api')
-            ->postJson("/api/consultations/{$appointment->id}/webrtc/join")
-            ->assertOk()
-            ->assertJsonPath('ok', true);
+        Sanctum::actingAs($patient);
 
-        $this->actingAs($patient, 'api')
-            ->postJson("/api/consultations/{$appointment->id}/webrtc/offer", [
-                'sdp' => 'v=0',
-                'sdp_type' => 'offer',
-            ])
+        $this->postJson("/api/consultations/{$appointment->id}/webrtc/join")
             ->assertOk()
-            ->assertJsonPath('ok', true);
+            ->assertJsonPath('success', true);
 
-        $this->actingAs($doctor, 'api')
-            ->postJson("/api/consultations/{$appointment->id}/webrtc/answer", [
-                'sdp' => 'v=0',
-                'sdp_type' => 'answer',
-            ])
-            ->assertOk()
-            ->assertJsonPath('ok', true);
+        Sanctum::actingAs($patient);
 
-        $this->actingAs($patient, 'api')
-            ->postJson("/api/consultations/{$appointment->id}/webrtc/ice", [
-                'candidate' => 'candidate:0 1 UDP 2122252543 192.0.2.1 54400 typ host',
-                'sdp_mid' => '0',
-                'sdp_mline_index' => 0,
-            ])
+        $this->postJson("/api/consultations/{$appointment->id}/webrtc/offer", [
+            'sdp' => 'v=0',
+            'sdp_type' => 'offer',
+        ])
             ->assertOk()
-            ->assertJsonPath('ok', true);
+            ->assertJsonPath('success', true);
+
+        Sanctum::actingAs($doctor);
+
+        $this->postJson("/api/consultations/{$appointment->id}/webrtc/answer", [
+            'sdp' => 'v=0',
+            'sdp_type' => 'answer',
+        ])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        Sanctum::actingAs($patient);
+
+        $this->postJson("/api/consultations/{$appointment->id}/webrtc/ice", [
+            'candidate' => 'candidate:0 1 UDP 2122252543 192.0.2.1 54400 typ host',
+            'sdp_mid' => '0',
+            'sdp_mline_index' => 0,
+        ])
+            ->assertOk()
+            ->assertJsonPath('success', true);
     }
 }
