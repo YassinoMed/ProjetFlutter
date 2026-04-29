@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Events\CallSessionAccepted;
 use App\Events\CallSessionEnded;
 use App\Events\CallSessionRinging;
+use App\Events\CallSessionTimedOut;
 use App\Events\WebRtcAnswerRelayed;
 use App\Events\WebRtcIceCandidateRelayed;
 use App\Events\WebRtcOfferRelayed;
@@ -277,7 +278,10 @@ class CallSessionEndpointsTest extends TestCase
 
         Sanctum::actingAs($doctor);
         Event::fake([
+            CallSessionAccepted::class,
+            CallSessionEnded::class,
             CallSessionRinging::class,
+            CallSessionTimedOut::class,
         ]);
 
         $callSessionId = $this->postJson('/api/calls/initiate', [
