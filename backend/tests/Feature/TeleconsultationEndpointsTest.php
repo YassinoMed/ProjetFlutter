@@ -2,11 +2,18 @@
 
 namespace Tests\Feature;
 
+use App\Events\CallSessionAccepted;
+use App\Events\CallSessionEnded;
+use App\Events\CallSessionRejected;
+use App\Events\CallSessionRinging;
+use App\Events\CallSessionTimedOut;
+use App\Events\TeleconsultationUpdated;
 use App\Models\Appointment;
 use App\Models\CallSession;
 use App\Models\DoctorSecretaryDelegation;
 use App\Models\Teleconsultation;
 use App\Models\User;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Laravel\Sanctum\Sanctum;
@@ -22,6 +29,14 @@ class TeleconsultationEndpointsTest extends TestCase
         parent::setUp();
 
         $this->bootTenantSchema();
+        Event::fake([
+            CallSessionAccepted::class,
+            CallSessionEnded::class,
+            CallSessionRejected::class,
+            CallSessionRinging::class,
+            CallSessionTimedOut::class,
+            TeleconsultationUpdated::class,
+        ]);
         Notification::fake();
         Queue::fake();
     }
