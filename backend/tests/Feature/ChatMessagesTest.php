@@ -2,10 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Events\ChatMessageAcknowledged;
+use App\Events\ChatMessageSent;
 use App\Models\Appointment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class ChatMessagesTest extends TestCase
@@ -14,6 +18,10 @@ class ChatMessagesTest extends TestCase
 
     public function test_patient_can_send_and_doctor_can_ack_message(): void
     {
+        Event::fake([
+            ChatMessageAcknowledged::class,
+            ChatMessageSent::class,
+        ]);
         Notification::fake();
 
         $patient = User::query()->create([
@@ -40,7 +48,9 @@ class ChatMessagesTest extends TestCase
             'status' => 'CONFIRMED',
         ]);
 
-        $send = $this->actingAs($patient, 'api')->postJson("/api/consultations/{$appointment->id}/messages", [
+        Sanctum::actingAs($patient);
+
+        $send = $this->postJson("/api/consultations/{$appointment->id}/messages", [
             'ciphertext' => 'ciphertext',
             'nonce' => 'nonce',
             'algorithm' => 'xchacha20poly1305',
@@ -48,23 +58,25 @@ class ChatMessagesTest extends TestCase
         ]);
 
         $send->assertCreated();
-        $messageId = $send->json('message.id');
+        $messageId = $send->json('data.message.id');
 
-        $ackDelivered = $this->actingAs($doctor, 'api')
-            ->postJson("/api/consultations/{$appointment->id}/messages/{$messageId}/ack", [
-                'status' => 'DELIVERED',
-            ]);
+        Sanctum::actingAs($doctor);
+
+        $ackDelivered = $this->postJson("/api/consultations/{$appointment->id}/messages/{$messageId}/ack", [
+            'status' => 'DELIVERED',
+        ]);
 
         $ackDelivered->assertOk();
-        $ackDelivered->assertJsonPath('status', 'DELIVERED');
+        $ackDelivered->assertJsonPath('data.status', 'DELIVERED');
 
-        $ackRead = $this->actingAs($doctor, 'api')
-            ->postJson("/api/consultations/{$appointment->id}/messages/{$messageId}/ack", [
-                'status' => 'READ',
-            ]);
+        Sanctum::actingAs($doctor);
+
+        $ackRead = $this->postJson("/api/consultations/{$appointment->id}/messages/{$messageId}/ack", [
+            'status' => 'READ',
+        ]);
 
         $ackRead->assertOk();
-        $ackRead->assertJsonPath('status', 'READ');
+        $ackRead->assertJsonPath('data.status', 'READ');
 
         $this->assertDatabaseHas('chat_messages', [
             'id' => $messageId,
