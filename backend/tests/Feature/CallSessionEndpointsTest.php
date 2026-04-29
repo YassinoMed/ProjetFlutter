@@ -148,6 +148,9 @@ class CallSessionEndpointsTest extends TestCase
 
     public function test_unrelated_user_cannot_signal_call(): void
     {
+        Event::fake([
+            CallSessionRinging::class,
+        ]);
         Notification::fake();
 
         $patient = User::factory()->create(['role' => 'PATIENT']);
