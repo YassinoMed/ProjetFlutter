@@ -3,8 +3,8 @@
 namespace App\Providers;
 
 use App\Services\Documents\Ai\HeuristicDocumentAiAnalyzer;
-use App\Services\Documents\Ai\HttpDocumentAiAnalyzer;
 use App\Services\Documents\Ai\HeuristicGroundedDocumentQuestionAnswerer;
+use App\Services\Documents\Ai\HttpDocumentAiAnalyzer;
 use App\Services\Documents\Contracts\DocumentAiAnalyzer;
 use App\Services\Documents\Contracts\DocumentQuestionAnswerer;
 use App\Services\Documents\Contracts\DocumentTextExtractor;
