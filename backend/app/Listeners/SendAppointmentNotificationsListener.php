@@ -31,8 +31,13 @@ class SendAppointmentNotificationsListener
         }
 
         if ($event->event === 'rejected') {
-            $appointment->patient?->notify(new AppointmentStatusNotification($appointment, 'rejected'));
-            $appointment->doctor?->notify(new AppointmentStatusNotification($appointment, 'rejected'));
+            /** @var \App\Models\User|null $patient */
+            $patient = $appointment->patient;
+            /** @var \App\Models\User|null $doctor */
+            $doctor = $appointment->doctor;
+
+            $patient?->notify(new AppointmentStatusNotification($appointment, 'rejected'));
+            $doctor?->notify(new AppointmentStatusNotification($appointment, 'rejected'));
         }
     }
 
