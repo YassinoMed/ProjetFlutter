@@ -34,8 +34,8 @@ class TeleconsultationPolicy
 
     public function start(User $user, Teleconsultation $teleconsultation): bool
     {
-        return ($user->role?->value ?? $user->role) === UserRole::ADMIN->value
-            || $teleconsultation->doctor_user_id === $user->id;
+        return $teleconsultation->doctor_user_id === $user->id
+            && ($user->role?->value ?? $user->role) === UserRole::DOCTOR->value;
     }
 
     public function join(User $user, Teleconsultation $teleconsultation): bool
@@ -50,11 +50,12 @@ class TeleconsultationPolicy
 
     public function cancel(User $user, Teleconsultation $teleconsultation): bool
     {
-        return $this->view($user, $teleconsultation);
+        return in_array($user->id, [$teleconsultation->patient_user_id, $teleconsultation->doctor_user_id], true);
     }
 
     public function end(User $user, Teleconsultation $teleconsultation): bool
     {
-        return $this->join($user, $teleconsultation);
+        return $teleconsultation->doctor_user_id === $user->id
+            && ($user->role?->value ?? $user->role) === UserRole::DOCTOR->value;
     }
 }

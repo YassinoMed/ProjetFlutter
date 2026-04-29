@@ -9,11 +9,13 @@ use App\Events\WebRtcAnswerRelayed;
 use App\Events\WebRtcIceCandidateRelayed;
 use App\Events\WebRtcOfferRelayed;
 use App\Models\Appointment;
+use App\Models\CallSession;
 use App\Models\Conversation;
 use App\Models\User;
 use App\Notifications\IncomingCallSessionNotification;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\UsesTenantMigrations;
 use Tests\TestCase;
@@ -187,5 +189,99 @@ class CallSessionEndpointsTest extends TestCase
                 'sdp' => 'offer-sdp',
             ],
         ])->assertForbidden();
+    }
+
+    public function test_expired_call_session_cannot_be_accepted(): void
+    {
+        Notification::fake();
+        Queue::fake();
+
+        [$doctor, $patient, $callSessionId] = $this->createRingingCallSession();
+
+        CallSession::query()
+            ->whereKey($callSessionId)
+            ->update(['expires_at_utc' => now('UTC')->subMinute()]);
+
+        Sanctum::actingAs($patient);
+
+        $this->postJson("/api/calls/{$callSessionId}/accept")
+            ->assertStatus(409);
+
+        $this->assertDatabaseHas('call_sessions', [
+            'id' => $callSessionId,
+            'current_state' => 'TIMEOUT',
+        ]);
+
+        Sanctum::actingAs($doctor);
+
+        $this->postJson("/api/calls/{$callSessionId}/end")
+            ->assertStatus(409);
+    }
+
+    public function test_ended_call_session_cannot_be_ended_again(): void
+    {
+        Notification::fake();
+        Queue::fake();
+
+        [$doctor, $patient, $callSessionId] = $this->createRingingCallSession();
+
+        Sanctum::actingAs($patient);
+        $this->postJson("/api/calls/{$callSessionId}/accept")->assertOk();
+
+        Sanctum::actingAs($doctor);
+        $this->postJson("/api/calls/{$callSessionId}/end")->assertOk();
+
+        $this->postJson("/api/calls/{$callSessionId}/end")
+            ->assertStatus(409);
+    }
+
+    public function test_callee_cannot_cancel_ringing_call_directly(): void
+    {
+        Notification::fake();
+        Queue::fake();
+
+        [, $patient, $callSessionId] = $this->createRingingCallSession();
+
+        Sanctum::actingAs($patient);
+
+        $this->postJson("/api/calls/{$callSessionId}/cancel")
+            ->assertForbidden();
+    }
+
+    private function createRingingCallSession(): array
+    {
+        $patient = User::factory()->create(['role' => 'PATIENT']);
+        $doctor = User::factory()->create(['role' => 'DOCTOR']);
+
+        $consultation = Appointment::query()->create([
+            'patient_user_id' => $patient->id,
+            'doctor_user_id' => $doctor->id,
+            'starts_at_utc' => '2026-03-10 10:00:00',
+            'ends_at_utc' => '2026-03-10 10:30:00',
+            'status' => 'CONFIRMED',
+        ]);
+
+        $conversation = Conversation::query()->create([
+            'consultation_id' => $consultation->id,
+            'initiated_by_user_id' => $doctor->id,
+            'type' => 'DIRECT_MEDICAL',
+        ]);
+
+        $conversation->participants()->createMany([
+            ['user_id' => $doctor->id, 'role' => 'DOCTOR', 'is_active' => true, 'joined_at_utc' => now('UTC')],
+            ['user_id' => $patient->id, 'role' => 'PATIENT', 'is_active' => true, 'joined_at_utc' => now('UTC')],
+        ]);
+
+        Sanctum::actingAs($doctor);
+
+        $callSessionId = $this->postJson('/api/calls/initiate', [
+            'conversation_id' => $conversation->id,
+            'consultation_id' => $consultation->id,
+            'call_type' => 'VIDEO',
+        ])
+            ->assertCreated()
+            ->json('data.call_session.id');
+
+        return [$doctor, $patient, $callSessionId];
     }
 }

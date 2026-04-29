@@ -39,7 +39,7 @@ class CallSessionController extends Controller
     public function accept(string $callSessionId, Request $request): JsonResponse
     {
         $callSession = CallSession::query()->findOrFail($callSessionId);
-        $this->authorize('view', $callSession);
+        $this->authorize('accept', $callSession);
 
         $callSession = $this->callSessionService->accept($callSession, $request->user());
 
@@ -52,7 +52,7 @@ class CallSessionController extends Controller
     public function reject(string $callSessionId, Request $request): JsonResponse
     {
         $callSession = CallSession::query()->findOrFail($callSessionId);
-        $this->authorize('view', $callSession);
+        $this->authorize('reject', $callSession);
 
         $callSession = $this->callSessionService->reject($callSession, $request->user());
 
@@ -65,7 +65,7 @@ class CallSessionController extends Controller
     public function cancel(string $callSessionId, Request $request): JsonResponse
     {
         $callSession = CallSession::query()->findOrFail($callSessionId);
-        $this->authorize('view', $callSession);
+        $this->authorize('cancel', $callSession);
 
         $callSession = $this->callSessionService->cancel($callSession, $request->user());
 
@@ -78,7 +78,7 @@ class CallSessionController extends Controller
     public function end(string $callSessionId, Request $request): JsonResponse
     {
         $callSession = CallSession::query()->findOrFail($callSessionId);
-        $this->authorize('view', $callSession);
+        $this->authorize('end', $callSession);
 
         $callSession = $this->callSessionService->end($callSession, $request->user());
 

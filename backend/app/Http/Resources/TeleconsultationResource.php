@@ -36,8 +36,7 @@ class TeleconsultationResource extends JsonResource
                 && $status === TeleconsultationStatus::SCHEDULED->value,
             'can_join' => $userId !== null
                 && in_array($status, [
-                    TeleconsultationStatus::SCHEDULED->value,
-                    TeleconsultationStatus::RINGING->value,
+                    TeleconsultationStatus::WAITING->value,
                     TeleconsultationStatus::ACTIVE->value,
                 ], true)
                 && in_array($userId, [$this->patient_user_id, $this->doctor_user_id], true),

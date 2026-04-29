@@ -9,7 +9,6 @@ use App\Http\Requests\Calls\WebRtcOfferRequest;
 use App\Models\CallSession;
 use App\Services\Calls\CallSessionService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class WebRtcSignalingController extends Controller
 {
@@ -18,7 +17,7 @@ class WebRtcSignalingController extends Controller
     public function offer(string $callSessionId, WebRtcOfferRequest $request): JsonResponse
     {
         $callSession = CallSession::query()->findOrFail($callSessionId);
-        $this->authorize('view', $callSession);
+        $this->authorize('signal', $callSession);
 
         $this->callSessionService->relayOffer($callSession, $request->user(), $request->validated());
 
@@ -28,7 +27,7 @@ class WebRtcSignalingController extends Controller
     public function answer(string $callSessionId, WebRtcAnswerRequest $request): JsonResponse
     {
         $callSession = CallSession::query()->findOrFail($callSessionId);
-        $this->authorize('view', $callSession);
+        $this->authorize('signal', $callSession);
 
         $this->callSessionService->relayAnswer($callSession, $request->user(), $request->validated());
 
@@ -38,7 +37,7 @@ class WebRtcSignalingController extends Controller
     public function ice(string $callSessionId, WebRtcIceCandidateRequest $request): JsonResponse
     {
         $callSession = CallSession::query()->findOrFail($callSessionId);
-        $this->authorize('view', $callSession);
+        $this->authorize('signal', $callSession);
 
         $this->callSessionService->relayIceCandidate($callSession, $request->user(), $request->validated());
 

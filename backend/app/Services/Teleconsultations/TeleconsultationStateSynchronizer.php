@@ -41,7 +41,7 @@ class TeleconsultationStateSynchronizer
         switch ($status) {
             case CallSessionState::RINGING->value:
             case CallSessionState::INITIATED->value:
-                $updates['status'] = TeleconsultationStatus::RINGING->value;
+                $updates['status'] = TeleconsultationStatus::WAITING->value;
                 $updates['ringing_started_at_utc'] = $callSession->started_ringing_at_utc ?? now('UTC');
                 $updates['failure_reason'] = null;
                 break;
@@ -55,7 +55,7 @@ class TeleconsultationStateSynchronizer
 
             case CallSessionState::REJECTED->value:
             case CallSessionState::MISSED->value:
-                $updates['status'] = TeleconsultationStatus::MISSED->value;
+                $updates['status'] = TeleconsultationStatus::EXPIRED->value;
                 $updates['ended_at_utc'] = $callSession->ended_at_utc ?? now('UTC');
                 $updates['failure_reason'] = $callSession->end_reason ?? 'rejected';
                 break;
@@ -67,7 +67,7 @@ class TeleconsultationStateSynchronizer
                 break;
 
             case CallSessionState::ENDED->value:
-                $updates['status'] = TeleconsultationStatus::COMPLETED->value;
+                $updates['status'] = TeleconsultationStatus::ENDED->value;
                 $updates['ended_at_utc'] = $callSession->ended_at_utc ?? now('UTC');
                 $updates['expires_at_utc'] = null;
                 break;

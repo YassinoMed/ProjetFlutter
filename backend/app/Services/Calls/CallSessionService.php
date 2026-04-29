@@ -24,6 +24,7 @@ use App\Services\Teleconsultations\TeleconsultationStateSynchronizer;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 class CallSessionService
 {
@@ -44,7 +45,13 @@ class CallSessionService
         $this->conversationService->assertParticipant($conversation, $actor);
 
         $hasActiveCall = CallSession::query()
-            ->where('conversation_id', $conversation->id)
+            ->where(function ($query) use ($conversation, $payload): void {
+                $query->where('conversation_id', $conversation->id);
+
+                if (! empty($payload['consultation_id'])) {
+                    $query->orWhere('consultation_id', $payload['consultation_id']);
+                }
+            })
             ->whereIn('current_state', [
                 CallSessionState::INITIATED->value,
                 CallSessionState::RINGING->value,
@@ -53,9 +60,11 @@ class CallSessionService
             ->exists();
 
         if ($hasActiveCall) {
-            throw ValidationException::withMessages([
-                'conversation_id' => ['An active call already exists for this conversation.'],
-            ]);
+            throw new ConflictHttpException('An active call already exists for this consultation.');
+        }
+
+        if ($conversation->participants->where('user_id', '!=', $actor->id)->where('is_active', true)->isEmpty()) {
+            throw new ConflictHttpException('No reachable call participant found.');
         }
 
         return DB::transaction(function () use ($conversation, $actor, $payload): CallSession {
@@ -117,7 +126,13 @@ class CallSessionService
 
     public function accept(CallSession $call, User $user): CallSession
     {
+        $call = $this->refreshIfExpired($call);
         $this->assertParticipant($call, $user);
+
+        if ($call->initiated_by_user_id === $user->id) {
+            throw new ConflictHttpException('The caller cannot accept their own call.');
+        }
+
         $this->assertInState($call, [CallSessionState::INITIATED, CallSessionState::RINGING]);
 
         return DB::transaction(function () use ($call, $user): CallSession {
@@ -150,7 +165,13 @@ class CallSessionService
 
     public function reject(CallSession $call, User $user): CallSession
     {
+        $call = $this->refreshIfExpired($call);
         $this->assertParticipant($call, $user);
+
+        if ($call->initiated_by_user_id === $user->id) {
+            throw new ConflictHttpException('The caller cannot reject their own call.');
+        }
+
         $this->assertInState($call, [CallSessionState::INITIATED, CallSessionState::RINGING]);
 
         return $this->finalize($call, $user, CallSessionState::REJECTED, 'rejected');
@@ -158,6 +179,7 @@ class CallSessionService
 
     public function cancel(CallSession $call, User $user): CallSession
     {
+        $call = $this->refreshIfExpired($call);
         $this->assertParticipant($call, $user);
 
         if ($call->initiated_by_user_id !== $user->id) {
@@ -169,8 +191,18 @@ class CallSessionService
         return $this->finalize($call, $user, CallSessionState::CANCELLED, 'cancelled');
     }
 
+    public function cancelForTeleconsultation(CallSession $call, User $user): CallSession
+    {
+        $call = $this->refreshIfExpired($call);
+        $this->assertParticipant($call, $user);
+        $this->assertInState($call, [CallSessionState::INITIATED, CallSessionState::RINGING]);
+
+        return $this->finalize($call, $user, CallSessionState::CANCELLED, 'cancelled');
+    }
+
     public function end(CallSession $call, User $user): CallSession
     {
+        $call = $call->fresh('participants') ?? $call;
         $this->assertParticipant($call, $user);
         $this->assertInState($call, [CallSessionState::ACCEPTED]);
 
@@ -221,6 +253,7 @@ class CallSessionService
 
     public function relayOffer(CallSession $call, User $user, array $payload): void
     {
+        $call = $this->refreshIfExpired($call);
         $this->assertInState($call, [CallSessionState::RINGING, CallSessionState::ACCEPTED]);
         $targetUserId = $this->resolveTargetUserId($call, $user, $payload['target_user_id']);
 
@@ -251,6 +284,7 @@ class CallSessionService
 
     public function relayAnswer(CallSession $call, User $user, array $payload): void
     {
+        $call = $this->refreshIfExpired($call);
         $this->assertInState($call, [CallSessionState::RINGING, CallSessionState::ACCEPTED]);
         $targetUserId = $this->resolveTargetUserId($call, $user, $payload['target_user_id']);
 
@@ -281,6 +315,7 @@ class CallSessionService
 
     public function relayIceCandidate(CallSession $call, User $user, array $payload): void
     {
+        $call = $this->refreshIfExpired($call);
         $this->assertInState($call, [CallSessionState::RINGING, CallSessionState::ACCEPTED]);
         $targetUserId = $this->resolveTargetUserId($call, $user, $payload['target_user_id']);
 
@@ -388,9 +423,26 @@ class CallSessionService
         $allowed = array_map(static fn (CallSessionState $state) => $state->value, $states);
 
         if (! in_array($call->current_state?->value ?? $call->current_state, $allowed, true)) {
-            throw ValidationException::withMessages([
-                'call_session' => ['The call session is not in a valid state for this operation.'],
-            ]);
+            throw new ConflictHttpException('The call session is not in a valid state for this operation.');
         }
+    }
+
+    private function refreshIfExpired(CallSession $call): CallSession
+    {
+        $call = $call->fresh('participants') ?? $call;
+        $state = $call->current_state?->value ?? $call->current_state;
+
+        if (! in_array($state, [
+            CallSessionState::INITIATED->value,
+            CallSessionState::RINGING->value,
+        ], true)) {
+            return $call;
+        }
+
+        if ($call->expires_at_utc === null || $call->expires_at_utc->isFuture()) {
+            return $call;
+        }
+
+        return $this->timeoutIfExpired($call->id)?->load('participants') ?? $call;
     }
 }

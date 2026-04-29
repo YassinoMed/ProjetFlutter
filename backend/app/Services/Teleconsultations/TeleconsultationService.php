@@ -25,6 +25,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 class TeleconsultationService
 {
@@ -182,11 +183,9 @@ class TeleconsultationService
 
         if (! in_array($teleconsultation->status?->value ?? $teleconsultation->status, [
             TeleconsultationStatus::SCHEDULED->value,
-            TeleconsultationStatus::RINGING->value,
+            TeleconsultationStatus::WAITING->value,
         ], true)) {
-            throw ValidationException::withMessages([
-                'teleconsultation' => ['The teleconsultation cannot be started in its current state.'],
-            ]);
+            throw new ConflictHttpException('The teleconsultation cannot be started in its current state.');
         }
 
         if ($teleconsultation->appointment !== null
@@ -256,9 +255,7 @@ class TeleconsultationService
             if ($teleconsultation->doctor_user_id === $actor->id) {
                 $teleconsultation = $this->start($teleconsultation, $actor, [], $actingDoctorUserId, $delegationId, $request);
             } else {
-                throw ValidationException::withMessages([
-                    'teleconsultation' => ['The teleconsultation has not been started yet.'],
-                ]);
+                throw new ConflictHttpException('The teleconsultation has not been started yet.');
             }
         }
 
@@ -281,9 +278,7 @@ class TeleconsultationService
         } elseif (! in_array($callState, [CallSessionState::RINGING->value, CallSessionState::ACCEPTED->value], true)) {
             $teleconsultation = $this->syncStatus($teleconsultation);
 
-            throw ValidationException::withMessages([
-                'teleconsultation' => ['The teleconsultation is not joinable anymore.'],
-            ]);
+            throw new ConflictHttpException('The teleconsultation is not joinable anymore.');
         }
 
         $teleconsultation->participants()
@@ -338,20 +333,28 @@ class TeleconsultationService
 
         $callSession = $teleconsultation->currentCallSession;
         $reason = $payload['reason'] ?? 'cancelled';
+        $status = $teleconsultation->status?->value ?? $teleconsultation->status;
+
+        if (! in_array($status, [
+            TeleconsultationStatus::SCHEDULED->value,
+            TeleconsultationStatus::WAITING->value,
+        ], true)) {
+            throw new ConflictHttpException('The teleconsultation cannot be cancelled in its current state.');
+        }
 
         if ($callSession !== null) {
             $state = $callSession->current_state?->value ?? $callSession->current_state;
 
             if ($state === CallSessionState::RINGING->value) {
-                if ($callSession->initiated_by_user_id === $actor->id) {
-                    $this->callSessionService->cancel($callSession, $actor);
-                } else {
-                    $this->callSessionService->reject($callSession, $actor);
-                }
+                $this->callSessionService->cancelForTeleconsultation($callSession, $actor);
             } elseif ($state === CallSessionState::ACCEPTED->value) {
-                throw ValidationException::withMessages([
-                    'teleconsultation' => ['Use the end endpoint to close an active teleconsultation.'],
-                ]);
+                throw new ConflictHttpException('Use the end endpoint to close an active teleconsultation.');
+            } elseif (! in_array($state, [
+                CallSessionState::CANCELLED->value,
+                CallSessionState::REJECTED->value,
+                CallSessionState::TIMEOUT->value,
+            ], true)) {
+                throw new ConflictHttpException('The teleconsultation cannot be cancelled in its current state.');
             }
         } else {
             $teleconsultation->forceFill([
@@ -393,23 +396,25 @@ class TeleconsultationService
         $teleconsultation = $this->syncStatus($teleconsultation);
 
         if ($teleconsultation->currentCallSession === null) {
-            throw ValidationException::withMessages([
-                'teleconsultation' => ['No active call session found for this teleconsultation.'],
-            ]);
+            throw new ConflictHttpException('No active call session found for this teleconsultation.');
+        }
+
+        if (($teleconsultation->status?->value ?? $teleconsultation->status) !== TeleconsultationStatus::ACTIVE->value) {
+            throw new ConflictHttpException('The teleconsultation is not active and cannot be ended.');
         }
 
         $callSession = $this->callSessionService->end($teleconsultation->currentCallSession, $actor);
         $teleconsultation = $this->syncStatus($teleconsultation->fresh());
 
         $this->completeAppointmentIfPossible($teleconsultation, $actor);
-        $this->eventLogger->record($teleconsultation, 'teleconsultation.completed', $actor, callSession: $callSession, payload: [
+        $this->eventLogger->record($teleconsultation, 'teleconsultation.ended', $actor, callSession: $callSession, payload: [
             'reason' => $payload['reason'] ?? null,
             'connection_quality' => $payload['connection_quality'] ?? null,
         ]);
 
         $this->auditService->log(
             $actor,
-            'teleconsultation.completed',
+            'teleconsultation.ended',
             $teleconsultation,
             ['call_session_id' => $callSession->id],
             $actingDoctorUserId,
@@ -454,6 +459,17 @@ class TeleconsultationService
             : $teleconsultation->load('currentCallSession');
 
         if ($teleconsultation->currentCallSession !== null) {
+            $state = $teleconsultation->currentCallSession->current_state?->value
+                ?? $teleconsultation->currentCallSession->current_state;
+
+            if (in_array($state, [
+                CallSessionState::INITIATED->value,
+                CallSessionState::RINGING->value,
+            ], true) && $teleconsultation->currentCallSession->expires_at_utc?->isPast()) {
+                $this->callSessionService->timeoutIfExpired($teleconsultation->currentCallSession->id);
+                $teleconsultation = $teleconsultation->fresh('currentCallSession');
+            }
+
             $synced = $this->stateSynchronizer->syncFromCallSession($teleconsultation->currentCallSession);
 
             if ($synced !== null) {
@@ -621,9 +637,14 @@ class TeleconsultationService
         $teleconsultation = $this->syncStatus($teleconsultation);
 
         if ($teleconsultation->currentCallSession === null) {
-            throw ValidationException::withMessages([
-                'teleconsultation' => ['No active call session exists for this teleconsultation.'],
-            ]);
+            throw new ConflictHttpException('No active call session exists for this teleconsultation.');
+        }
+
+        $state = $teleconsultation->currentCallSession->current_state?->value
+            ?? $teleconsultation->currentCallSession->current_state;
+
+        if (! in_array($state, [CallSessionState::RINGING->value, CallSessionState::ACCEPTED->value], true)) {
+            throw new ConflictHttpException('The teleconsultation is not in a valid media state.');
         }
 
         return $teleconsultation->currentCallSession;

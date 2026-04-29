@@ -42,6 +42,9 @@ return Application::configure(basePath: dirname(__DIR__))
                     $statusCode = 422;
                     $errors = $e->errors();
                     $message = $e->getMessage();
+                } elseif ($e instanceof \Illuminate\Auth\Access\AuthorizationException) {
+                    $statusCode = 403;
+                    $message = 'This action is unauthorized.';
                 } elseif ($e instanceof \Illuminate\Auth\AuthenticationException) {
                     $statusCode = 401;
                     $message = 'Unauthenticated';
