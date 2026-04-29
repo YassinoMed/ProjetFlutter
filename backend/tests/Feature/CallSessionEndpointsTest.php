@@ -276,6 +276,9 @@ class CallSessionEndpointsTest extends TestCase
         ]);
 
         Sanctum::actingAs($doctor);
+        Event::fake([
+            CallSessionRinging::class,
+        ]);
 
         $callSessionId = $this->postJson('/api/calls/initiate', [
             'conversation_id' => $conversation->id,
