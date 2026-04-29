@@ -2,9 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Events\ConversationMessageCreated;
+use App\Events\ConversationMessageReceiptUpdated;
 use App\Models\Appointment;
 use App\Models\User;
 use App\Notifications\SecureMessageNotification;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\UsesTenantMigrations;
@@ -23,6 +26,10 @@ class SecureMessagingEndpointsTest extends TestCase
 
     public function test_patient_and_doctor_can_exchange_e2ee_transport_messages(): void
     {
+        Event::fake([
+            ConversationMessageCreated::class,
+            ConversationMessageReceiptUpdated::class,
+        ]);
         Notification::fake();
 
         $patient = User::factory()->create([
