@@ -56,6 +56,11 @@ class TeleconsultationPolicy
     public function end(User $user, Teleconsultation $teleconsultation): bool
     {
         return $teleconsultation->doctor_user_id === $user->id
-            && ($user->role?->value ?? $user->role) === UserRole::DOCTOR->value;
+            && $this->roleValue($user) === UserRole::DOCTOR->value;
+    }
+
+    private function roleValue(User $user): string
+    {
+        return $user->role->value;
     }
 }

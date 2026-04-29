@@ -197,8 +197,11 @@ class TeleconsultationService
             );
         }
 
-        if ($teleconsultation->currentCallSession !== null && in_array(
-            $teleconsultation->currentCallSession->current_state?->value ?? $teleconsultation->currentCallSession->current_state,
+        /** @var CallSession|null $currentCallSession */
+        $currentCallSession = $teleconsultation->currentCallSession;
+
+        if ($currentCallSession !== null && in_array(
+            $this->callSessionState($currentCallSession),
             [CallSessionState::RINGING->value, CallSessionState::ACCEPTED->value],
             true,
         )) {
@@ -331,6 +334,7 @@ class TeleconsultationService
         $teleconsultation = $this->loadGraph($teleconsultation);
         $teleconsultation = $this->syncStatus($teleconsultation);
 
+        /** @var CallSession|null $callSession */
         $callSession = $teleconsultation->currentCallSession;
         $reason = $payload['reason'] ?? 'cancelled';
         $status = $teleconsultation->status?->value ?? $teleconsultation->status;
@@ -343,7 +347,7 @@ class TeleconsultationService
         }
 
         if ($callSession !== null) {
-            $state = $callSession->current_state?->value ?? $callSession->current_state;
+            $state = $this->callSessionState($callSession);
 
             if ($state === CallSessionState::RINGING->value) {
                 $this->callSessionService->cancelForTeleconsultation($callSession, $actor);
@@ -458,19 +462,27 @@ class TeleconsultationService
             ? $teleconsultation
             : $teleconsultation->load('currentCallSession');
 
-        if ($teleconsultation->currentCallSession !== null) {
-            $state = $teleconsultation->currentCallSession->current_state?->value
-                ?? $teleconsultation->currentCallSession->current_state;
+        /** @var CallSession|null $currentCallSession */
+        $currentCallSession = $teleconsultation->currentCallSession;
+
+        if ($currentCallSession !== null) {
+            $state = $this->callSessionState($currentCallSession);
 
             if (in_array($state, [
                 CallSessionState::INITIATED->value,
                 CallSessionState::RINGING->value,
-            ], true) && $teleconsultation->currentCallSession->expires_at_utc?->isPast()) {
-                $this->callSessionService->timeoutIfExpired($teleconsultation->currentCallSession->id);
+            ], true) && $currentCallSession->expires_at_utc->isPast()) {
+                $this->callSessionService->timeoutIfExpired($currentCallSession->id);
                 $teleconsultation = $teleconsultation->fresh('currentCallSession');
+                /** @var CallSession|null $currentCallSession */
+                $currentCallSession = $teleconsultation->currentCallSession;
             }
 
-            $synced = $this->stateSynchronizer->syncFromCallSession($teleconsultation->currentCallSession);
+            if ($currentCallSession === null) {
+                return $this->loadGraph($teleconsultation);
+            }
+
+            $synced = $this->stateSynchronizer->syncFromCallSession($currentCallSession);
 
             if ($synced !== null) {
                 return $this->loadGraph($synced);
@@ -492,7 +504,7 @@ class TeleconsultationService
         $patientUserId = $payload['patient_user_id'] ?? null;
         $doctorUserId = $payload['doctor_user_id'] ?? null;
 
-        $role = $actor->role?->value ?? $actor->role;
+        $role = $this->roleValue($actor);
 
         if ($role === UserRole::PATIENT->value) {
             $patientUserId = $actor->id;
@@ -609,7 +621,7 @@ class TeleconsultationService
 
     private function assertActorCanAccessAppointment(User $actor, Appointment $appointment, ?string $actingDoctorUserId): void
     {
-        $role = $actor->role?->value ?? $actor->role;
+        $role = $this->roleValue($actor);
 
         if ($role === UserRole::ADMIN->value) {
             return;
@@ -636,18 +648,30 @@ class TeleconsultationService
     {
         $teleconsultation = $this->syncStatus($teleconsultation);
 
-        if ($teleconsultation->currentCallSession === null) {
+        /** @var CallSession|null $currentCallSession */
+        $currentCallSession = $teleconsultation->currentCallSession;
+
+        if ($currentCallSession === null) {
             throw new ConflictHttpException('No active call session exists for this teleconsultation.');
         }
 
-        $state = $teleconsultation->currentCallSession->current_state?->value
-            ?? $teleconsultation->currentCallSession->current_state;
+        $state = $this->callSessionState($currentCallSession);
 
         if (! in_array($state, [CallSessionState::RINGING->value, CallSessionState::ACCEPTED->value], true)) {
             throw new ConflictHttpException('The teleconsultation is not in a valid media state.');
         }
 
-        return $teleconsultation->currentCallSession;
+        return $currentCallSession;
+    }
+
+    private function callSessionState(CallSession $callSession): string
+    {
+        return $callSession->current_state->value;
+    }
+
+    private function roleValue(User $user): string
+    {
+        return $user->role->value;
     }
 
     private function loadGraph(Teleconsultation $teleconsultation): Teleconsultation

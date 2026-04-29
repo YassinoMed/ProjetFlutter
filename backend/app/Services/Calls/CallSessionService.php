@@ -422,15 +422,16 @@ class CallSessionService
     {
         $allowed = array_map(static fn (CallSessionState $state) => $state->value, $states);
 
-        if (! in_array($call->current_state?->value ?? $call->current_state, $allowed, true)) {
+        if (! in_array($this->callState($call), $allowed, true)) {
             throw new ConflictHttpException('The call session is not in a valid state for this operation.');
         }
     }
 
     private function refreshIfExpired(CallSession $call): CallSession
     {
-        $call = $call->fresh('participants') ?? $call;
-        $state = $call->current_state?->value ?? $call->current_state;
+        $freshCall = $call->fresh('participants');
+        $call = $freshCall instanceof CallSession ? $freshCall : $call;
+        $state = $this->callState($call);
 
         if (! in_array($state, [
             CallSessionState::INITIATED->value,
@@ -439,10 +440,19 @@ class CallSessionService
             return $call;
         }
 
-        if ($call->expires_at_utc === null || $call->expires_at_utc->isFuture()) {
+        $expiresAt = $call->getAttribute('expires_at_utc');
+
+        if ($expiresAt === null || $expiresAt->isFuture()) {
             return $call;
         }
 
-        return $this->timeoutIfExpired($call->id)?->load('participants') ?? $call;
+        $expiredCall = $this->timeoutIfExpired($call->id);
+
+        return $expiredCall instanceof CallSession ? $expiredCall->load('participants') : $call;
+    }
+
+    private function callState(CallSession $call): string
+    {
+        return $call->current_state->value;
     }
 }
