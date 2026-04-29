@@ -18,6 +18,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 class AppointmentController extends Controller
 {
@@ -116,7 +117,7 @@ class AppointmentController extends Controller
     {
         $appointment = Appointment::query()->findOrFail($appointmentId);
 
-        $this->authorizeAppointmentAccess($request, $appointment, SecretaryPermission::MANAGE_APPOINTMENTS);
+        $this->authorizeCancel($request, $appointment);
 
         $appointment = $this->states->transition(
             appointment: $appointment,
@@ -140,6 +141,41 @@ class AppointmentController extends Controller
         return $this->respondSuccess([
             'appointment' => new AppointmentResource($appointment),
         ], 'Appointment cancelled successfully');
+    }
+
+    public function reject(string $appointmentId, CancelAppointmentRequest $request): JsonResponse
+    {
+        $appointment = Appointment::query()->findOrFail($appointmentId);
+
+        $this->authorizeAppointmentAccess($request, $appointment, SecretaryPermission::MANAGE_APPOINTMENTS, true);
+
+        if ($appointment->status !== AppointmentStatus::REQUESTED) {
+            throw new ConflictHttpException('Only pending appointments can be rejected.');
+        }
+
+        $appointment = $this->states->transition(
+            appointment: $appointment,
+            to: AppointmentStatus::CANCELLED,
+            actorUserId: $request->user()->id,
+            metadataEncrypted: $request->validated()['metadata_encrypted'] ?? null,
+            cancelReason: $request->validated()['cancel_reason'] ?? 'Rejected by medical office',
+            eventName: 'rejected',
+        );
+
+        $delegation = $request->attributes->get('doctor_delegation');
+        $this->auditService->log(
+            $request->user(),
+            'appointment.rejected',
+            $appointment,
+            ['appointment_id' => $appointment->id],
+            $request->attributes->get('acting_doctor_user_id'),
+            $delegation?->id,
+            $request,
+        );
+
+        return $this->respondSuccess([
+            'appointment' => new AppointmentResource($appointment),
+        ], 'Appointment rejected successfully');
     }
 
     public function confirm(string $appointmentId, Request $request): JsonResponse
@@ -168,6 +204,21 @@ class AppointmentController extends Controller
         return $this->respondSuccess([
             'appointment' => new AppointmentResource($appointment),
         ], 'Appointment confirmed successfully');
+    }
+
+    private function authorizeCancel(Request $request, Appointment $appointment): void
+    {
+        $user = $request->user();
+
+        if ($user->role === UserRole::PATIENT && $appointment->patient_user_id === $user->id) {
+            if ($appointment->status !== AppointmentStatus::REQUESTED) {
+                throw new ConflictHttpException('Patients can cancel only before medical office confirmation.');
+            }
+
+            return;
+        }
+
+        $this->authorizeAppointmentAccess($request, $appointment, SecretaryPermission::MANAGE_APPOINTMENTS);
     }
 
     private function authorizeAppointmentAccess(

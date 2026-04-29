@@ -29,6 +29,11 @@ class SendAppointmentNotificationsListener
             $appointment->patient?->notify(new AppointmentStatusNotification($appointment, 'cancelled'));
             $appointment->doctor?->notify(new AppointmentStatusNotification($appointment, 'cancelled'));
         }
+
+        if ($event->event === 'rejected') {
+            $appointment->patient?->notify(new AppointmentStatusNotification($appointment, 'rejected'));
+            $appointment->doctor?->notify(new AppointmentStatusNotification($appointment, 'rejected'));
+        }
     }
 
     private function scheduleReminder(string $appointmentId, string $event, Carbon $whenUtc): void

@@ -13,8 +13,8 @@ use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
-    use SearchesUsers;
     use LogsAdminActivity;
+    use SearchesUsers;
 
     public function index(Request $request)
     {
@@ -53,7 +53,7 @@ class UserController extends Controller
         $user = User::findOrFail($userId);
 
         $user->update([
-            'is_active' => !$user->is_active,
+            'is_active' => ! $user->is_active,
         ]);
 
         $status = $user->is_active ? 'activé' : 'désactivé';
@@ -61,7 +61,7 @@ class UserController extends Controller
         // Refactored: now logs the action (was missing before – P2 #8)
         $this->logAdminAction('user_status_toggled', [
             'target_user_id' => $userId,
-            'new_status'     => $status,
+            'new_status' => $status,
         ]);
 
         return redirect()->route('admin.users.index')

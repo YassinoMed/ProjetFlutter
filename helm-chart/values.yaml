@@ -3,7 +3,7 @@ environment: "dev"
 
 # Image configuration
 image:
-  repository: registry.gitlab.com/yassinomed/mediconnect-pro-backend
+  repository: ghcr.io/yassinomed/mediconnect-api
   pullPolicy: IfNotPresent
   tag: "latest"
 
@@ -47,9 +47,9 @@ autoscaling:
 postgresql:
   enabled: true
   auth:
-    postgresPassword: "supersecretpostgres"
+    postgresPassword: "replace-via-secret-manager"
     username: "mediconnect"
-    password: "mediconnectpassword"
+    password: "replace-via-secret-manager"
     database: "mediconnect"
   primary:
     persistence:

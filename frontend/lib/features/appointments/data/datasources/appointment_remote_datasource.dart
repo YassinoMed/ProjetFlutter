@@ -12,6 +12,8 @@ abstract class AppointmentRemoteDataSource {
     String? notes,
   });
   Future<void> cancelAppointment(String appointmentId);
+  Future<AppointmentModel> confirmAppointment(String appointmentId);
+  Future<AppointmentModel> rejectAppointment(String appointmentId);
   Future<AppointmentModel> getAppointmentDetail(String id);
 }
 
@@ -75,14 +77,7 @@ class AppointmentRemoteDataSourceImpl implements AppointmentRemoteDataSource {
       },
     );
 
-    final Map<String, dynamic> data =
-        (response.data is Map && response.data.containsKey('appointment'))
-            ? response.data['appointment'] as Map<String, dynamic>
-            : (response.data is Map && response.data.containsKey('data'))
-                ? response.data['data'] as Map<String, dynamic>
-                : response.data as Map<String, dynamic>;
-
-    return AppointmentModel.fromJson(data);
+    return AppointmentModel.fromJson(_extractAppointmentMap(response.data));
   }
 
   @override
@@ -93,14 +88,50 @@ class AppointmentRemoteDataSourceImpl implements AppointmentRemoteDataSource {
   }
 
   @override
+  Future<AppointmentModel> confirmAppointment(String appointmentId) async {
+    final response = await dio.post(
+      ApiConstants.appointmentConfirm.replaceFirst('{id}', appointmentId),
+    );
+
+    return AppointmentModel.fromJson(_extractAppointmentMap(response.data));
+  }
+
+  @override
+  Future<AppointmentModel> rejectAppointment(String appointmentId) async {
+    final response = await dio.post(
+      ApiConstants.appointmentReject.replaceFirst('{id}', appointmentId),
+      data: {'cancel_reason': 'Refusé par le cabinet médical'},
+    );
+
+    return AppointmentModel.fromJson(_extractAppointmentMap(response.data));
+  }
+
+  @override
   Future<AppointmentModel> getAppointmentDetail(String id) async {
     final response = await dio.get('${ApiConstants.appointments}/$id');
 
-    final Map<String, dynamic> data =
-        (response.data is Map && response.data.containsKey('data'))
-            ? response.data['data'] as Map<String, dynamic>
-            : response.data as Map<String, dynamic>;
+    return AppointmentModel.fromJson(_extractAppointmentMap(response.data));
+  }
 
-    return AppointmentModel.fromJson(data);
+  Map<String, dynamic> _extractAppointmentMap(dynamic payload) {
+    if (payload is! Map<String, dynamic>) {
+      return const <String, dynamic>{};
+    }
+
+    final data = payload['data'];
+    if (data is Map<String, dynamic>) {
+      final appointment = data['appointment'];
+      if (appointment is Map<String, dynamic>) {
+        return appointment;
+      }
+      return data;
+    }
+
+    final appointment = payload['appointment'];
+    if (appointment is Map<String, dynamic>) {
+      return appointment;
+    }
+
+    return payload;
   }
 }

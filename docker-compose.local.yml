@@ -1,0 +1,43 @@
+services:
+  postgres-test:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    profiles: ["test"]
+    ports:
+      - "${DB_TEST_PORT_FORWARD:-5434}:5432"
+    environment:
+      POSTGRES_DB: ${DB_TEST_DATABASE:-mediconnect_test}
+      POSTGRES_USER: ${DB_TEST_USERNAME:-mediconnect_test}
+      POSTGRES_PASSWORD: ${DB_TEST_PASSWORD:-secret}
+      TZ: UTC
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_TEST_USERNAME:-mediconnect_test} -d ${DB_TEST_DATABASE:-mediconnect_test}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - mediconnect
+
+  redis-test:
+    image: redis:7-alpine
+    restart: unless-stopped
+    profiles: ["test"]
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--requirepass", "${REDIS_TEST_PASSWORD:-redis-test-secret}"]
+    ports:
+      - "${REDIS_TEST_PORT_FORWARD:-6380}:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_TEST_PASSWORD:-redis-test-secret} ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - mediconnect
+
+networks:
+  mediconnect:
+    external: true
+    name: mediconnect

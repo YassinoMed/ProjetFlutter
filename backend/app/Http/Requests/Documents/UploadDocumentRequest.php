@@ -47,6 +47,14 @@ class UploadDocumentRequest extends FormRequest
             ],
             'document_date_utc' => ['nullable', 'date'],
             'document_type_hint' => ['nullable', Rule::enum(DocumentType::class)],
+            'client_ocr_text' => ['nullable', 'string', 'max:50000'],
+            'client_ocr_engine' => ['nullable', 'string', 'max:64'],
+            'client_ocr_language' => ['nullable', 'string', 'max:12'],
+            'client_ocr_confidence' => ['nullable', 'numeric', 'min:0', 'max:1'],
+            'client_image_quality_score' => ['nullable', 'numeric', 'min:0', 'max:1'],
+            'client_image_width' => ['nullable', 'integer', 'min:1', 'max:20000'],
+            'client_image_height' => ['nullable', 'integer', 'min:1', 'max:20000'],
+            'client_image_quality_warnings' => ['nullable', 'string', 'max:4000'],
         ];
     }
 }

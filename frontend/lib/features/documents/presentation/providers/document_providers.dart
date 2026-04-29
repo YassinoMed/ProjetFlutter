@@ -79,6 +79,14 @@ class DocumentActionsController {
     String? doctorUserId,
     String? documentTypeHint,
     DateTime? documentDateUtc,
+    String? clientOcrText,
+    String? clientOcrEngine,
+    String? clientOcrLanguage,
+    double? clientOcrConfidence,
+    double? clientImageQualityScore,
+    int? clientImageWidth,
+    int? clientImageHeight,
+    List<String>? clientImageQualityWarnings,
   }) async {
     final document = await _repository.uploadDocument(
       file: file,
@@ -87,6 +95,14 @@ class DocumentActionsController {
       doctorUserId: doctorUserId,
       documentTypeHint: documentTypeHint,
       documentDateUtc: documentDateUtc,
+      clientOcrText: clientOcrText,
+      clientOcrEngine: clientOcrEngine,
+      clientOcrLanguage: clientOcrLanguage,
+      clientOcrConfidence: clientOcrConfidence,
+      clientImageQualityScore: clientImageQualityScore,
+      clientImageWidth: clientImageWidth,
+      clientImageHeight: clientImageHeight,
+      clientImageQualityWarnings: clientImageQualityWarnings,
     );
 
     ref.invalidate(documentsProvider);

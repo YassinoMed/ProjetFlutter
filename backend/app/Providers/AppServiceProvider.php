@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Services\Documents\Ai\HeuristicDocumentAiAnalyzer;
+use App\Services\Documents\Ai\HttpDocumentAiAnalyzer;
 use App\Services\Documents\Ai\HeuristicGroundedDocumentQuestionAnswerer;
 use App\Services\Documents\Contracts\DocumentAiAnalyzer;
 use App\Services\Documents\Contracts\DocumentQuestionAnswerer;
@@ -23,7 +24,11 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(DocumentTextExtractor::class, CompositeDocumentTextExtractor::class);
-        $this->app->singleton(DocumentAiAnalyzer::class, HeuristicDocumentAiAnalyzer::class);
+        $this->app->singleton(DocumentAiAnalyzer::class, function ($app) {
+            return (string) config('documents.ai_driver') === 'http'
+                ? $app->make(HttpDocumentAiAnalyzer::class)
+                : $app->make(HeuristicDocumentAiAnalyzer::class);
+        });
         $this->app->singleton(DocumentQuestionAnswerer::class, HeuristicGroundedDocumentQuestionAnswerer::class);
         $this->app->singleton(QueueMetricsRecorder::class);
     }

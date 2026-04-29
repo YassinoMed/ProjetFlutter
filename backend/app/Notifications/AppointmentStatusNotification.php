@@ -28,6 +28,7 @@ class AppointmentStatusNotification extends Notification implements ShouldQueue
         $title = match ($this->event) {
             'confirmed' => '✅ Rendez-vous confirmé',
             'cancelled' => '❌ Rendez-vous annulé',
+            'rejected' => '❌ Rendez-vous non confirmé',
             'reminder_j1' => '🔔 Rappel rendez-vous (J-1)',
             'reminder_h1' => '⏰ Rappel rendez-vous (H-1)',
             default => '📋 Mise à jour rendez-vous',
@@ -39,6 +40,7 @@ class AppointmentStatusNotification extends Notification implements ShouldQueue
                 optional($this->appointment->starts_at_utc)?->format('d/m/Y à H:i') ?? '—'
             ),
             'cancelled' => 'Votre rendez-vous a été annulé. Vous pouvez en reprogrammer un.',
+            'rejected' => 'Votre demande de rendez-vous n’a pas été confirmée. Vous pouvez choisir un autre créneau.',
             'reminder_j1' => sprintf(
                 'Rappel : vous avez un rendez-vous demain à %s.',
                 optional($this->appointment->starts_at_utc)?->format('H:i') ?? '—'
@@ -58,6 +60,9 @@ class AppointmentStatusNotification extends Notification implements ShouldQueue
             ],
             'cancelled' => [
                 ['id' => 'rebook', 'title' => 'Nouveau RDV', 'action' => 'NEW_APPOINTMENT'],
+            ],
+            'rejected' => [
+                ['id' => 'rebook', 'title' => 'Autre créneau', 'action' => 'NEW_APPOINTMENT'],
             ],
             'reminder_j1', 'reminder_h1' => [
                 ['id' => 'view', 'title' => 'Voir le RDV', 'action' => 'VIEW_APPOINTMENT'],
@@ -81,7 +86,7 @@ class AppointmentStatusNotification extends Notification implements ShouldQueue
                 'starts_at_utc' => optional($this->appointment->starts_at_utc)?->setTimezone('UTC')?->toISOString(),
                 'status' => $this->appointment->status?->value ?? (string) $this->appointment->status,
                 'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
-                'deep_link' => '/appointments/' . $this->appointment->id,
+                'deep_link' => '/appointments/'.$this->appointment->id,
             ],
         ];
     }

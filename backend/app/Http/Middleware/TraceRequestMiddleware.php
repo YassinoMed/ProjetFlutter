@@ -55,7 +55,7 @@ class TraceRequestMiddleware
             'span_id' => $spanId,
             'parent_span_id' => $parentSpanId,
             'service' => env('OTEL_SERVICE_NAME', 'mediconnect-api'),
-            'operation' => $request->method() . ' ' . $request->path(),
+            'operation' => $request->method().' '.$request->path(),
             'http.method' => $request->method(),
             'http.url' => $request->fullUrl(),
             'http.route' => $request->route()?->uri() ?? $request->path(),
@@ -69,7 +69,7 @@ class TraceRequestMiddleware
 
         // Log slow requests at warning level
         $logLevel = $durationMs > 2000 ? 'warning' : 'debug';
-        Log::channel('single')->log($logLevel, '[TRACE] ' . $spanData['operation'], $spanData);
+        Log::channel('single')->log($logLevel, '[TRACE] '.$spanData['operation'], $spanData);
 
         // ── Export to OTLP endpoint (if configured) ──────────────
         if (env('OTEL_ENABLED', false) && env('OTEL_EXPORTER_OTLP_ENDPOINT')) {
@@ -108,7 +108,7 @@ class TraceRequestMiddleware
     private function exportSpanAsync(array $spanData): void
     {
         try {
-            $endpoint = rtrim(env('OTEL_EXPORTER_OTLP_ENDPOINT'), '/') . '/v1/traces';
+            $endpoint = rtrim(env('OTEL_EXPORTER_OTLP_ENDPOINT'), '/').'/v1/traces';
 
             $payload = json_encode([
                 'resourceSpans' => [[

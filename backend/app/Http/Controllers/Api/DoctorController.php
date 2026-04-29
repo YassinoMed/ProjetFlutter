@@ -6,7 +6,6 @@ use App\Enums\AppointmentStatus;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\DoctorSearchResource;
-use App\Http\Resources\ScheduleSlotResource;
 use App\Models\Appointment;
 use App\Models\Doctor;
 use App\Models\DoctorSchedule;
@@ -41,12 +40,12 @@ class DoctorController extends Controller
 
         // Filter by specialty
         if ($request->filled('specialty')) {
-            $query->where('doctors.specialty', 'LIKE', '%' . $request->string('specialty') . '%');
+            $query->where('doctors.specialty', 'LIKE', '%'.$request->string('specialty').'%');
         }
 
         // Filter by city
         if ($request->filled('city')) {
-            $query->where('doctors.city', 'LIKE', '%' . $request->string('city') . '%');
+            $query->where('doctors.city', 'LIKE', '%'.$request->string('city').'%');
         }
 
         // Full-text search on name, specialty, city
@@ -139,6 +138,7 @@ class DoctorController extends Controller
                 // Check if slot is in the past
                 if ($slotStart->lt(now('UTC'))) {
                     $slotStart = $slotEndTime;
+
                     continue;
                 }
 

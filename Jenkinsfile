@@ -1,201 +1,359 @@
 pipeline {
     agent any
 
-    environment {
-        // --- Configuration Générale ---
-        APP_NAME = 'mediconnect-pro'
-        REGISTRY = 'registry.gitlab.com/yassinomed' 
-        BACKEND_IMAGE = "${REGISTRY}/${APP_NAME}-backend"
-        
-        // --- Sécurité & Creds Jenkins ---
-        DOCKER_CREDS_ID   = 'docker-registry-credentials'
-        KUBECONFIG_ID     = 'k8s-cluster-credentials'
-        SONAR_TOKEN       = credentials('sonar-token')
-        SLACK_WEBHOOK     = credentials('slack-webhook-url')
+    parameters {
+        choice(
+            name: 'SECURITY_SCANS_MODE',
+            choices: ['parallel', 'sequential'],
+            description: 'Run Gitleaks and Trivy filesystem scans in parallel or sequential mode.'
+        )
+    }
 
-        // --- Stratégie de Branches (GitOps-Like) ---
-        DEPLOY_ENV = "${env.BRANCH_NAME == 'main' ? 'prod' : (env.BRANCH_NAME == 'develop' ? 'staging' : 'dev')}"
-        NAMESPACE  = "mediconnect-${DEPLOY_ENV}"
+    environment {
+        REGISTRY = 'ghcr.io'
+        IMAGE_REPOSITORY = 'ghcr.io/yassinomed/mediconnect-api'
+        BACKEND_DOCKERFILE = 'backend/Dockerfile'
+        GITLEAKS_IMAGE = 'zricethezav/gitleaks:v8.24.2'
+        TRIVY_IMAGE = 'aquasec/trivy:0.64.1'
+        TRIVY_CACHE_DIR = '.trivy-cache'
+        TRIVY_TIMEOUT = '10m'
+        SECURITY_SCANS_MODE = 'parallel'
+        LOCAL_COMPOSE_ENV_FILE = '.env.compose.local.example'
+        PROD_COMPOSE_ENV_FILE = '.env.compose.prod.example'
+        STAGING_RELEASE = 'mediconnect-staging'
+        PRODUCTION_RELEASE = 'mediconnect-prod'
+        STAGING_NAMESPACE = 'mediconnect-staging'
+        PRODUCTION_NAMESPACE = 'mediconnect-prod'
+        HELM_STAGING_VALUES = 'helm-chart/values.yaml'
+        HELM_PRODUCTION_VALUES = 'helm-chart/values-prod.yaml'
+        REGISTRY_CREDENTIALS_ID = 'ghcr-registry-credentials'
+        KUBECONFIG_STAGING_CREDENTIALS_ID = 'kubeconfig-staging'
+        KUBECONFIG_PRODUCTION_CREDENTIALS_ID = 'kubeconfig-production'
     }
 
     options {
-        buildDiscarder(logRotator(numToKeepStr: '15', artifactNumToKeepStr: '5'))
         disableConcurrentBuilds()
-        timeout(time: 2, unit: 'HOURS')
+        buildDiscarder(logRotator(numToKeepStr: '20', artifactNumToKeepStr: '10'))
+        timeout(time: 90, unit: 'MINUTES')
         timestamps()
     }
 
     stages {
-        stage('1. Checkout & Cache') {
+        stage('Checkout') {
             steps {
                 checkout scm
                 script {
-                    env.COMMIT_HASH = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
-                    env.APP_VERSION = "2.0.0-${env.BRANCH_NAME}-${env.COMMIT_HASH}"
-                    echo "🚀 Démarrage CI/CD : v${env.APP_VERSION} | Env : ${DEPLOY_ENV}"
+                    env.GIT_SHA_SHORT = sh(returnStdout: true, script: 'git rev-parse --short=12 HEAD').trim()
+                    env.BRANCH_SLUG = (env.BRANCH_NAME ?: 'detached')
+                        .toLowerCase()
+                        .replaceAll(/[^a-z0-9]+/, '-')
+                        .replaceAll(/^-+|-+$/, '')
+                    env.IMAGE_TAG = "sha-${env.GIT_SHA_SHORT}"
+                    env.BRANCH_IMAGE_TAG = "${env.BRANCH_SLUG}-latest"
+                    env.IS_DEPLOY_BRANCH = (env.BRANCH_NAME == 'develop' || env.BRANCH_NAME == 'main') ? 'true' : 'false'
                 }
             }
         }
 
-        stage('2. Tests Parallèles & Analyse (SAST)') {
-            parallel {
-                stage('Backend (Laravel 11)') {
-                    agent {
-                        docker {
-                            image 'php:8.3-cli'
-                            args '-u root'
-                        }
-                    }
-                    steps {
-                        dir('backend') {
-                            sh '''
-                                apt-get update && apt-get install -y libzip-dev zip unzip libpq-dev
-                                docker-php-ext-install zip pdo pdo_pgsql
-                                curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
-                                composer install --prefer-dist --no-progress --no-interaction
-                                vendor/bin/phpstan analyse --memory-limit=2G
-                                vendor/bin/pint --test
-                                php artisan test --parallel
-                            '''
-                        }
-                    }
-                }
-                stage('Frontend (Flutter)') {
-                    agent {
-                        docker { image 'ghcr.io/cirruslabs/flutter:stable' }
-                    }
-                    steps {
-                        dir('frontend') {
-                            sh '''
-                                flutter pub get
-                                flutter analyze
-                                flutter test
-                            '''
-                        }
-                    }
-                }
-                stage('Qualité & Sécurité (SonarQube)') {
-                    agent {
-                        docker { image 'sonarsource/sonar-scanner-cli:latest' }
-                    }
-                    steps {
-                        withSonarQubeEnv('sonarqube-server') {
-                            sh 'sonar-scanner -Dsonar.projectKey=mediconnect-pro -Dsonar.sources=backend/app,frontend/lib -Dsonar.qualitygate.wait=true'
-                        }
-                    }
-                }
-            }
-        }
-
-        stage('3. Build & Docker') {
-            parallel {
-                stage('Container Backend (Laravel + Reverb)') {
-                    agent any
-                    steps {
-                        dir('backend') {
-                            script {
-                                docker.withRegistry("https://${REGISTRY}", "${DOCKER_CREDS_ID}") {
-                                    def backendApp = docker.build("${BACKEND_IMAGE}:${env.APP_VERSION}", "-f Dockerfile .")
-                                    env.BUILT_IMAGE = "${BACKEND_IMAGE}:${env.APP_VERSION}"
-                                }
-                            }
-                        }
-                    }
-                }
-                stage('Build Mobile (Android APK/AAB)') {
-                    agent {
-                        docker { image 'ghcr.io/cirruslabs/flutter:stable' }
-                    }
-                    steps {
-                        dir('frontend') {
-                            sh 'flutter build apk --release'
-                            sh 'flutter build appbundle --release'
-                        }
-                    }
-                    post {
-                        success {
-                            archiveArtifacts artifacts: 'frontend/build/app/outputs/flutter-apk/*.apk, frontend/build/app/outputs/bundle/release/*.aab', allowEmptyArchive: true
-                        }
-                    }
-                }
-                stage('Build Mobile (iOS IPA)') {
-                    agent { label 'macos' } // Nécessite un noeud Mac sur Jenkins
-                    steps {
-                        dir('frontend') {
-                            echo "⏳ Construction iOS IPA avec certificat Signing..."
-                            // sh 'flutter build ipa --release --export-options-plist=ExportOptions.plist'
-                        }
-                    }
-                }
-            }
-        }
-
-        stage('4. Scans de Sécurité (Trivy)') {
-            agent any
+        stage('Validate Pipeline And Compose') {
             steps {
-                script {
-                    echo "🔍 Analyse des vulnérabilités de l'image Docker avec Trivy..."
-                    sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --exit-code 1 --severity CRITICAL,HIGH ${env.BUILT_IMAGE}"
+                sh '''
+                    set -euo pipefail
+                    find .githooks scripts/dev -type f | while read -r file; do
+                      bash -n "$file"
+                    done
+
+                    docker compose --env-file "${LOCAL_COMPOSE_ENV_FILE}" -f docker-compose.yml -f docker-compose.local.yml config -q
+                    docker compose --env-file "${LOCAL_COMPOSE_ENV_FILE}" -f docker-compose.yml -f docker-compose.local.yml -f docker-compose.observability.yml config -q
+                    docker compose --env-file "${PROD_COMPOSE_ENV_FILE}" -f docker-compose.yml -f docker-compose.prod.yml config -q
+                '''
+            }
+        }
+
+        stage('Backend Quality Gate') {
+            steps {
+                sh '''
+                    set -euo pipefail
+
+                    docker compose --env-file "${LOCAL_COMPOSE_ENV_FILE}" -f docker-compose.yml -f docker-compose.local.yml --profile test up -d postgres-test redis-test
+
+                    docker run --rm \
+                      --add-host=host.docker.internal:host-gateway \
+                      -v "${PWD}/backend:/app" \
+                      -w /app \
+                      -e APP_ENV=testing \
+                      -e DB_CONNECTION=pgsql \
+                      -e DB_HOST=host.docker.internal \
+                      -e DB_PORT=5434 \
+                      -e DB_DATABASE=mediconnect_test \
+                      -e DB_USERNAME=mediconnect_test \
+                      -e DB_PASSWORD=secret \
+                      -e DB_SSLMODE=disable \
+                      -e REDIS_CLIENT=phpredis \
+                      -e REDIS_HOST=host.docker.internal \
+                      -e REDIS_PORT=6380 \
+                      -e REDIS_PASSWORD=redis-test-secret \
+                      -e CACHE_STORE=array \
+                      -e SESSION_DRIVER=array \
+                      -e QUEUE_CONNECTION=sync \
+                      php:8.4-cli-bookworm bash -lc '
+                        set -euo pipefail
+                        apt-get update
+                        apt-get install -y git unzip libzip-dev libicu-dev libpq-dev pkg-config
+                        docker-php-ext-install intl mbstring pcntl pdo_pgsql sockets zip
+                        pecl install redis
+                        docker-php-ext-enable redis
+                        curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+                        composer install --prefer-dist --no-interaction --no-progress
+                        cp .env.testing .env
+                        php artisan key:generate --force
+                        vendor/bin/pint --test
+                        vendor/bin/phpstan analyse --memory-limit=1G
+                        php artisan test --parallel
+                        composer audit --locked
+                      '
+                '''
+            }
+            post {
+                always {
+                    sh '''
+                        docker compose --env-file "${LOCAL_COMPOSE_ENV_FILE}" -f docker-compose.yml -f docker-compose.local.yml --profile test down -v --remove-orphans || true
+                    '''
                 }
             }
         }
 
-        stage('5. Push Docker Registry') {
-            agent any
+        stage('Frontend Quality Gate') {
             steps {
+                sh '''
+                    set -euo pipefail
+
+                    docker run --rm \
+                      -v "${PWD}/frontend:/workspace" \
+                      -w /workspace \
+                      ghcr.io/cirruslabs/flutter:stable bash -lc '
+                        set -euo pipefail
+                        flutter pub get
+                        flutter analyze
+                        flutter test
+                      '
+                '''
+            }
+        }
+
+        stage('Security Scans') {
+            steps {
+                sh '''
+                    set -euo pipefail
+                    mkdir -p "${TRIVY_CACHE_DIR}"
+                    docker run --rm \
+                      -v "${PWD}/${TRIVY_CACHE_DIR}:/root/.cache/trivy" \
+                      "${TRIVY_IMAGE}" \
+                      image --download-db-only --timeout "${TRIVY_TIMEOUT}"
+                '''
+
                 script {
-                    docker.withRegistry("https://${REGISTRY}", "${DOCKER_CREDS_ID}") {
-                        docker.image("${env.BUILT_IMAGE}").push()
-                        docker.image("${env.BUILT_IMAGE}").push("${env.BRANCH_NAME}-latest")
+                    def scansMode = params.SECURITY_SCANS_MODE ?: env.SECURITY_SCANS_MODE ?: 'parallel'
+
+                    def gitleaksScan = {
+                        sh '''
+                            set -euo pipefail
+                            rm -f gitleaks-report.json
+                            scan_exit=0
+                            docker run --rm \
+                              -v "${PWD}:/repo" \
+                              -w /repo \
+                              "${GITLEAKS_IMAGE}" \
+                              dir /repo \
+                                --config /repo/.gitleaks.toml \
+                                --redact \
+                                --exit-code 1 \
+                                --no-banner \
+                                --report-format json \
+                                --report-path /repo/gitleaks-report.json || scan_exit=$?
+                            [ -f gitleaks-report.json ] || printf '[]\n' > gitleaks-report.json
+                            exit "${scan_exit}"
+                        '''
+                    }
+
+                    def trivyFsScan = {
+                        sh '''
+                            set -euo pipefail
+                            ulimit -n 4096 || true
+                            mkdir -p "${TRIVY_CACHE_DIR}"
+                            rm -f trivy-fs-report.json
+                            scan_exit=0
+                            docker run --rm \
+                              -v "${PWD}/${TRIVY_CACHE_DIR}:/root/.cache/trivy" \
+                              -v "${PWD}:/src" \
+                              "${TRIVY_IMAGE}" \
+                              fs \
+                                --exit-code 1 \
+                                --severity CRITICAL,HIGH \
+                                --ignore-unfixed \
+                                --timeout "${TRIVY_TIMEOUT}" \
+                                --format json \
+                                --output /src/trivy-fs-report.json \
+                                --skip-files "**/.DS_Store" \
+                                --skip-dirs "/src/.git" \
+                                --skip-dirs "/src/backend/vendor" \
+                                --skip-dirs "/src/frontend/build" \
+                                --skip-dirs "/src/frontend/.dart_tool" \
+                                --skip-dirs "/src/signaling-server/node_modules" \
+                                /src || scan_exit=$?
+                            [ -f trivy-fs-report.json ] || printf '{}\n' > trivy-fs-report.json
+                            exit "${scan_exit}"
+                        '''
+                    }
+
+                    if (scansMode == 'sequential') {
+                        gitleaksScan()
+                        trivyFsScan()
+                    } else {
+                        parallel(
+                            'Secrets Scan': gitleaksScan,
+                            'Filesystem Scan': trivyFsScan
+                        )
                     }
                 }
             }
         }
 
-        stage('Approbation pour Production') {
-            when { branch 'main' }
+        stage('Build And Push Backend Image') {
+            when {
+                expression { env.IS_DEPLOY_BRANCH == 'true' }
+            }
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: "${REGISTRY_CREDENTIALS_ID}",
+                        usernameVariable: 'REGISTRY_USERNAME',
+                        passwordVariable: 'REGISTRY_PASSWORD'
+                    ),
+                ]) {
+                    sh '''
+                        set -euo pipefail
+
+                        echo "${REGISTRY_PASSWORD}" | docker login "${REGISTRY}" -u "${REGISTRY_USERNAME}" --password-stdin
+
+                        docker build \
+                          -f "${BACKEND_DOCKERFILE}" \
+                          -t "${IMAGE_REPOSITORY}:${IMAGE_TAG}" \
+                          -t "${IMAGE_REPOSITORY}:${BRANCH_IMAGE_TAG}" \
+                          .
+
+                        mkdir -p "${TRIVY_CACHE_DIR}"
+                        rm -f trivy-image-report.json
+                        docker run --rm \
+                          -v "${PWD}/${TRIVY_CACHE_DIR}:/root/.cache/trivy" \
+                          "${TRIVY_IMAGE}" \
+                          image --download-db-only --timeout "${TRIVY_TIMEOUT}"
+
+                        scan_exit=0
+                        docker run --rm \
+                          -v "${PWD}/${TRIVY_CACHE_DIR}:/root/.cache/trivy" \
+                          -v "${PWD}:/workspace" \
+                          -v /var/run/docker.sock:/var/run/docker.sock \
+                          -w /workspace \
+                          "${TRIVY_IMAGE}" \
+                          image \
+                            --exit-code 1 \
+                            --severity CRITICAL,HIGH \
+                            --ignore-unfixed \
+                            --timeout "${TRIVY_TIMEOUT}" \
+                            --format json \
+                            --output /workspace/trivy-image-report.json \
+                            "${IMAGE_REPOSITORY}:${IMAGE_TAG}" || scan_exit=$?
+
+                        [ -f trivy-image-report.json ] || printf '{}\n' > trivy-image-report.json
+                        test "${scan_exit}" -eq 0
+
+                        docker push "${IMAGE_REPOSITORY}:${IMAGE_TAG}"
+                        docker push "${IMAGE_REPOSITORY}:${BRANCH_IMAGE_TAG}"
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy Staging') {
+            when {
+                branch 'develop'
+            }
+            steps {
+                withCredentials([
+                    file(credentialsId: "${KUBECONFIG_STAGING_CREDENTIALS_ID}", variable: 'KUBECONFIG'),
+                ]) {
+                    sh '''
+                        set -euo pipefail
+
+                        docker run --rm \
+                          -e KUBECONFIG=/kube/config \
+                          -e STAGING_RELEASE="${STAGING_RELEASE}" \
+                          -e STAGING_NAMESPACE="${STAGING_NAMESPACE}" \
+                          -e IMAGE_REPOSITORY="${IMAGE_REPOSITORY}" \
+                          -e IMAGE_TAG="${IMAGE_TAG}" \
+                          -e HELM_STAGING_VALUES="${HELM_STAGING_VALUES}" \
+                          -v "${KUBECONFIG}:/kube/config:ro" \
+                          -v "${PWD}:/workspace" \
+                          -w /workspace \
+                          dtzar/helm-kubectl:3.17.3 \
+                          sh -lc '
+                            helm upgrade --install "${STAGING_RELEASE}" ./helm-chart \
+                              --namespace "${STAGING_NAMESPACE}" \
+                              --create-namespace \
+                              --set image.repository="${IMAGE_REPOSITORY}" \
+                              --set image.tag="${IMAGE_TAG}" \
+                              --values "${HELM_STAGING_VALUES}" \
+                              --atomic --timeout 5m
+                          '
+                    '''
+                }
+            }
+        }
+
+        stage('Approve Production') {
+            when {
+                branch 'main'
+            }
             steps {
                 timeout(time: 2, unit: 'DAYS') {
-                    input message: "🛡️ Déploiement en PRODUCTION de la v${APP_VERSION} ?", ok: "Oui, déployer (Zero-Downtime)"
+                    input message: "Deploy ${IMAGE_TAG} to production?", ok: 'Deploy'
                 }
             }
         }
 
-        stage('6. Déploiement Kubernetes') {
-            agent {
-                docker { image 'dtzar/helm-kubectl:latest' }
+        stage('Deploy Production') {
+            when {
+                branch 'main'
             }
             steps {
-                withKubeConfig(credentialsId: "${KUBECONFIG_ID}") {
-                    echo "🚢 Déploiement Helm sur le cluster k8s dans le namespace ${NAMESPACE}"
-                    sh """
-                    helm upgrade --install mediconnect-${DEPLOY_ENV} ./helm-chart \
-                        --namespace ${NAMESPACE} \
-                        --create-namespace \
-                        --set image.repository=${BACKEND_IMAGE} \
-                        --set image.tag=${env.APP_VERSION} \
-                        --values ./helm-chart/values-${DEPLOY_ENV}.yaml \
-                        --atomic --timeout 5m
-                    """
-                }
-            }
-        }
+                withCredentials([
+                    file(credentialsId: "${KUBECONFIG_PRODUCTION_CREDENTIALS_ID}", variable: 'KUBECONFIG'),
+                ]) {
+                    sh '''
+                        set -euo pipefail
 
-        stage('7. Tests Post-Déploiement') {
-            parallel {
-                stage('Tests intégration (Newman)') {
-                    agent { docker { image 'postman/newman:latest' } }
-                    steps {
-                        echo "🧪 Exécution des smoke tests (Tests d'API de santé)"
-                        // sh "newman run ./tests/postman/smoke-tests.json --env-var baseUrl=https://api-${DEPLOY_ENV}.mediconnect.com"
-                    }
-                }
-                stage('Tests de Pénétration DAST (OWASP ZAP)') {
-                    agent { docker { image 'softwaresecurityproject/zap-stable' } }
-                    steps {
-                        echo "🛡️ Scan dynamique des vulnérabilités API..."
-                        // sh "zap-baseline.py -t https://api-${DEPLOY_ENV}.mediconnect.com"
-                    }
+                        docker run --rm \
+                          -e KUBECONFIG=/kube/config \
+                          -e PRODUCTION_RELEASE="${PRODUCTION_RELEASE}" \
+                          -e PRODUCTION_NAMESPACE="${PRODUCTION_NAMESPACE}" \
+                          -e IMAGE_REPOSITORY="${IMAGE_REPOSITORY}" \
+                          -e IMAGE_TAG="${IMAGE_TAG}" \
+                          -e HELM_PRODUCTION_VALUES="${HELM_PRODUCTION_VALUES}" \
+                          -v "${KUBECONFIG}:/kube/config:ro" \
+                          -v "${PWD}:/workspace" \
+                          -w /workspace \
+                          dtzar/helm-kubectl:3.17.3 \
+                          sh -lc '
+                            helm upgrade --install "${PRODUCTION_RELEASE}" ./helm-chart \
+                              --namespace "${PRODUCTION_NAMESPACE}" \
+                              --create-namespace \
+                              --set image.repository="${IMAGE_REPOSITORY}" \
+                              --set image.tag="${IMAGE_TAG}" \
+                              --values "${HELM_PRODUCTION_VALUES}" \
+                              --atomic --timeout 10m
+                          '
+                    '''
                 }
             }
         }
@@ -203,20 +361,20 @@ pipeline {
 
     post {
         always {
+            archiveArtifacts artifacts: 'gitleaks-report.json,trivy-fs-report.json,trivy-image-report.json', allowEmptyArchive: true
+            sh '''
+                docker logout "${REGISTRY}" || true
+                docker compose --env-file "${LOCAL_COMPOSE_ENV_FILE}" -f docker-compose.yml -f docker-compose.local.yml --profile test down -v --remove-orphans || true
+            '''
             cleanWs()
         }
-        success {
-            echo "✅ Pipeline Terminée avec Succès."
-            // slackSend color: 'good', message: "🚀 Déploiement ${DEPLOY_ENV} réussi (v${APP_VERSION})."
-        }
+
         failure {
-            echo "❌ Pipeline Échouée. Déclenchement du Rollback Kubernetes."
-            script {
-                withKubeConfig(credentialsId: "${KUBECONFIG_ID}") {
-                    sh "helm rollback mediconnect-${DEPLOY_ENV} 0 -n ${NAMESPACE} --wait || true"
-                }
-            }
-            // slackSend color: 'danger', message: "🔥 Erreur CI/CD (${env.BRANCH_NAME}). Rollback effectué."
+            echo 'Pipeline failed. Helm deployments use --atomic, so failed upgrades are rolled back automatically.'
+        }
+
+        success {
+            echo "Jenkins CI/CD completed successfully for ${IMAGE_REPOSITORY}:${IMAGE_TAG}"
         }
     }
 }

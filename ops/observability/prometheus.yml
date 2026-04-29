@@ -2,6 +2,9 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+# Non-sensitive repository defaults only.
+# Production values must be rendered from secret-managed configuration.
+
 rule_files:
   - /etc/prometheus/prometheus-alerts.yml
 
@@ -67,6 +70,6 @@ scrape_configs:
   - job_name: laravel-app-metrics
     metrics_path: /api/ops/metrics
     params:
-      token: ["change-me-metrics-token"]
+      token: ["set-via-runtime-secret"]
     static_configs:
       - targets: ["nginx:80"]

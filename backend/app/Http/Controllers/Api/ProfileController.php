@@ -88,7 +88,7 @@ class ProfileController extends Controller
     public function updatePassword(UpdatePasswordRequest $request): JsonResponse
     {
         $user = $request->user();
-        
+
         $user->update([
             'password' => $request->validated('password'),
         ]);

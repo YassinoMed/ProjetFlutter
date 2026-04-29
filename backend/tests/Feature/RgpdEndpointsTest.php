@@ -8,6 +8,7 @@ use App\Models\FcmToken;
 use App\Models\User;
 use App\Models\UserConsent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class RgpdEndpointsTest extends TestCase
@@ -52,7 +53,7 @@ class RgpdEndpointsTest extends TestCase
 
         FcmToken::query()->create([
             'user_id' => $patient->id,
-            'token' => 'token_12345678901234567890',
+            'token' => 'fcm-test-token-rgpd-export',
             'platform' => 'ios',
             'last_seen_at_utc' => now('UTC'),
         ]);
@@ -64,28 +65,36 @@ class RgpdEndpointsTest extends TestCase
             'consented_at_utc' => now('UTC'),
         ]);
 
-        $consent = $this->actingAs($patient, 'api')->postJson('/api/rgpd/consent', [
+        Sanctum::actingAs($patient);
+
+        $consent = $this->postJson('/api/rgpd/consent', [
             'consent_type' => 'marketing',
             'consented' => false,
         ]);
 
         $consent->assertOk();
-        $consent->assertJsonPath('ok', true);
+        $consent->assertJsonPath('success', true);
 
-        $export = $this->actingAs($patient, 'api')->getJson('/api/rgpd/export');
+        Sanctum::actingAs($patient);
+
+        $export = $this->getJson('/api/rgpd/export');
         $export->assertOk();
         $export->assertJsonStructure([
-            'user',
-            'appointments',
-            'chat_messages',
-            'fcm_tokens',
-            'consents',
-            'exported_at_utc',
+            'data' => [
+                'user',
+                'appointments',
+                'chat_messages',
+                'fcm_tokens',
+                'consents',
+                'exported_at_utc',
+            ],
         ]);
 
-        $forget = $this->actingAs($patient, 'api')->deleteJson('/api/rgpd/forget');
+        Sanctum::actingAs($patient);
+
+        $forget = $this->deleteJson('/api/rgpd/forget');
         $forget->assertOk();
-        $forget->assertJsonPath('ok', true);
+        $forget->assertJsonPath('success', true);
 
         $this->assertDatabaseMissing('fcm_tokens', [
             'user_id' => $patient->id,

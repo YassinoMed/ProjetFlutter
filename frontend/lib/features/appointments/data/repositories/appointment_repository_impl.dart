@@ -40,6 +40,16 @@ class AppointmentRepositoryImpl implements AppointmentRepository {
   }
 
   @override
+  Future<Appointment> confirmAppointment(String appointmentId) {
+    return remoteDataSource.confirmAppointment(appointmentId);
+  }
+
+  @override
+  Future<Appointment> rejectAppointment(String appointmentId) {
+    return remoteDataSource.rejectAppointment(appointmentId);
+  }
+
+  @override
   Future<Appointment> getAppointmentDetail(String id) {
     return remoteDataSource.getAppointmentDetail(id);
   }

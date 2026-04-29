@@ -7,6 +7,7 @@ use App\Models\Doctor;
 use App\Models\DoctorSchedule;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class DoctorSearchTest extends TestCase
@@ -16,8 +17,6 @@ class DoctorSearchTest extends TestCase
     private User $patient;
 
     private User $doctor;
-
-    private string $token;
 
     protected function setUp(): void
     {
@@ -47,15 +46,13 @@ class DoctorSearchTest extends TestCase
             'slot_duration_minutes' => 30,
             'is_active' => true,
         ]);
-
-        $this->token = auth('api')->login($this->patient);
     }
 
     public function test_list_doctors(): void
     {
-        $response = $this->getJson('/api/doctors', [
-            'Authorization' => 'Bearer ' . $this->token,
-        ]);
+        Sanctum::actingAs($this->patient);
+
+        $response = $this->getJson('/api/doctors');
 
         $response->assertOk()
             ->assertJsonStructure([
@@ -69,15 +66,15 @@ class DoctorSearchTest extends TestCase
                         'rating',
                     ],
                 ],
-                'next_cursor',
+                'meta' => ['next_cursor'],
             ]);
     }
 
     public function test_search_by_specialty(): void
     {
-        $response = $this->getJson('/api/doctors?specialty=Cardiologie', [
-            'Authorization' => 'Bearer ' . $this->token,
-        ]);
+        Sanctum::actingAs($this->patient);
+
+        $response = $this->getJson('/api/doctors?specialty=Cardiologie');
 
         $response->assertOk();
         $data = $response->json('data');
@@ -87,9 +84,9 @@ class DoctorSearchTest extends TestCase
 
     public function test_search_by_city(): void
     {
-        $response = $this->getJson('/api/doctors?city=Paris', [
-            'Authorization' => 'Bearer ' . $this->token,
-        ]);
+        Sanctum::actingAs($this->patient);
+
+        $response = $this->getJson('/api/doctors?city=Paris');
 
         $response->assertOk();
         $data = $response->json('data');
@@ -98,42 +95,44 @@ class DoctorSearchTest extends TestCase
 
     public function test_search_by_query(): void
     {
-        $response = $this->getJson('/api/doctors?q=' . $this->doctor->first_name, [
-            'Authorization' => 'Bearer ' . $this->token,
-        ]);
+        Sanctum::actingAs($this->patient);
+
+        $response = $this->getJson('/api/doctors?q='.$this->doctor->first_name);
 
         $response->assertOk();
     }
 
     public function test_show_doctor(): void
     {
-        $response = $this->getJson('/api/doctors/' . $this->doctor->id, [
-            'Authorization' => 'Bearer ' . $this->token,
-        ]);
+        Sanctum::actingAs($this->patient);
+
+        $response = $this->getJson('/api/doctors/'.$this->doctor->id);
 
         $response->assertOk()
             ->assertJsonStructure([
-                'doctor' => [
-                    'user_id',
-                    'first_name',
-                    'last_name',
-                    'specialty',
-                    'bio',
-                    'schedules',
+                'data' => [
+                    'doctor' => [
+                        'user_id',
+                        'first_name',
+                        'last_name',
+                        'specialty',
+                        'bio',
+                        'schedules',
+                    ],
                 ],
             ]);
     }
 
     public function test_get_specialties(): void
     {
-        $response = $this->getJson('/api/doctors/specialties', [
-            'Authorization' => 'Bearer ' . $this->token,
-        ]);
+        Sanctum::actingAs($this->patient);
+
+        $response = $this->getJson('/api/doctors/specialties');
 
         $response->assertOk()
-            ->assertJsonStructure(['specialties']);
+            ->assertJsonStructure(['data' => ['specialties']]);
 
-        $this->assertContains('Cardiologie', $response->json('specialties'));
+        $this->assertContains('Cardiologie', $response->json('data.specialties'));
     }
 
     public function test_requires_authentication(): void

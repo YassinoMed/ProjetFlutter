@@ -45,6 +45,7 @@ export default function () {
         const registerRes = http.post(`${BASE_URL}/auth/register`, JSON.stringify({
             email: email,
             password: 'Password123!',
+            password_confirmation: 'Password123!',
             first_name: 'Load',
             last_name: `Test_${__VU}`,
         }), { headers: { 'Content-Type': 'application/json' } });
@@ -54,7 +55,7 @@ export default function () {
 
         if (registerRes.status === 201) {
             const body = JSON.parse(registerRes.body);
-            token = body.tokens?.access_token || '';
+            token = body.data?.token || '';
         }
 
         // Login
@@ -70,7 +71,7 @@ export default function () {
 
         if (loginRes.status === 200) {
             const body = JSON.parse(loginRes.body);
-            token = body.tokens?.access_token || token;
+            token = body.data?.token || token;
         }
     });
 

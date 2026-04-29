@@ -25,7 +25,8 @@ class TenantMiddleware
     {
         // Skip tenant initialization only for non-API/admin routes and the tenants listing endpoint
         if (
-            $request->is('api/tenants') || 
+            $request->is('api/tenants') ||
+            $request->is('api/ops/*') ||
             (! $request->is('api/*') && ! $request->is('admin*') && ! $request->is('admin'))
         ) {
             return $next($request);

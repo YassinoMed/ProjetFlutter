@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\AppointmentStatus;
-use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use App\Models\ChatMessage;
@@ -67,7 +66,10 @@ class ReportController extends Controller
 
     private function calculateRate(int $part, int $total): string
     {
-        if ($total === 0) return '0%';
-        return round(($part / $total) * 100, 1) . '%';
+        if ($total === 0) {
+            return '0%';
+        }
+
+        return round(($part / $total) * 100, 1).'%';
     }
 }

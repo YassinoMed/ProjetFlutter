@@ -10,8 +10,8 @@ use Illuminate\Http\Request;
 
 class DoctorApprovalController extends Controller
 {
-    use SearchesUsers;
     use LogsAdminActivity;
+    use SearchesUsers;
 
     public function index(Request $request)
     {
@@ -21,10 +21,10 @@ class DoctorApprovalController extends Controller
 
         // Filter by approval status
         match ($status) {
-            'pending'  => $query->where('is_approved', false)->where('is_rejected', false),
+            'pending' => $query->where('is_approved', false)->where('is_rejected', false),
             'approved' => $query->where('is_approved', true),
             'rejected' => $query->where('is_rejected', true),
-            default    => null,
+            default => null,
         };
 
         // Refactored: use shared trait + RPPS-specific search
@@ -37,10 +37,10 @@ class DoctorApprovalController extends Controller
         $doctors = $query->orderByDesc('created_at')->paginate(15);
 
         $stats = [
-            'pending'  => Doctor::where('is_approved', false)->where('is_rejected', false)->count(),
+            'pending' => Doctor::where('is_approved', false)->where('is_rejected', false)->count(),
             'approved' => Doctor::where('is_approved', true)->count(),
             'rejected' => Doctor::where('is_rejected', true)->count(),
-            'total'    => Doctor::count(),
+            'total' => Doctor::count(),
         ];
 
         return view('admin.doctors.index', compact('doctors', 'stats', 'status'));
@@ -60,7 +60,7 @@ class DoctorApprovalController extends Controller
         // Refactored: uses LogsAdminActivity trait
         $this->logAdminAction('doctor_approved', [
             'doctor_user_id' => $doctorUserId,
-            'rpps'           => $doctor->rpps,
+            'rpps' => $doctor->rpps,
         ]);
 
         return redirect()->route('admin.doctors.index')
@@ -76,16 +76,16 @@ class DoctorApprovalController extends Controller
         $doctor = Doctor::where('user_id', $doctorUserId)->firstOrFail();
 
         $doctor->update([
-            'is_approved'      => false,
-            'is_rejected'      => true,
+            'is_approved' => false,
+            'is_rejected' => true,
             'rejection_reason' => $request->input('rejection_reason'),
-            'rejected_by'      => auth('web')->id(),
+            'rejected_by' => auth('web')->id(),
         ]);
 
         // Refactored: uses LogsAdminActivity trait
         $this->logAdminAction('doctor_rejected', [
             'doctor_user_id' => $doctorUserId,
-            'reason'         => $request->input('rejection_reason'),
+            'reason' => $request->input('rejection_reason'),
         ]);
 
         return redirect()->route('admin.doctors.index')

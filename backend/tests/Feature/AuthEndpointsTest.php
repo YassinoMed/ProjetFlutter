@@ -15,15 +15,18 @@ class AuthEndpointsTest extends TestCase
         $response = $this->postJson('/api/auth/register', [
             'email' => 'patient@example.com',
             'password' => 'VeryStrongPassword123!',
+            'password_confirmation' => 'VeryStrongPassword123!',
             'first_name' => 'Pat',
             'last_name' => 'Ient',
         ]);
 
         $response->assertCreated();
-        $response->assertJsonPath('user.email', 'patient@example.com');
+        $response->assertJsonPath('data.user.email', 'patient@example.com');
         $response->assertJsonStructure([
-            'user' => ['id', 'email', 'first_name', 'last_name', 'role'],
-            'tokens' => ['access_token', 'refresh_token', 'token_type'],
+            'data' => [
+                'user' => ['id', 'email', 'first_name', 'last_name', 'role'],
+                'token',
+            ],
         ]);
 
         $this->assertDatabaseCount('users', 1);
@@ -45,7 +48,7 @@ class AuthEndpointsTest extends TestCase
         ]);
 
         $response->assertOk();
-        $response->assertJsonStructure(['tokens' => ['access_token', 'refresh_token']]);
+        $response->assertJsonStructure(['data' => ['user', 'token', 'device_approved']]);
     }
 
     public function test_me_requires_auth(): void

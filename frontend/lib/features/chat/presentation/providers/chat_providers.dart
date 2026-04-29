@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mediconnect_pro/core/network/dio_client.dart';
+import 'package:mediconnect_pro/core/security/e2ee_chat_crypto_service.dart';
 import 'package:mediconnect_pro/features/auth/presentation/providers/auth_provider.dart';
 import 'package:mediconnect_pro/features/chat/data/datasources/chat_remote_datasource.dart';
-import 'package:mediconnect_pro/features/chat/data/models/chat_message_model.dart';
 import 'package:mediconnect_pro/features/chat/domain/entities/chat_entities.dart';
 
 final chatRemoteDataSourceProvider = Provider<ChatRemoteDataSource>((ref) {
@@ -14,11 +14,13 @@ final chatRemoteDataSourceProvider = Provider<ChatRemoteDataSource>((ref) {
   return ChatRemoteDataSourceImpl(
     dio: dio,
     currentUserId: currentUserId,
+    e2eeCrypto: ref.watch(e2eeChatCryptoServiceProvider),
   );
 });
 
 class ConversationsNotifier extends AsyncNotifier<List<Conversation>> {
-  ChatRemoteDataSource get _dataSource => ref.read(chatRemoteDataSourceProvider);
+  ChatRemoteDataSource get _dataSource =>
+      ref.read(chatRemoteDataSourceProvider);
 
   @override
   Future<List<Conversation>> build() async {
@@ -54,7 +56,8 @@ class ConversationsNotifier extends AsyncNotifier<List<Conversation>> {
 
       found = true;
       final shouldRefreshPreview =
-          _compareInstants(message.timestamp, conversation.lastMessageTime) >= 0;
+          _compareInstants(message.timestamp, conversation.lastMessageTime) >=
+              0;
       updated.add(
         conversation.copyWith(
           lastMessage:
@@ -104,8 +107,7 @@ class ConversationsNotifier extends AsyncNotifier<List<Conversation>> {
   }
 
   List<Conversation> _sortConversations(List<Conversation> conversations) {
-    final sorted = [...conversations]
-      ..sort((a, b) {
+    final sorted = [...conversations]..sort((a, b) {
         final byDate = _compareInstants(b.lastMessageTime, a.lastMessageTime);
         if (byDate != 0) {
           return byDate;
@@ -131,7 +133,8 @@ class MessageThreadNotifier
     extends AutoDisposeFamilyAsyncNotifier<List<ChatMessage>, String> {
   static const _optimisticIdPrefix = 'local-message-';
 
-  ChatRemoteDataSource get _dataSource => ref.read(chatRemoteDataSourceProvider);
+  ChatRemoteDataSource get _dataSource =>
+      ref.read(chatRemoteDataSourceProvider);
 
   @override
   Future<List<ChatMessage>> build(String arg) async {
@@ -141,10 +144,24 @@ class MessageThreadNotifier
 
   Future<void> syncFromRemote() async {
     final current = state.valueOrNull ?? const <ChatMessage>[];
+    final knownIds = current.map((message) => message.id).toSet();
 
     try {
       final remoteMessages = await _dataSource.getMessages(arg);
-      state = AsyncData(_mergeMessages(current, remoteMessages));
+      final merged = _mergeMessages(current, remoteMessages);
+      final hasNewIncoming = remoteMessages.any(
+        (message) => !message.isMe && !knownIds.contains(message.id),
+      );
+
+      state = AsyncData(merged);
+
+      if (merged.isNotEmpty) {
+        ref.read(conversationsProvider.notifier).applyMessagePreview(
+              arg,
+              merged.last,
+              incrementUnread: hasNewIncoming,
+            );
+      }
     } catch (error, stackTrace) {
       if (current.isEmpty) {
         state = AsyncError(error, stackTrace);
@@ -184,7 +201,9 @@ class MessageThreadNotifier
           .toList();
 
       state = AsyncData(_mergeMessages(withoutOptimistic, [persisted]));
-      ref.read(conversationsProvider.notifier).applyMessagePreview(arg, persisted);
+      ref
+          .read(conversationsProvider.notifier)
+          .applyMessagePreview(arg, persisted);
     } catch (_) {
       final rollback = (state.valueOrNull ?? const <ChatMessage>[])
           .where((message) => message.id != optimisticMessage.id)
@@ -210,24 +229,9 @@ class MessageThreadNotifier
   }
 
   void applyRealtimeEvent(String eventName, Map<String, dynamic> data) {
-    final current = state.valueOrNull;
-
     if (eventName == 'App\\Events\\ChatMessageSent' ||
         data['type'] == 'CHAT_MESSAGE') {
-      final payload = data['message'];
-      if (payload is! Map<String, dynamic>) {
-        unawaited(syncFromRemote());
-        return;
-      }
-
-      final message = _dataSourceMessage(payload);
-      final merged = _mergeMessages(current ?? const <ChatMessage>[], [message]);
-      state = AsyncData(merged);
-      ref.read(conversationsProvider.notifier).applyMessagePreview(
-            arg,
-            message,
-            incrementUnread: !message.isMe,
-          );
+      unawaited(syncFromRemote());
       return;
     }
 
@@ -243,16 +247,6 @@ class MessageThreadNotifier
 
       _updateMessageStatus(messageId, status);
     }
-  }
-
-  ChatMessage _dataSourceMessage(Map<String, dynamic> json) {
-    final currentUserId = ref.read(currentUserProvider)?.id ?? '';
-
-    return ChatMessageModel.fromJson(
-      json,
-      currentUserId: currentUserId,
-      consultationId: arg,
-    );
   }
 
   void _updateMessageStatus(String messageId, MessageStatus status) {

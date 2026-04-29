@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class FcmTokensTest extends TestCase
@@ -20,12 +21,13 @@ class FcmTokensTest extends TestCase
             'role' => 'PATIENT',
         ]);
 
-        $token = 'token_12345678901234567890';
+        $token = 'fcm-test-token-user-upsert';
 
-        $this->actingAs($user, 'api')
-            ->postJson('/api/fcm/tokens', ['token' => $token, 'platform' => 'ios'])
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/fcm/tokens', ['token' => $token, 'platform' => 'ios'])
             ->assertOk()
-            ->assertJsonPath('ok', true);
+            ->assertJsonPath('success', true);
 
         $this->assertDatabaseHas('fcm_tokens', [
             'user_id' => $user->id,
@@ -33,10 +35,12 @@ class FcmTokensTest extends TestCase
             'platform' => 'ios',
         ]);
 
-        $this->actingAs($user, 'api')
-            ->deleteJson('/api/fcm/tokens', ['token' => $token])
+        Sanctum::actingAs($user);
+
+        $this->deleteJson('/api/fcm/tokens', ['token' => $token])
             ->assertOk()
-            ->assertJsonPath('ok', true);
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.deleted', 1);
 
         $this->assertDatabaseMissing('fcm_tokens', [
             'user_id' => $user->id,

@@ -32,10 +32,10 @@ class AppointmentController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->whereHas('patient', function ($pq) use ($search) {
                     $pq->where('first_name', 'LIKE', "%{$search}%")
-                       ->orWhere('last_name', 'LIKE', "%{$search}%");
+                        ->orWhere('last_name', 'LIKE', "%{$search}%");
                 })->orWhereHas('doctor', function ($dq) use ($search) {
                     $dq->where('first_name', 'LIKE', "%{$search}%")
-                       ->orWhere('last_name', 'LIKE', "%{$search}%");
+                        ->orWhere('last_name', 'LIKE', "%{$search}%");
                 });
             });
         }
@@ -43,8 +43,8 @@ class AppointmentController extends Controller
         $appointments = $query->orderByDesc('starts_at_utc')->paginate(15);
 
         $stats = [
-            'today'     => Appointment::whereDate('starts_at_utc', today())->count(),
-            'pending'   => Appointment::where('status', AppointmentStatus::REQUESTED)->count(),
+            'today' => Appointment::whereDate('starts_at_utc', today())->count(),
+            'pending' => Appointment::where('status', AppointmentStatus::REQUESTED)->count(),
             'confirmed' => Appointment::where('status', AppointmentStatus::CONFIRMED)->count(),
             'cancelled' => Appointment::where('status', AppointmentStatus::CANCELLED)->count(),
         ];
@@ -73,14 +73,14 @@ class AppointmentController extends Controller
         }
 
         $appointment->update([
-            'status'        => AppointmentStatus::CANCELLED,
-            'cancel_reason' => '[ADMIN] ' . $request->input('cancel_reason'),
+            'status' => AppointmentStatus::CANCELLED,
+            'cancel_reason' => '[ADMIN] '.$request->input('cancel_reason'),
         ]);
 
         // Refactored: added missing audit log for force cancel
         $this->logAdminAction('appointment_force_cancelled', [
             'appointment_id' => $appointmentId,
-            'reason'         => $request->input('cancel_reason'),
+            'reason' => $request->input('cancel_reason'),
         ]);
 
         return redirect()->route('admin.appointments.index')

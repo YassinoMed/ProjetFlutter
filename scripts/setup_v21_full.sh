@@ -4,7 +4,7 @@ set -euo pipefail
 
 echo "============================================================="
 echo "  MediConnect Pro – Setup / Reset / Migration tout-en-un"
-echo "  PHP 8.3–8.4 friendly – Reverb au lieu de laravel-websockets"
+echo "  Requires PHP 8.4 – Reverb au lieu de laravel-websockets"
 echo "============================================================="
 echo ""
 
@@ -17,7 +17,7 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 BACKEND_DIR="${ROOT_DIR}/backend"
 LOG_FILE="${ROOT_DIR}/setup_full.log"
 
-PHP_VERSION="8.3"           # ou 8.4
+PHP_VERSION="8.4"
 LARAVEL_VERSION="^11.0"
 MINIMUM_STABILITY="stable"
 
@@ -74,7 +74,7 @@ section "1/8 — Vérification de l'environnement"
 
 # PHP
 if ! command -v php >/dev/null 2>&1; then
-    fail "php introuvable. Installe PHP 8.3+ (brew install php@8.3) puis réessaie."
+    fail "php introuvable. Installe PHP 8.4 (brew install php) puis réessaie."
     exit 1
 fi
 
@@ -82,11 +82,11 @@ PHP_MM="$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')"
 echo "  PHP détecté : ${PHP_MM}"
 
 case "${PHP_MM}" in
-  8.2|8.3|8.4)
+  8.4)
     ok "Version PHP compatible"
     ;;
   *)
-    fail "Version PHP ${PHP_MM} non supportée (attendue: 8.2, 8.3 ou 8.4)"
+    fail "Version PHP ${PHP_MM} non supportée (attendue: 8.4)"
     echo "  Installe PHP via Homebrew :"
     echo "    brew install php"
     echo "    brew unlink php || true"

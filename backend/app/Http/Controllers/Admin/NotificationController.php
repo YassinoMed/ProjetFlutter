@@ -24,8 +24,8 @@ class NotificationController extends Controller
 
         $stats = [
             'total_devices' => FcmToken::count(),
-            'active_today'  => FcmToken::where('last_seen_at_utc', '>=', now()->subDay())->count(),
-            'unique_users'  => FcmToken::distinct('user_id')->count('user_id'),
+            'active_today' => FcmToken::where('last_seen_at_utc', '>=', now()->subDay())->count(),
+            'unique_users' => FcmToken::distinct('user_id')->count('user_id'),
         ];
 
         return view('admin.notifications.index', compact('tokens', 'stats'));

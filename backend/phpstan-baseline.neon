@@ -1,0 +1,2143 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Events/ConversationMessageReceiptUpdated.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Http/Controllers/Admin/AuthController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$first_name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Admin/DoctorApprovalController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$last_name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Admin/DoctorApprovalController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$first_name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Admin/ExportController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$last_name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Admin/ExportController.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 4
+			path: app/Http/Controllers/Admin/ExportController.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Carbon\\Carbon\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Http/Controllers/Admin/ExportController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>first_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Http/Controllers/Admin/ExportController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>last_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Http/Controllers/Admin/ExportController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$is_active\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Admin/UserController.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Http/Controllers/Api/AuthController.php
+
+		-
+			message: '#^Using nullsafe property access on non\-nullable type Laravel\\Sanctum\\PersonalAccessToken\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Api/AuthController.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between int and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Http/Controllers/Api/DeviceController.php
+
+		-
+			message: '#^Using nullsafe property access on non\-nullable type Laravel\\Sanctum\\PersonalAccessToken\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 3
+			path: app/Http/Controllers/Api/DeviceController.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Http/Controllers/Api/DocumentController.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 3
+			path: app/Http/Controllers/Api/EncryptedAttachmentController.php
+
+		-
+			message: '#^Match arm comparison between Illuminate\\Support\\Stringable and ''chat_message'' is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/Api/EncryptedAttachmentController.php
+
+		-
+			message: '#^Match arm comparison between Illuminate\\Support\\Stringable and ''medical_record'' is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/Api/EncryptedAttachmentController.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 2
+			path: app/Http/Controllers/Api/MessageController.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Http/Controllers/Api/RgpdController.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 3
+			path: app/Http/Controllers/Api/TeleconsultationController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 4
+			path: app/Http/Controllers/Api/TeleconsultationController.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Http/Middleware/AdminMiddleware.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 4
+			path: app/Http/Middleware/TraceRequestMiddleware.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Middleware/TraceRequestMiddleware.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\AppointmentResource\:\:\$cancel_reason\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/AppointmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\AppointmentResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/AppointmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\AppointmentResource\:\:\$doctor_user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/AppointmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\AppointmentResource\:\:\$ends_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/AppointmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\AppointmentResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/AppointmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\AppointmentResource\:\:\$metadata_encrypted\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/AppointmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\AppointmentResource\:\:\$patient_user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/AppointmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\AppointmentResource\:\:\$starts_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/AppointmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\AppointmentResource\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/AppointmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\AppointmentResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/AppointmentResource.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>first_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Http/Resources/AppointmentResource.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>last_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Http/Resources/AppointmentResource.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Resources/AppointmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CallEventResource\:\:\$actor_user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CallEventResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CallEventResource\:\:\$call_session_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CallEventResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CallEventResource\:\:\$direction\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CallEventResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CallEventResource\:\:\$event_name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CallEventResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CallEventResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CallEventResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CallEventResource\:\:\$occurred_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CallEventResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CallEventResource\:\:\$payload\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CallEventResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CallEventResource\:\:\$target_user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CallEventResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CallEventResource\:\:\$teleconsultation_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CallEventResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CallSessionResource\:\:\$accepted_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CallSessionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CallSessionResource\:\:\$call_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CallSessionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CallSessionResource\:\:\$consultation_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CallSessionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CallSessionResource\:\:\$conversation_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CallSessionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CallSessionResource\:\:\$current_state\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CallSessionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CallSessionResource\:\:\$end_reason\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CallSessionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CallSessionResource\:\:\$ended_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CallSessionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CallSessionResource\:\:\$ended_by_user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CallSessionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CallSessionResource\:\:\$expires_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CallSessionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CallSessionResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CallSessionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CallSessionResource\:\:\$initiated_by_user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CallSessionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CallSessionResource\:\:\$participants\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CallSessionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CallSessionResource\:\:\$server_metadata\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CallSessionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CallSessionResource\:\:\$started_ringing_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CallSessionResource.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 3
+			path: app/Http/Resources/CallSessionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ChatMessageResource\:\:\$algorithm\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ChatMessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ChatMessageResource\:\:\$ciphertext\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ChatMessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ChatMessageResource\:\:\$consultation_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ChatMessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ChatMessageResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ChatMessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ChatMessageResource\:\:\$key_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ChatMessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ChatMessageResource\:\:\$metadata_encrypted\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ChatMessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ChatMessageResource\:\:\$nonce\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ChatMessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ChatMessageResource\:\:\$recipient_user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ChatMessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ChatMessageResource\:\:\$sender_user_id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Resources/ChatMessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ChatMessageResource\:\:\$sent_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ChatMessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ChatMessageResource\:\:\$statuses\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Resources/ChatMessageResource.php
+
+		-
+			message: '#^Call to an undefined method App\\Http\\Resources\\ChatMessageResource\:\:relationLoaded\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Resources/ChatMessageResource.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Http/Resources/ChatMessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ConversationParticipantResource\:\:\$is_active\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ConversationParticipantResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ConversationParticipantResource\:\:\$joined_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ConversationParticipantResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ConversationParticipantResource\:\:\$last_delivered_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ConversationParticipantResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ConversationParticipantResource\:\:\$last_read_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ConversationParticipantResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ConversationParticipantResource\:\:\$last_seen_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ConversationParticipantResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ConversationParticipantResource\:\:\$role\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ConversationParticipantResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ConversationParticipantResource\:\:\$user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ConversationParticipantResource.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Resources/ConversationParticipantResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ConversationResource\:\:\$consultation_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ConversationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ConversationResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ConversationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ConversationResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ConversationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ConversationResource\:\:\$last_message_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ConversationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ConversationResource\:\:\$server_metadata\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ConversationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ConversationResource\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ConversationResource.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Resources/ConversationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorProfileResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DoctorProfileResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorProfileResource\:\:\$rpps\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DoctorProfileResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorProfileResource\:\:\$specialty\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DoctorProfileResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorProfileResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DoctorProfileResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorProfileResource\:\:\$user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DoctorProfileResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorSearchResource\:\:\$address\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DoctorSearchResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorSearchResource\:\:\$avatar_url\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DoctorSearchResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorSearchResource\:\:\$bio\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DoctorSearchResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorSearchResource\:\:\$city\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DoctorSearchResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorSearchResource\:\:\$consultation_fee\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DoctorSearchResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorSearchResource\:\:\$is_available_for_video\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DoctorSearchResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorSearchResource\:\:\$latitude\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DoctorSearchResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorSearchResource\:\:\$longitude\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DoctorSearchResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorSearchResource\:\:\$rpps\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DoctorSearchResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorSearchResource\:\:\$specialty\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DoctorSearchResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorSearchResource\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Http/Resources/DoctorSearchResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorSearchResource\:\:\$user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DoctorSearchResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorSecretaryDelegationResource\:\:\$activated_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DoctorSecretaryDelegationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorSecretaryDelegationResource\:\:\$doctor\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Http/Resources/DoctorSecretaryDelegationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorSecretaryDelegationResource\:\:\$doctor_user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DoctorSecretaryDelegationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorSecretaryDelegationResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DoctorSecretaryDelegationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorSecretaryDelegationResource\:\:\$invitations\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DoctorSecretaryDelegationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorSecretaryDelegationResource\:\:\$invited_email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DoctorSecretaryDelegationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorSecretaryDelegationResource\:\:\$invited_first_name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DoctorSecretaryDelegationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorSecretaryDelegationResource\:\:\$invited_last_name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DoctorSecretaryDelegationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorSecretaryDelegationResource\:\:\$last_used_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DoctorSecretaryDelegationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorSecretaryDelegationResource\:\:\$permissions\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DoctorSecretaryDelegationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorSecretaryDelegationResource\:\:\$revoked_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DoctorSecretaryDelegationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorSecretaryDelegationResource\:\:\$secretary\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Http/Resources/DoctorSecretaryDelegationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorSecretaryDelegationResource\:\:\$secretary_user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DoctorSecretaryDelegationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorSecretaryDelegationResource\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DoctorSecretaryDelegationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DoctorSecretaryDelegationResource\:\:\$suspended_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DoctorSecretaryDelegationResource.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 3
+			path: app/Http/Resources/DoctorSecretaryDelegationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentEntityResource\:\:\$confidence_score\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentEntityResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentEntityResource\:\:\$entity_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentEntityResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentEntityResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentEntityResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentEntityResource\:\:\$is_sensitive\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentEntityResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentEntityResource\:\:\$label\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentEntityResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentEntityResource\:\:\$qualifiers\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentEntityResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentEntityResource\:\:\$value_encrypted\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentEntityResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentEntityResource\:\:\$version\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentEntityResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentExtractionResource\:\:\$completed_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentExtractionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentExtractionResource\:\:\$confidence_score\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentExtractionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentExtractionResource\:\:\$engine\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentExtractionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentExtractionResource\:\:\$error_code\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentExtractionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentExtractionResource\:\:\$error_message_sanitized\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentExtractionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentExtractionResource\:\:\$failed_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentExtractionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentExtractionResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentExtractionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentExtractionResource\:\:\$language_code\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentExtractionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentExtractionResource\:\:\$meta\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentExtractionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentExtractionResource\:\:\$missing_sections\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentExtractionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentExtractionResource\:\:\$normalized_text_encrypted\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentExtractionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentExtractionResource\:\:\$raw_text_encrypted\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentExtractionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentExtractionResource\:\:\$source\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentExtractionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentExtractionResource\:\:\$started_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentExtractionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentExtractionResource\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentExtractionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentExtractionResource\:\:\$structured_payload\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentExtractionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentExtractionResource\:\:\$version\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentExtractionResource.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Resources/DocumentExtractionResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentProcessingJobResource\:\:\$attempt\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentProcessingJobResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentProcessingJobResource\:\:\$completed_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentProcessingJobResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentProcessingJobResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentProcessingJobResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentProcessingJobResource\:\:\$error_code\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentProcessingJobResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentProcessingJobResource\:\:\$error_message_sanitized\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentProcessingJobResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentProcessingJobResource\:\:\$failed_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentProcessingJobResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentProcessingJobResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentProcessingJobResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentProcessingJobResource\:\:\$job_type\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Resources/DocumentProcessingJobResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentProcessingJobResource\:\:\$meta\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentProcessingJobResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentProcessingJobResource\:\:\$queue_name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentProcessingJobResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentProcessingJobResource\:\:\$started_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentProcessingJobResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentProcessingJobResource\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentProcessingJobResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentProcessingJobResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentProcessingJobResource.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Resources/DocumentProcessingJobResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$classification_confidence\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$doctor_user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$document_date_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$document_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$entities\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$extraction_status\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$failed_at_utc\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$file_extension\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$file_size_bytes\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$language_code\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$last_error_code\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$last_error_message_sanitized\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$latestExtraction\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$mime_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$ocr_required\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$ocr_used\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$original_filename\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$patient_user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$processed_at_utc\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$processingJobs\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$processing_status\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$source_metadata\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$summaries\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$summary_status\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$tags\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$uploaded_by_user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentResource\:\:\$urgency_level\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 8
+			path: app/Http/Resources/DocumentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentSummaryResource\:\:\$audience\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentSummaryResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentSummaryResource\:\:\$confidence_score\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentSummaryResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentSummaryResource\:\:\$factual_basis\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentSummaryResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentSummaryResource\:\:\$format\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentSummaryResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentSummaryResource\:\:\$generated_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentSummaryResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentSummaryResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentSummaryResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentSummaryResource\:\:\$missing_fields\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentSummaryResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentSummaryResource\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentSummaryResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentSummaryResource\:\:\$structured_payload\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentSummaryResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentSummaryResource\:\:\$summary_text_encrypted\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentSummaryResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\DocumentSummaryResource\:\:\$version\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/DocumentSummaryResource.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 3
+			path: app/Http/Resources/DocumentSummaryResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EncryptedAttachmentResource\:\:\$algorithm\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EncryptedAttachmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EncryptedAttachmentResource\:\:\$attachable_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EncryptedAttachmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EncryptedAttachmentResource\:\:\$attachable_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EncryptedAttachmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EncryptedAttachmentResource\:\:\$checksum_sha256\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EncryptedAttachmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EncryptedAttachmentResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EncryptedAttachmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EncryptedAttachmentResource\:\:\$encrypted_key\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EncryptedAttachmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EncryptedAttachmentResource\:\:\$expires_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EncryptedAttachmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EncryptedAttachmentResource\:\:\$file_size_bytes\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EncryptedAttachmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EncryptedAttachmentResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EncryptedAttachmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EncryptedAttachmentResource\:\:\$key_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EncryptedAttachmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EncryptedAttachmentResource\:\:\$mime_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EncryptedAttachmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EncryptedAttachmentResource\:\:\$nonce\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EncryptedAttachmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EncryptedAttachmentResource\:\:\$original_filename\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EncryptedAttachmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\EncryptedAttachmentResource\:\:\$owner_user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/EncryptedAttachmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\MedicalRecordMetadataResource\:\:\$category\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/MedicalRecordMetadataResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\MedicalRecordMetadataResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/MedicalRecordMetadataResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\MedicalRecordMetadataResource\:\:\$doctor_user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/MedicalRecordMetadataResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\MedicalRecordMetadataResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/MedicalRecordMetadataResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\MedicalRecordMetadataResource\:\:\$metadata_encrypted\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/MedicalRecordMetadataResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\MedicalRecordMetadataResource\:\:\$patient_user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/MedicalRecordMetadataResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\MedicalRecordMetadataResource\:\:\$recorded_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/MedicalRecordMetadataResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\MedicalRecordMetadataResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/MedicalRecordMetadataResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\MessageResource\:\:\$ciphertext\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/MessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\MessageResource\:\:\$client_message_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/MessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\MessageResource\:\:\$conversation_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/MessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\MessageResource\:\:\$e2ee_version\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/MessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\MessageResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/MessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\MessageResource\:\:\$message_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/MessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\MessageResource\:\:\$nonce\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/MessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\MessageResource\:\:\$receipts\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/MessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\MessageResource\:\:\$sender_key_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/MessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\MessageResource\:\:\$sender_user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/MessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\MessageResource\:\:\$sent_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/MessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\MessageResource\:\:\$server_metadata\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/MessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\MessageResource\:\:\$server_received_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/MessageResource.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Http/Resources/MessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\PatientProfileResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/PatientProfileResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\PatientProfileResource\:\:\$date_of_birth\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/PatientProfileResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\PatientProfileResource\:\:\$sex\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/PatientProfileResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\PatientProfileResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/PatientProfileResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\PatientProfileResource\:\:\$user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/PatientProfileResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ScheduleSlotResource\:\:\$day_of_week\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ScheduleSlotResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ScheduleSlotResource\:\:\$end_time\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ScheduleSlotResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ScheduleSlotResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ScheduleSlotResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ScheduleSlotResource\:\:\$is_active\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ScheduleSlotResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ScheduleSlotResource\:\:\$slot_duration_minutes\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ScheduleSlotResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ScheduleSlotResource\:\:\$start_time\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ScheduleSlotResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TeleconsultationResource\:\:\$appointment_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TeleconsultationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TeleconsultationResource\:\:\$call_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TeleconsultationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TeleconsultationResource\:\:\$cancellation_reason\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TeleconsultationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TeleconsultationResource\:\:\$conversation_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TeleconsultationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TeleconsultationResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TeleconsultationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TeleconsultationResource\:\:\$currentCallSession\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TeleconsultationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TeleconsultationResource\:\:\$current_call_session_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TeleconsultationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TeleconsultationResource\:\:\$doctor_user_id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Resources/TeleconsultationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TeleconsultationResource\:\:\$ended_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TeleconsultationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TeleconsultationResource\:\:\$expires_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TeleconsultationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TeleconsultationResource\:\:\$failure_reason\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TeleconsultationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TeleconsultationResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TeleconsultationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TeleconsultationResource\:\:\$participants\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TeleconsultationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TeleconsultationResource\:\:\$patient_user_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Resources/TeleconsultationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TeleconsultationResource\:\:\$ringing_started_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TeleconsultationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TeleconsultationResource\:\:\$scheduled_ends_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TeleconsultationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TeleconsultationResource\:\:\$scheduled_starts_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TeleconsultationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TeleconsultationResource\:\:\$server_metadata\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TeleconsultationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TeleconsultationResource\:\:\$started_at_utc\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TeleconsultationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TeleconsultationResource\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TeleconsultationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TeleconsultationResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TeleconsultationResource.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 3
+			path: app/Http/Resources/TeleconsultationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\UserResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\UserResource\:\:\$doctorProfile\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\UserResource\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\UserResource\:\:\$first_name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\UserResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\UserResource\:\:\$last_name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\UserResource\:\:\$patientProfile\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\UserResource\:\:\$phone\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\UserResource\:\:\$role\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\UserResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/UserResource.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Resources/UserResource.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Jobs/ProcessDocumentJob.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:notify\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Jobs/SendAppointmentReminderJob.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:notify\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Jobs/SendTeleconsultationReminders.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:notify\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: app/Listeners/SendAppointmentNotificationsListener.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: app/Models/ChatMessage.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: app/Models/MedicalRecordMetadata.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between Carbon\\Carbon and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/Message.php
+
+		-
+			message: '#^Cannot cast App\\Enums\\AppointmentStatus to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: app/Notifications/AppointmentStatusNotification.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Notifications/AppointmentStatusNotification.php
+
+		-
+			message: '#^Call to function method_exists\(\) with App\\Models\\User and ''deviceTokens'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Notifications/Channels/FcmChannel.php
+
+		-
+			message: '#^Call to function method_exists\(\) with App\\Models\\User and ''fcmTokens'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Notifications/Channels/FcmChannel.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Notifications/IncomingCallSessionNotification.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$first_name\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Notifications/TeleconsultationReminderNotification.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$last_name\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Notifications/TeleconsultationReminderNotification.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Notifications/TeleconsultationReminderNotification.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>first_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 4
+			path: app/Notifications/TeleconsultationReminderNotification.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>last_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 4
+			path: app/Notifications/TeleconsultationReminderNotification.php
+
+		-
+			message: '#^Instanceof between Illuminate\\Http\\Request and Illuminate\\Http\\Request will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: app/Policies/DocumentPolicy.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 4
+			path: app/Policies/TeleconsultationPolicy.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Providers/AppServiceProvider.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/AuditService.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Laravel\\Sanctum\\PersonalAccessToken\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Auth/AuthTokenService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Calls/CallSessionService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user_id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/Calls/CallSessionService.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 4
+			path: app/Services/Calls/CallSessionService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/Chat/ChatMessageService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$last_seen_at_utc\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Conversations/ConversationService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$role\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Conversations/ConversationService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Conversations/ConversationService.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 3
+			path: app/Services/Conversations/ConversationService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/Conversations/ConversationService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Conversations/ConversationService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$permission\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/DelegationContextService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/DelegationContextService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$doctor_user_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/DoctorSecretaries/DoctorSecretaryService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/DoctorSecretaries/DoctorSecretaryService.php
+
+		-
+			message: '#^Anonymous function should return App\\Models\\DoctorSecretaryDelegation but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/DoctorSecretaries/DoctorSecretaryService.php
+
+		-
+			message: '#^Parameter \#1 \$array \(array\{0\: ''Type détecté\:…''\|''Type détecté\: LAB…''\|''Type détecté\: OTHER\.'', 1\: ''Niveau d’urgence…'', 2\?\: non\-falsy\-string, 3\?\: non\-falsy\-string, 4\?\: non\-falsy\-string\}\) to function array_filter does not contain falsy values, the array will always stay the same\.$#'
+			identifier: arrayFilter.same
+			count: 1
+			path: app/Services/Documents/Ai/HeuristicDocumentAiAnalyzer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 7
+			path: app/Services/Documents/Ai/HeuristicDocumentAiAnalyzer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$structured_payload\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Documents/Ai/HeuristicGroundedDocumentQuestionAnswerer.php
+
+		-
+			message: '#^Parameter \#1 \$array \(list\<non\-falsy\-string\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: app/Services/Documents/Ai/HeuristicGroundedDocumentQuestionAnswerer.php
+
+		-
+			message: '#^Parameter \#1 \$actor of method App\\Services\\AuditService\:\:log\(\) expects App\\Models\\User\|null, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Documents/DocumentAnalysisPipeline.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Documents/DocumentAnalysisPipeline.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$key_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/E2ee/E2eeKeyService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$public_key\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/E2ee/E2eeKeyService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\UserE2eeDevice\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/E2ee/E2eeKeyService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of static method Illuminate\\Database\\Connection\:\:transaction\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/E2ee/E2eeKeyService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Messages/MessageService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Messages/MessageService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:participants\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/Messages/MessageService.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Services/Messages/MessageService.php
+
+		-
+			message: '#^Parameter \#1 \$conversation of method App\\Services\\Conversations\\ConversationService\:\:assertParticipant\(\) expects App\\Models\\Conversation, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Messages/MessageService.php
+
+		-
+			message: '#^Class App\\Notifications\\AppointmentStatusNotification constructor invoked with 3 parameters, 2 required\.$#'
+			identifier: arguments.count
+			count: 4
+			path: app/Services/NotificationService.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 2
+			path: app/Services/Ops/HealthCheckService.php
+
+		-
+			message: '#^Anonymous function never returns null so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: app/Services/Ops/Metrics/MetricsStore.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Teleconsultations/TeleconsultationEventLogger.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$current_state\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Teleconsultations/TeleconsultationService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$initiated_by_user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Teleconsultations/TeleconsultationService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/Teleconsultations/TeleconsultationService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Teleconsultations/TeleconsultationService.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 10
+			path: app/Services/Teleconsultations/TeleconsultationService.php
+
+		-
+			message: '#^Method App\\Services\\Teleconsultations\\TeleconsultationService\:\:resolveJoinableCallSession\(\) should return App\\Models\\CallSession but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Teleconsultations/TeleconsultationService.php
+
+		-
+			message: '#^Parameter \#1 \$call of method App\\Services\\Calls\\CallSessionService\:\:cancel\(\) expects App\\Models\\CallSession, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Teleconsultations/TeleconsultationService.php
+
+		-
+			message: '#^Parameter \#1 \$call of method App\\Services\\Calls\\CallSessionService\:\:end\(\) expects App\\Models\\CallSession, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Teleconsultations/TeleconsultationService.php
+
+		-
+			message: '#^Parameter \#1 \$call of method App\\Services\\Calls\\CallSessionService\:\:reject\(\) expects App\\Models\\CallSession, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Teleconsultations/TeleconsultationService.php
+
+		-
+			message: '#^Parameter \#1 \$callSession of method App\\Services\\Teleconsultations\\TeleconsultationStateSynchronizer\:\:syncFromCallSession\(\) expects App\\Models\\CallSession, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Teleconsultations/TeleconsultationService.php
+
+		-
+			message: '#^Parameter \$appointment of method App\\Services\\Appointments\\AppointmentStateService\:\:transition\(\) expects App\\Models\\Appointment, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 3
+			path: app/Services/Teleconsultations/TeleconsultationService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Services/Teleconsultations/TeleconsultationService.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Services/Teleconsultations/TeleconsultationStateSynchronizer.php

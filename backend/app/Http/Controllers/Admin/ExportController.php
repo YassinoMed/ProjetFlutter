@@ -24,7 +24,7 @@ class ExportController extends Controller
         $users = User::orderByDesc('created_at')->get();
 
         return $this->streamCsv(
-            "users_export_" . now()->format('Y-m-d_His') . ".csv",
+            'users_export_'.now()->format('Y-m-d_His').'.csv',
             ['ID', 'Prénom', 'Nom', 'Email', 'Rôle', 'Téléphone', 'Inscrit le'],
             $users->map(fn ($user) => [
                 $user->id,
@@ -51,12 +51,12 @@ class ExportController extends Controller
             ->get();
 
         return $this->streamCsv(
-            "appointments_export_" . now()->format('Y-m-d_His') . ".csv",
+            'appointments_export_'.now()->format('Y-m-d_His').'.csv',
             ['ID', 'Patient', 'Médecin', 'Date Début', 'Date Fin', 'Statut', 'Créé le'],
             $appointments->map(fn ($a) => [
                 $a->id,
-                trim(($a->patient?->first_name ?? '') . ' ' . ($a->patient?->last_name ?? '')),
-                'Dr. ' . trim(($a->doctor?->first_name ?? '') . ' ' . ($a->doctor?->last_name ?? '')),
+                trim(($a->patient?->first_name ?? '').' '.($a->patient?->last_name ?? '')),
+                'Dr. '.trim(($a->doctor?->first_name ?? '').' '.($a->doctor?->last_name ?? '')),
                 $a->starts_at_utc?->format('d/m/Y H:i') ?? '',
                 $a->ends_at_utc?->format('d/m/Y H:i') ?? '',
                 $a->status?->value ?? $a->status,
@@ -74,7 +74,7 @@ class ExportController extends Controller
             $handle = fopen('php://output', 'w');
 
             // UTF-8 BOM for Excel compatibility
-            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
 
             fputcsv($handle, $headers, ';');
 

@@ -12,7 +12,6 @@ use App\Models\Conversation;
 use App\Models\Message;
 use App\Services\Messages\MessageService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class MessageController extends Controller
 {

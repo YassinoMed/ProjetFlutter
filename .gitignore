@@ -1,0 +1,4 @@
+.DS_Store
+.trivy-cache/
+tmp-gitleaks-report.json
+tmp-gitleaks-dir-report.json

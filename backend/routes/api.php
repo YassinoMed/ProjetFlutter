@@ -104,6 +104,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function (): void {
         Route::get('/appointments/{appointmentId}', [AppointmentController::class, 'show']);
         Route::post('/appointments/{appointmentId}/cancel', [AppointmentController::class, 'cancel']);
         Route::post('/appointments/{appointmentId}/confirm', [AppointmentController::class, 'confirm']);
+        Route::post('/appointments/{appointmentId}/reject', [AppointmentController::class, 'reject']);
 
         Route::prefix('teleconsultations')->middleware('throttle:calls')->group(function (): void {
             Route::post('/', [TeleconsultationController::class, 'store']);
@@ -176,6 +177,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function (): void {
         Route::post('/upload', [DocumentController::class, 'upload']);
         Route::get('/', [DocumentController::class, 'index']);
         Route::get('/{documentId}', [DocumentController::class, 'show']);
+        Route::get('/{documentId}/processing', [DocumentController::class, 'processing']);
         Route::get('/{documentId}/summary', [DocumentController::class, 'summary']);
         Route::get('/{documentId}/entities', [DocumentController::class, 'entities']);
         Route::post('/{documentId}/reanalyze', [DocumentController::class, 'reanalyze']);

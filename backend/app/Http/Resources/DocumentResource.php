@@ -34,6 +34,7 @@ class DocumentResource extends JsonResource
             'last_error_code' => $this->last_error_code,
             'last_error_message_sanitized' => $this->last_error_message_sanitized,
             'source_metadata' => $this->source_metadata,
+            'processing_pipeline' => $this->processingPipeline(),
             'tags' => $this->whenLoaded('tags', fn () => $this->tags->map(
                 fn ($tag) => [
                     'tag' => $tag->tag,
@@ -49,8 +50,40 @@ class DocumentResource extends JsonResource
             }),
             'summaries' => $this->whenLoaded('summaries', fn () => DocumentSummaryResource::collection($this->summaries)),
             'entities' => $this->whenLoaded('entities', fn () => DocumentEntityResource::collection($this->entities)),
+            'processing_jobs' => $this->whenLoaded(
+                'processingJobs',
+                fn () => DocumentProcessingJobResource::collection($this->processingJobs)
+            ),
             'created_at_utc' => $this->created_at?->setTimezone('UTC')?->toISOString(),
             'updated_at_utc' => $this->updated_at?->setTimezone('UTC')?->toISOString(),
+        ];
+    }
+
+    private function processingPipeline(): array
+    {
+        return [
+            'overall_status' => $this->processing_status?->value ?? $this->processing_status,
+            'ocr_required' => (bool) $this->ocr_required,
+            'ocr_used' => (bool) $this->ocr_used,
+            'processed_at_utc' => $this->processed_at_utc?->setTimezone('UTC')?->toISOString(),
+            'failed_at_utc' => $this->failed_at_utc?->setTimezone('UTC')?->toISOString(),
+            'stages' => [
+                [
+                    'stage' => 'UPLOAD',
+                    'label' => 'Document recu',
+                    'status' => 'COMPLETED',
+                ],
+                [
+                    'stage' => 'EXTRACTION',
+                    'label' => 'Extraction du texte',
+                    'status' => $this->extraction_status?->value ?? $this->extraction_status,
+                ],
+                [
+                    'stage' => 'SUMMARY',
+                    'label' => 'Analyse et resume IA',
+                    'status' => $this->summary_status?->value ?? $this->summary_status,
+                ],
+            ],
         ];
     }
 }

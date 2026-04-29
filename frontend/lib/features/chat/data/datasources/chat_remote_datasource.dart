@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:mediconnect_pro/core/constants/api_constants.dart';
 import 'package:mediconnect_pro/core/network/api_response.dart';
+import 'package:mediconnect_pro/core/security/e2ee_chat_crypto_service.dart';
 import 'package:mediconnect_pro/features/chat/data/models/chat_message_model.dart';
 import 'package:mediconnect_pro/features/chat/domain/entities/chat_entities.dart';
 
@@ -22,10 +23,12 @@ abstract class ChatRemoteDataSource {
 class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
   final Dio dio;
   final String currentUserId;
+  final E2eeChatCryptoService e2eeCrypto;
 
   ChatRemoteDataSourceImpl({
     required this.dio,
     required this.currentUserId,
+    required this.e2eeCrypto,
   });
 
   @override
@@ -72,16 +75,27 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
     final payload = extractPayloadMap(response.data);
     final List<dynamic> data = payload['data'] as List? ?? const [];
 
-    final messages = data
-        .whereType<Map<String, dynamic>>()
-        .map(
-          (json) => ChatMessageModel.fromJson(
-            json,
-            currentUserId: currentUserId,
-            consultationId: consultationId,
-          ),
-        )
-        .toList()
+    final messages = await Future.wait(
+      data.whereType<Map<String, dynamic>>().map((json) async {
+        final model = ChatMessageModel.fromJson(
+          json,
+          currentUserId: currentUserId,
+          consultationId: consultationId,
+        );
+
+        final plaintext = await e2eeCrypto.decryptForConsultation(
+          dio: dio,
+          consultationId: consultationId,
+          currentUserId: currentUserId,
+          senderUserId: model.senderId,
+          recipientUserId: model.recipientId,
+          ciphertext: model.ciphertext ?? model.content,
+          nonce: model.nonce,
+        );
+
+        return model.copyWith(content: plaintext);
+      }),
+    )
       ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
 
     return messages;
@@ -93,12 +107,20 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
     String content,
     bool isEncrypted,
   ) async {
+    final encrypted = await e2eeCrypto.encryptForConsultation(
+      dio: dio,
+      consultationId: consultationId,
+      currentUserId: currentUserId,
+      plaintext: content,
+    );
+
     final response = await dio.post(
       ApiConstants.consultationMessages.replaceFirst('{id}', consultationId),
       data: {
-        'ciphertext': content,
-        'nonce': DateTime.now().millisecondsSinceEpoch.toString(),
-        'algorithm': 'AES-256-GCM',
+        'ciphertext': encrypted.ciphertext,
+        'nonce': encrypted.nonce,
+        'algorithm': encrypted.algorithm,
+        'key_id': encrypted.keyId,
       },
     );
 
@@ -106,11 +128,13 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
     final data = extractDataMap(payload);
     final messageJson = data['message'] as Map<String, dynamic>? ?? const {};
 
-    return ChatMessageModel.fromJson(
+    final persisted = ChatMessageModel.fromJson(
       messageJson,
       currentUserId: currentUserId,
       consultationId: consultationId,
     );
+
+    return persisted.copyWith(content: content);
   }
 
   @override

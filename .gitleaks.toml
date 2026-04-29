@@ -1,0 +1,30 @@
+title = "MediConnect gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allow documented placeholders, local dev examples, and deterministic test fixtures"
+paths = [
+  '''^\.git/''',
+  '''^\.env\.compose\.local\.example$''',
+  '''^\.env\.compose\.prod\.example$''',
+  '''^backend/\.env\.testing$''',
+  '''^backend/vendor/''',
+  '''^ops/observability/alertmanager\.yml$''',
+  '''^ops/observability/prometheus\.yml$''',
+  '''^frontend/build/''',
+  '''^frontend/\.dart_tool/''',
+  '''^signaling-server/node_modules/''',
+  '''^backend/tests/Feature/FcmTokensTest\.php$''',
+  '''^backend/tests/Feature/RgpdEndpointsTest\.php$''',
+  '''^docs/devsecops/.*\.md$''',
+]
+regexes = [
+  '''replace-via-secret-manager''',
+  '''set-via-runtime-secret''',
+  '''local-dev-only-[A-Za-z0-9-]+''',
+  '''smtp\.example\.invalid''',
+  '''alerts@example\.invalid''',
+  '''fcm-test-token-[A-Za-z0-9-]+''',
+]

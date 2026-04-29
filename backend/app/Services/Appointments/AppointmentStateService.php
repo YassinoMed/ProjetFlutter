@@ -17,6 +17,7 @@ class AppointmentStateService
         ?string $actorUserId,
         ?array $metadataEncrypted = null,
         ?string $cancelReason = null,
+        ?string $eventName = null,
     ): Appointment {
         $from = $appointment->status;
 
@@ -26,8 +27,9 @@ class AppointmentStateService
             ]);
         }
 
-        return DB::transaction(function () use ($appointment, $from, $to, $actorUserId, $metadataEncrypted, $cancelReason): Appointment {
+        return DB::transaction(function () use ($appointment, $to, $actorUserId, $metadataEncrypted, $cancelReason, $eventName): Appointment {
             $appointment = Appointment::query()->whereKey($appointment->id)->lockForUpdate()->firstOrFail();
+            $from = $appointment->status;
 
             if (! $appointment->status->canTransitionTo($to)) {
                 throw ValidationException::withMessages([
@@ -52,8 +54,8 @@ class AppointmentStateService
                 'occurred_at_utc' => now('UTC'),
             ]);
 
-            DB::afterCommit(function () use ($appointment, $to) {
-                $event = match ($to) {
+            DB::afterCommit(function () use ($appointment, $to, $eventName) {
+                $event = $eventName ?? match ($to) {
                     AppointmentStatus::CONFIRMED => 'confirmed',
                     AppointmentStatus::CANCELLED => 'cancelled',
                     default => 'status_changed',

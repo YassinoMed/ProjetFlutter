@@ -19,14 +19,14 @@ class UserResource extends JsonResource
             'created_at_utc' => optional($this->created_at)->setTimezone('UTC')?->toISOString(),
             'updated_at_utc' => optional($this->updated_at)->setTimezone('UTC')?->toISOString(),
         ];
-        
+
         $roleValue = $this->role instanceof \App\Enums\UserRole ? $this->role->value : $this->role;
         if ($roleValue === 'doctor') {
             $data['specialty'] = $this->doctorProfile?->specialty;
             $data['license_number'] = $this->doctorProfile?->rpps;
             $data['speciality'] = $this->doctorProfile?->specialty; // To ensure compatibility with frontend typo
         }
-        
+
         if ($roleValue === 'patient') {
             $data['date_of_birth'] = $this->patientProfile?->date_of_birth;
             $data['sex'] = $this->patientProfile?->sex;

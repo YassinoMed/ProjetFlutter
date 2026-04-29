@@ -12,8 +12,8 @@ use Illuminate\Http\Request;
 
 class RgpdController extends Controller
 {
-    use SearchesUsers;
     use LogsAdminActivity;
+    use SearchesUsers;
 
     public function __construct(
         private readonly UserAnonymizationService $anonymization,
@@ -35,8 +35,8 @@ class RgpdController extends Controller
         $consents = $query->orderByDesc('updated_at')->paginate(15);
 
         $stats = [
-            'total_consents'            => UserConsent::where('consented', true)->count(),
-            'total_revoked'             => UserConsent::where('consented', false)->count(),
+            'total_consents' => UserConsent::where('consented', true)->count(),
+            'total_revoked' => UserConsent::where('consented', false)->count(),
             'pending_deletion_requests' => User::where('email', 'LIKE', 'deleted+%')->count(),
         ];
 

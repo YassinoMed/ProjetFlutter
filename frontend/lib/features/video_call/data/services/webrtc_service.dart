@@ -13,15 +13,11 @@ class WebRTCService {
   final String apiUrl;
   final String token;
 
-  // Configuration ICE (STUN & TURN via Coturn)
+  // Default ICE configuration. TURN credentials must come from Laravel
+  // join/RTC configuration responses, never from hard-coded mobile code.
   final Map<String, dynamic> _config = {
     'iceServers': [
       {'urls': 'stun:stun.l.google.com:19302'},
-      {
-        'urls': 'turn:coturn.mediconnect.com:3478',
-        'username': 'turn_user',
-        'credential': 'turn_password'
-      }
     ],
     'sdpSemantics': 'unified-plan',
   };

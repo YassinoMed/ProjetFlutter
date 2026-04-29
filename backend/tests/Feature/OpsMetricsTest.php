@@ -44,7 +44,7 @@ class OpsMetricsTest extends TestCase
         $this->bootTenantSchema();
         $this->registerTestRoutes();
 
-        $this->metricsStore = new InMemoryMetricsStore();
+        $this->metricsStore = new InMemoryMetricsStore;
         $this->app->instance(MetricsStore::class, $this->metricsStore);
         $this->app->forgetInstance(\App\Services\Ops\Metrics\QueueMetricsRecorder::class);
     }
@@ -265,7 +265,7 @@ class OpsMetricsTest extends TestCase
 
     public function test_requests_do_not_fail_when_metrics_backend_is_unavailable(): void
     {
-        $this->app->instance(MetricsStore::class, new FailingMetricsStore());
+        $this->app->instance(MetricsStore::class, new FailingMetricsStore);
 
         $this->getJson('/api/test/metrics/success')
             ->assertOk()

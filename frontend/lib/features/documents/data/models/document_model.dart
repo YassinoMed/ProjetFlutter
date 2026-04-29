@@ -46,6 +46,8 @@ class MedicalDocumentModel extends MedicalDocument {
     super.lastErrorMessage,
     super.sourceMetadata,
     super.tags,
+    super.processingPipeline,
+    super.processingJobs,
     super.latestExtraction,
     super.summaries,
     super.entities,
@@ -80,6 +82,11 @@ class MedicalDocumentModel extends MedicalDocument {
       tags: ((json['tags'] as List?) ?? const [])
           .whereType<Map<String, dynamic>>()
           .toList(),
+      processingPipeline: _parseProcessingPipeline(json['processing_pipeline']),
+      processingJobs: ((json['processing_jobs'] as List?) ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(DocumentProcessingJobEntryModel.fromJson)
+          .toList(),
       latestExtraction: _parseExtraction(json['latest_extraction']),
       summaries: ((json['summaries'] as List?) ?? const [])
           .whereType<Map<String, dynamic>>()
@@ -108,6 +115,72 @@ class MedicalDocumentModel extends MedicalDocument {
       missingSections: value['missing_sections'] as List<dynamic>?,
       confidenceScore: _parseDouble(value['confidence_score']),
       meta: value['meta'] as Map<String, dynamic>?,
+    );
+  }
+
+  static DocumentProcessingPipeline? _parseProcessingPipeline(dynamic value) {
+    if (value is! Map<String, dynamic>) return null;
+
+    return DocumentProcessingPipeline(
+      overallStatus: value['overall_status'] as String? ?? 'PENDING',
+      ocrRequired: value['ocr_required'] == true,
+      ocrUsed: value['ocr_used'] == true,
+      processedAtUtc: _parseDate(value['processed_at_utc']),
+      failedAtUtc: _parseDate(value['failed_at_utc']),
+      stages: ((value['stages'] as List?) ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(DocumentProcessingStageModel.fromJson)
+          .toList(),
+    );
+  }
+}
+
+class DocumentProcessingStageModel extends DocumentProcessingStage {
+  const DocumentProcessingStageModel({
+    required super.stage,
+    required super.label,
+    required super.status,
+  });
+
+  factory DocumentProcessingStageModel.fromJson(Map<String, dynamic> json) {
+    return DocumentProcessingStageModel(
+      stage: json['stage'] as String? ?? '',
+      label: json['label'] as String? ?? '',
+      status: json['status'] as String? ?? 'PENDING',
+    );
+  }
+}
+
+class DocumentProcessingJobEntryModel extends DocumentProcessingJobEntry {
+  const DocumentProcessingJobEntryModel({
+    required super.id,
+    required super.jobType,
+    required super.jobLabel,
+    super.queueName,
+    required super.attempt,
+    required super.status,
+    super.startedAtUtc,
+    super.completedAtUtc,
+    super.failedAtUtc,
+    super.errorCode,
+    super.errorMessage,
+    super.meta,
+  });
+
+  factory DocumentProcessingJobEntryModel.fromJson(Map<String, dynamic> json) {
+    return DocumentProcessingJobEntryModel(
+      id: json['id']?.toString() ?? '',
+      jobType: json['job_type'] as String? ?? '',
+      jobLabel: json['job_label'] as String? ?? 'Traitement documentaire',
+      queueName: json['queue_name'] as String?,
+      attempt: _parseInt(json['attempt']),
+      status: json['status'] as String? ?? 'PENDING',
+      startedAtUtc: _parseDate(json['started_at_utc']),
+      completedAtUtc: _parseDate(json['completed_at_utc']),
+      failedAtUtc: _parseDate(json['failed_at_utc']),
+      errorCode: json['error_code'] as String?,
+      errorMessage: json['error_message_sanitized'] as String?,
+      meta: json['meta'] as Map<String, dynamic>?,
     );
   }
 }

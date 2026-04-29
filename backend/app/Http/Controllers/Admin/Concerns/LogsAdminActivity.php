@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Admin\Concerns;
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -16,9 +15,9 @@ trait LogsAdminActivity
     /**
      * Log a security-level admin action.
      *
-     * @param string $event   Event name (e.g. 'doctor_approved', 'admin_export_users')
-     * @param array  $context Additional context data merged with admin_id/ip
-     * @param string $level   Log level: 'info', 'warning', 'alert'
+     * @param  string  $event  Event name (e.g. 'doctor_approved', 'admin_export_users')
+     * @param  array  $context  Additional context data merged with admin_id/ip
+     * @param  string  $level  Log level: 'info', 'warning', 'alert'
      */
     protected function logAdminAction(string $event, array $context = [], string $level = 'info'): void
     {

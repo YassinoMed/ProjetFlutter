@@ -14,6 +14,7 @@ return [
     'pdf_text_driver' => env('DOCUMENTS_PDF_TEXT_DRIVER', 'pdftotext'),
     'ocr_driver' => env('DOCUMENTS_OCR_DRIVER', 'none'),
     'ocr_languages' => env('DOCUMENTS_OCR_LANGUAGES', 'fra+eng'),
+    'pdf_ocr_max_pages' => (int) env('DOCUMENTS_PDF_OCR_MAX_PAGES', 3),
     'ai_driver' => env('DOCUMENTS_AI_DRIVER', 'heuristic'),
     'ai_timeout_seconds' => (int) env('DOCUMENTS_AI_TIMEOUT_SECONDS', 45),
     'ai' => [

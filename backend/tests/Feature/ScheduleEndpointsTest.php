@@ -7,6 +7,7 @@ use App\Models\Doctor;
 use App\Models\DoctorSchedule;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class ScheduleEndpointsTest extends TestCase
@@ -14,8 +15,6 @@ class ScheduleEndpointsTest extends TestCase
     use RefreshDatabase;
 
     private User $doctor;
-
-    private string $token;
 
     protected function setUp(): void
     {
@@ -26,22 +25,24 @@ class ScheduleEndpointsTest extends TestCase
             'user_id' => $this->doctor->id,
             'specialty' => 'Cardiologie',
         ]);
-
-        $this->token = auth('api')->login($this->doctor);
     }
 
     public function test_doctor_can_create_schedule(): void
     {
+        Sanctum::actingAs($this->doctor);
+
         $response = $this->postJson('/api/schedule', [
             'day_of_week' => 1,
             'start_time' => '09:00',
             'end_time' => '12:00',
             'slot_duration_minutes' => 30,
-        ], ['Authorization' => 'Bearer ' . $this->token]);
+        ]);
 
         $response->assertCreated()
             ->assertJsonStructure([
-                'schedule' => ['id', 'day_of_week', 'start_time', 'end_time'],
+                'data' => [
+                    'schedule' => ['id', 'day_of_week', 'start_time', 'end_time'],
+                ],
             ]);
     }
 
@@ -54,9 +55,9 @@ class ScheduleEndpointsTest extends TestCase
             'end_time' => '12:00',
         ]);
 
-        $response = $this->getJson('/api/schedule', [
-            'Authorization' => 'Bearer ' . $this->token,
-        ]);
+        Sanctum::actingAs($this->doctor);
+
+        $response = $this->getJson('/api/schedule');
 
         $response->assertOk()
             ->assertJsonStructure(['data']);
@@ -64,12 +65,14 @@ class ScheduleEndpointsTest extends TestCase
 
     public function test_doctor_can_bulk_update_schedule(): void
     {
+        Sanctum::actingAs($this->doctor);
+
         $response = $this->putJson('/api/schedule/bulk', [
             'slots' => [
                 ['day_of_week' => 1, 'start_time' => '09:00', 'end_time' => '12:00'],
                 ['day_of_week' => 2, 'start_time' => '14:00', 'end_time' => '17:00'],
             ],
-        ], ['Authorization' => 'Bearer ' . $this->token]);
+        ]);
 
         $response->assertOk()
             ->assertJsonCount(2, 'data');
@@ -78,13 +81,13 @@ class ScheduleEndpointsTest extends TestCase
     public function test_patient_cannot_manage_schedule(): void
     {
         $patient = User::factory()->create(['role' => UserRole::PATIENT]);
-        $patientToken = auth('api')->login($patient);
+        Sanctum::actingAs($patient);
 
         $response = $this->postJson('/api/schedule', [
             'day_of_week' => 1,
             'start_time' => '09:00',
             'end_time' => '12:00',
-        ], ['Authorization' => 'Bearer ' . $patientToken]);
+        ]);
 
         $response->assertForbidden();
     }

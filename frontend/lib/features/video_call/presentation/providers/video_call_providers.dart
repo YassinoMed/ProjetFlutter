@@ -465,13 +465,18 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
     await _closePeerConnectionOnly();
 
     final config = {
-      'iceServers': context.iceServers
-          .map((server) => {
-                'urls': server.urls,
-                if (server.username != null) 'username': server.username,
-                if (server.credential != null) 'credential': server.credential,
-              })
-          .toList(),
+      'iceServers': context.iceServers.isNotEmpty
+          ? context.iceServers
+              .map((server) => {
+                    'urls': server.urls,
+                    if (server.username != null) 'username': server.username,
+                    if (server.credential != null)
+                      'credential': server.credential,
+                  })
+              .toList()
+          : [
+              {'urls': 'stun:stun.l.google.com:19302'},
+            ],
       'sdpSemantics': 'unified-plan',
     };
 
@@ -537,15 +542,15 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
     }
 
     if (_subscribedTeleconsultationId != null) {
-      await websocketService
-          .unsubscribeTeleconsultation(
+      await websocketService.unsubscribeTeleconsultation(
         _subscribedTeleconsultationId!,
         listenerId: _teleconsultationListenerId,
       );
     }
 
     _subscribedTeleconsultationId = teleconsultationId;
-    _teleconsultationListenerId = await websocketService.subscribeToTeleconsultation(
+    _teleconsultationListenerId =
+        await websocketService.subscribeToTeleconsultation(
       teleconsultationId,
       _handleRealtimeEvent,
     );
@@ -656,10 +661,17 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
       teleconsultationStatus: status ?? state.teleconsultationStatus,
       callSessionId: callSessionId ?? state.callSessionId,
       conversationId: conversationId ?? state.conversationId,
-      state: status == 'scheduled' && !isDoctor
-          ? CallState.waitingHost
-          : state.state,
+      state: _isTerminalTeleconsultationStatus(status)
+          ? CallState.ended
+          : (status == 'scheduled' && !isDoctor
+              ? CallState.waitingHost
+              : state.state),
     );
+
+    if (_isTerminalTeleconsultationStatus(status)) {
+      await _terminateFromRemote(_terminalStatusMessage(status));
+      return;
+    }
 
     if (!isDoctor &&
         teleconsultationId != null &&
@@ -674,8 +686,23 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
   }
 
   bool _canAttemptJoin(String? teleconsultationStatus) {
-    return teleconsultationStatus == 'ringing' ||
+    return teleconsultationStatus == 'waiting' ||
+        teleconsultationStatus == 'ringing' ||
         teleconsultationStatus == 'active';
+  }
+
+  bool _isTerminalTeleconsultationStatus(String? teleconsultationStatus) {
+    return teleconsultationStatus == 'ended' ||
+        teleconsultationStatus == 'cancelled' ||
+        teleconsultationStatus == 'expired';
+  }
+
+  String? _terminalStatusMessage(String? teleconsultationStatus) {
+    return switch (teleconsultationStatus) {
+      'cancelled' => 'La téléconsultation a été annulée.',
+      'expired' => 'La téléconsultation a expiré.',
+      _ => null,
+    };
   }
 
   bool _isTargetedToCurrentUser(Map<String, dynamic> data) {
@@ -694,15 +721,25 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
       callSessionId: context.callSessionId,
       conversationId: context.conversationId,
       teleconsultationStatus: context.teleconsultationStatus,
-      state: context.teleconsultationStatus == 'scheduled' && !isDoctor
-          ? CallState.waitingHost
-          : (context.teleconsultationStatus == 'active'
-              ? CallState.joining
-              : CallState.ringing),
+      state: _stateForTeleconsultationStatus(context.teleconsultationStatus),
       mediaPermissionState: CallMediaPermissionState.granted,
       clearMediaPermissionMessage: true,
       clearErrorMessage: true,
     );
+  }
+
+  CallState _stateForTeleconsultationStatus(String status) {
+    if (_isTerminalTeleconsultationStatus(status)) {
+      return CallState.ended;
+    }
+    if (status == 'scheduled' && !isDoctor) {
+      return CallState.waitingHost;
+    }
+    if (status == 'active') {
+      return CallState.joining;
+    }
+
+    return CallState.ringing;
   }
 
   void _applyPermissionResult(CallPermissionResult result) {
@@ -754,8 +791,9 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
 
     if (rawMessage.contains('notallowederror') ||
         rawMessage.contains('permission denied')) {
-      final permissionState =
-          permissionResult.isGranted ? CallMediaPermissionState.denied : permissionResult.state;
+      final permissionState = permissionResult.isGranted
+          ? CallMediaPermissionState.denied
+          : permissionResult.state;
       final userMessage = permissionResult.isGranted
           ? 'L’accès à la caméra ou au microphone a été refusé par l’appareil. '
               'Vérifiez les autorisations et les réglages de confidentialité, puis réessayez.'
@@ -860,8 +898,7 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
     }
 
     if (_subscribedTeleconsultationId != null) {
-      await websocketService
-          .unsubscribeTeleconsultation(
+      await websocketService.unsubscribeTeleconsultation(
         _subscribedTeleconsultationId!,
         listenerId: _teleconsultationListenerId,
       );

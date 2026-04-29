@@ -23,8 +23,8 @@ trait SearchesUsers
     {
         return $query->where(function (Builder $q) use ($search) {
             $q->where('first_name', 'LIKE', "%{$search}%")
-              ->orWhere('last_name', 'LIKE', "%{$search}%")
-              ->orWhere('email', 'LIKE', "%{$search}%");
+                ->orWhere('last_name', 'LIKE', "%{$search}%")
+                ->orWhere('email', 'LIKE', "%{$search}%");
         });
     }
 
@@ -35,8 +35,8 @@ trait SearchesUsers
     {
         return $query->whereHas($relation, function (Builder $q) use ($search) {
             $q->where('first_name', 'LIKE', "%{$search}%")
-              ->orWhere('last_name', 'LIKE', "%{$search}%")
-              ->orWhere('email', 'LIKE', "%{$search}%");
+                ->orWhere('last_name', 'LIKE', "%{$search}%")
+                ->orWhere('email', 'LIKE', "%{$search}%");
         });
     }
 }

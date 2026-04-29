@@ -14,7 +14,6 @@ use App\Models\UserConsent;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
@@ -75,7 +74,7 @@ class DatabaseSeeder extends Seeder
                 'user_id' => $user->id,
                 'rpps' => sprintf('RPPS%09d', $i + 1),
                 'specialty' => $specialty,
-                'bio' => "Dr. {$firstName} {$lastName}, spécialiste en {$specialty} avec plus de " . rand(5, 25) . " ans d'expérience.",
+                'bio' => "Dr. {$firstName} {$lastName}, spécialiste en {$specialty} avec plus de ".rand(5, 25)." ans d'expérience.",
                 'consultation_fee' => $fee,
                 'city' => $city,
                 'address' => $address,

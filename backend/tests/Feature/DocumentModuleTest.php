@@ -2,12 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Enums\DocumentProcessingStatus;
 use App\Enums\DocumentSummaryAudience;
 use App\Enums\DocumentSummaryFormat;
 use App\Enums\DocumentType;
 use App\Enums\DocumentUrgency;
 use App\Jobs\ProcessDocumentJob;
 use App\Models\Document;
+use App\Models\DocumentExtraction;
+use App\Models\DocumentProcessingJob;
 use App\Models\User;
 use App\Services\Documents\Contracts\DocumentAiAnalyzer;
 use App\Services\Documents\Contracts\DocumentTextExtractor;
@@ -59,6 +62,46 @@ class DocumentModuleTest extends TestCase
 
         $this->assertSame($patient->id, $document->patient_user_id);
         $this->assertSame($doctor->id, $document->doctor_user_id);
+
+        Queue::assertPushed(ProcessDocumentJob::class, 1);
+    }
+
+    public function test_upload_stores_mobile_mlkit_ocr_as_encrypted_extraction_seed(): void
+    {
+        Queue::fake();
+
+        $patient = User::factory()->create(['role' => 'PATIENT']);
+
+        Sanctum::actingAs($patient);
+
+        $response = $this->postJson('/api/documents/upload', [
+            'title' => 'Ordonnance ML Kit',
+            'file' => UploadedFile::fake()->image('ordonnance.jpg'),
+            'client_ocr_text' => "Ordonnance\nDate: 10/03/2026\nTraitement: Paracétamol 500 mg",
+            'client_ocr_engine' => 'flutter_mlkit_text_recognition',
+            'client_ocr_language' => 'fr',
+            'client_ocr_confidence' => 0.82,
+            'client_image_quality_score' => 0.76,
+            'client_image_width' => 1280,
+            'client_image_height' => 960,
+            'client_image_quality_warnings' => json_encode(['Contraste faible']),
+        ]);
+
+        $response->assertCreated();
+        $response->assertJsonPath('data.document.source_metadata.client_ocr.provided', true);
+        $response->assertJsonPath('data.document.source_metadata.client_ocr.raw_text_stored_in_metadata', false);
+        $response->assertJsonPath('data.document.source_metadata.client_image_quality.provided', true);
+        $response->assertJsonPath('data.document.source_metadata.client_image_quality.contains_medical_content', false);
+
+        $documentId = $response->json('data.document.id');
+        $extraction = DocumentExtraction::query()
+            ->where('document_id', $documentId)
+            ->where('source', 'client_ocr')
+            ->firstOrFail();
+
+        $this->assertSame(0, $extraction->version);
+        $this->assertSame('COMPLETED', $extraction->status->value);
+        $this->assertStringContainsString('Paracétamol', $extraction->raw_text_encrypted);
 
         Queue::assertPushed(ProcessDocumentJob::class, 1);
     }
@@ -185,5 +228,53 @@ class DocumentModuleTest extends TestCase
 
         $this->getJson("/api/documents/{$document->id}")
             ->assertForbidden();
+    }
+
+    public function test_document_detail_and_processing_endpoint_expose_pipeline_and_jobs(): void
+    {
+        $patient = User::factory()->create(['role' => 'PATIENT']);
+
+        Storage::disk('documents-tests')->put('medical-documents/'.$patient->id.'/processing.txt', 'processing');
+
+        $document = Document::query()->create([
+            'patient_user_id' => $patient->id,
+            'uploaded_by_user_id' => $patient->id,
+            'title' => 'Compte rendu en analyse',
+            'original_filename' => 'processing.txt',
+            'mime_type' => 'text/plain',
+            'file_extension' => 'txt',
+            'file_size_bytes' => 10,
+            'storage_disk' => 'documents-tests',
+            'storage_path' => 'medical-documents/'.$patient->id.'/processing.txt',
+            'sha256_checksum' => hash('sha256', 'processing'),
+            'processing_status' => DocumentProcessingStatus::PROCESSING->value,
+            'extraction_status' => DocumentProcessingStatus::COMPLETED->value,
+            'summary_status' => DocumentProcessingStatus::PROCESSING->value,
+            'ocr_required' => true,
+            'ocr_used' => true,
+        ]);
+
+        DocumentProcessingJob::query()->create([
+            'document_id' => $document->id,
+            'job_type' => ProcessDocumentJob::class,
+            'queue_name' => 'documents',
+            'attempt' => 1,
+            'status' => DocumentProcessingStatus::PROCESSING->value,
+            'started_at_utc' => now('UTC')->subMinute(),
+        ]);
+
+        Sanctum::actingAs($patient);
+
+        $this->getJson("/api/documents/{$document->id}")
+            ->assertOk()
+            ->assertJsonPath('data.document.processing_pipeline.overall_status', 'PROCESSING')
+            ->assertJsonPath('data.document.processing_pipeline.ocr_used', true)
+            ->assertJsonPath('data.document.processing_jobs.0.job_label', 'Analyse du document')
+            ->assertJsonPath('data.document.processing_jobs.0.status', 'PROCESSING');
+
+        $this->getJson("/api/documents/{$document->id}/processing")
+            ->assertOk()
+            ->assertJsonPath('data.processing_jobs.0.job_label', 'Analyse du document')
+            ->assertJsonPath('data.processing_jobs.0.status', 'PROCESSING');
     }
 }

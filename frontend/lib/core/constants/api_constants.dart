@@ -43,6 +43,7 @@ class ApiConstants {
   static const String appointmentShow = '/appointments/{id}';
   static const String appointmentCancel = '/appointments/{id}/cancel';
   static const String appointmentConfirm = '/appointments/{id}/confirm';
+  static const String appointmentReject = '/appointments/{id}/reject';
 
   // ── Doctors Endpoints ─────────────────────────────────────
   static const String doctors = '/doctors';
@@ -59,6 +60,17 @@ class ApiConstants {
   static const String consultationMessageAck =
       '/consultations/{id}/messages/{msgId}/ack';
 
+  // ── Secure Conversations / E2EE Transport ─────────────────
+  static const String conversations = '/conversations';
+  static const String conversationShow = '/conversations/{id}';
+  static const String conversationMessages = '/conversations/{id}/messages';
+  static const String conversationTyping = '/conversations/{id}/typing';
+  static const String secureMessages = '/messages';
+  static const String secureMessageDelivered = '/messages/{id}/delivered';
+  static const String secureMessageRead = '/messages/{id}/read';
+  static const String e2eeDevices = '/e2ee/devices';
+  static const String e2eePeerBundle = '/e2ee/users/{userId}/bundle';
+
   // ── WebRTC Signaling ──────────────────────────────────────
   static const String webrtcJoin = '/consultations/{id}/webrtc/join';
   static const String webrtcOffer = '/consultations/{id}/webrtc/offer';
@@ -73,6 +85,7 @@ class ApiConstants {
   static const String documents = '/documents';
   static const String documentUpload = '/documents/upload';
   static const String documentShow = '/documents/{id}';
+  static const String documentProcessing = '/documents/{id}/processing';
   static const String documentSummary = '/documents/{id}/summary';
   static const String documentEntities = '/documents/{id}/entities';
   static const String documentReanalyze = '/documents/{id}/reanalyze';

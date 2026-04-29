@@ -5,18 +5,20 @@
 Flux v1:
 
 1. Flutter envoie le fichier via `POST /api/documents/upload`
-2. Laravel valide le type, la taille, le contexte patient/médecin
-3. le fichier est stocké sur un disque privé
-4. un enregistrement `documents` passe à `PENDING`
-5. `ProcessDocumentJob` orchestre:
+2. Flutter pré-analyse les images avec ML Kit OCR et un contrôle qualité local
+3. Laravel valide le type, la taille, le contexte patient/médecin
+4. le fichier est stocké sur un disque privé
+5. un enregistrement `documents` passe à `PENDING`
+6. `ProcessDocumentJob` orchestre:
    - extraction texte native si possible
-   - OCR si image scannée et moteur disponible
+   - OCR si image ou PDF scanné et moteur disponible
+   - fallback OCR mobile si l’OCR serveur n’est pas disponible
    - normalisation du texte
-   - analyse structurée
+   - analyse structurée heuristique ou provider IA HTTP configuré
    - génération des résumés
    - extraction des entités
    - classification et tags
-6. Flutter suit les statuts `pending / processing / completed / failed`
+7. Flutter suit les statuts `pending / processing / completed / failed`
 
 Composants:
 
@@ -44,7 +46,8 @@ Pas de `document_versions` dédiée en v1: la version est portée par `document_
 
 - `text/plain` -> lecture native
 - `application/pdf` -> extraction CLI `pdftotext` si disponible
-- `image/*` -> OCR `tesseract` si disponible
+- `application/pdf` scanné -> conversion `pdftoppm` puis OCR `tesseract`
+- `image/*` -> OCR `tesseract` si disponible, sinon texte OCR mobile ML Kit si fourni
 
 ### Nettoyage
 
@@ -62,15 +65,17 @@ Version simple:
 
 Version avancée:
 
-- adaptateur LLM compatible OpenAI
+- `DOCUMENTS_AI_DRIVER=http` pour utiliser un provider LLM compatible chat-completions
 - prompts JSON stricts
 - garde-fous anti-hallucinations
+- fallback automatique vers l’analyse heuristique si le provider IA échoue
 
 ### Fallback
 
 - si aucun extracteur n’est disponible -> `FAILED`
 - si OCR renvoie vide -> `FAILED`
 - si l’analyse n’a pas assez d’éléments -> résumés prudents + champs `missing_information`
+- si ML Kit fournit un texte OCR mobile -> seed d’extraction `client_ocr`, sans texte en clair dans `source_metadata`
 
 ## D. Backend Laravel
 
@@ -89,6 +94,7 @@ Services:
 - `DocumentStorageService`
 - `CompositeDocumentTextExtractor`
 - `HeuristicDocumentAiAnalyzer`
+- `HttpDocumentAiAnalyzer`
 - `DocumentAnalysisPipeline`
 
 ## E. Frontend Flutter
@@ -102,6 +108,8 @@ Services:
 - entités
 - réanalyse
 - recherche simple par titre/type/tag
+- OCR local ML Kit sur images `jpg/png/webp`
+- score qualité image avant upload: résolution, luminosité, contraste, flou
 
 ## F. Prompts IA internes
 
@@ -134,8 +142,21 @@ Version avancée:
 - contrôle d’accès par `DocumentPolicy`
 - stockage privé
 - texte extrait et résumés chiffrés en base
+- pas de texte OCR brut dans `source_metadata`
+- métadonnées qualité image limitées au score, dimensions et avertissements non médicaux
+- provider IA externe désactivé par défaut et activable uniquement par variables d’environnement
 - erreurs sanitizées
 - audit des uploads, suppressions, réanalyses et traitements
+
+Variables utiles:
+
+- `DOCUMENTS_OCR_DRIVER=tesseract`
+- `DOCUMENTS_OCR_LANGUAGES=fra+eng`
+- `DOCUMENTS_PDF_OCR_MAX_PAGES=3`
+- `DOCUMENTS_AI_DRIVER=heuristic|http`
+- `DOCUMENTS_AI_BASE_URL=`
+- `DOCUMENTS_AI_API_KEY=`
+- `DOCUMENTS_AI_MODEL=`
 
 ## I. Tests
 
@@ -143,6 +164,7 @@ Version avancée:
 
 - upload valide
 - autorisation stricte
+- stockage des métadonnées ML Kit et qualité image
 - traitement réussi avec extracteur/analyzer simulés
 - document vide ou illisible
 - réanalyse
@@ -150,5 +172,5 @@ Version avancée:
 ## J. Limites et hypothèses
 
 - v1 ne fait pas encore d’index sémantique complet
-- v1 dépend de binaires système pour `pdftotext` / `tesseract`
+- v1 dépend de binaires système pour `pdftotext`, `pdftoppm` et `tesseract`
 - sans moteur OCR/LLM configuré, le pipeline reste utilisable mais limité

@@ -46,7 +46,8 @@ class _AppointmentsPageState extends ConsumerState<AppointmentsPage>
     final secretaryContext = isSecretary
         ? ref.watch(secretaryContextProvider)
         : const AsyncValue.data(null);
-    final hasSecretaryContext = !isSecretary || secretaryContext.valueOrNull != null;
+    final hasSecretaryContext =
+        !isSecretary || secretaryContext.valueOrNull != null;
     final appointmentsAsync = hasSecretaryContext
         ? ref.watch(myAppointmentsProvider)
         : const AsyncValue.data(<Appointment>[]);
@@ -127,11 +128,23 @@ class _AppointmentsPageState extends ConsumerState<AppointmentsPage>
                     controller: _tabController,
                     children: [
                       _buildAppointmentsList(
-                          appointmentsAsync, isManagementView, 'upcoming'),
+                        appointmentsAsync,
+                        isManagementView,
+                        !isSecretary,
+                        'upcoming',
+                      ),
                       _buildAppointmentsList(
-                          appointmentsAsync, isManagementView, 'past'),
+                        appointmentsAsync,
+                        isManagementView,
+                        !isSecretary,
+                        'past',
+                      ),
                       _buildAppointmentsList(
-                          appointmentsAsync, isManagementView, 'all'),
+                        appointmentsAsync,
+                        isManagementView,
+                        !isSecretary,
+                        'all',
+                      ),
                     ],
                   ),
           ),
@@ -147,8 +160,12 @@ class _AppointmentsPageState extends ConsumerState<AppointmentsPage>
     );
   }
 
-  Widget _buildAppointmentsList(AsyncValue<List<Appointment>> appointmentsAsync,
-      bool isManagementView, String tab) {
+  Widget _buildAppointmentsList(
+    AsyncValue<List<Appointment>> appointmentsAsync,
+    bool isManagementView,
+    bool canStartVideo,
+    String tab,
+  ) {
     return appointmentsAsync.when(
       data: (appointments) {
         var filtered = appointments.toList();
@@ -195,6 +212,7 @@ class _AppointmentsPageState extends ConsumerState<AppointmentsPage>
               return _AppointmentCard(
                 appointment: appointment,
                 isDoctor: isManagementView,
+                canStartVideo: canStartVideo,
               );
             },
           ),
@@ -288,8 +306,13 @@ class _AppointmentsPageState extends ConsumerState<AppointmentsPage>
 class _AppointmentCard extends StatelessWidget {
   final Appointment appointment;
   final bool isDoctor;
+  final bool canStartVideo;
 
-  const _AppointmentCard({required this.appointment, required this.isDoctor});
+  const _AppointmentCard({
+    required this.appointment,
+    required this.isDoctor,
+    required this.canStartVideo,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -310,7 +333,7 @@ class _AppointmentCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: isPast
-            ? BorderSide(color: AppTheme.neutralGray200)
+            ? const BorderSide(color: AppTheme.neutralGray200)
             : BorderSide.none,
       ),
       child: InkWell(
@@ -354,7 +377,9 @@ class _AppointmentCard extends StatelessWidget {
                     Text(
                       isDoctor
                           ? appointment.patientName ?? 'Patient'
-                          : doctor?.fullName ?? 'Médecin',
+                          : doctor?.fullName ??
+                              appointment.doctorName ??
+                              'Médecin',
                       style: AppTheme.titleSmall.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -434,8 +459,8 @@ class _AppointmentCard extends StatelessWidget {
                   _StatusBadge(status: appointment.status),
                   if (isVideo &&
                       !isPast &&
-                      (appointment.status == AppointmentStatus.confirmed ||
-                          appointment.status == AppointmentStatus.pending))
+                      canStartVideo &&
+                      appointment.status == AppointmentStatus.confirmed)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
                       child: SizedBox(

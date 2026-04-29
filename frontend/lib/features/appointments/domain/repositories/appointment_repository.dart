@@ -10,5 +10,7 @@ abstract class AppointmentRepository {
     String? notes,
   });
   Future<void> cancelAppointment(String appointmentId);
+  Future<Appointment> confirmAppointment(String appointmentId);
+  Future<Appointment> rejectAppointment(String appointmentId);
   Future<Appointment> getAppointmentDetail(String id);
 }

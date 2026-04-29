@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class MedicalRecordsTest extends TestCase
@@ -28,7 +29,9 @@ class MedicalRecordsTest extends TestCase
             'role' => 'DOCTOR',
         ]);
 
-        $create = $this->actingAs($doctor, 'api')->postJson('/api/medical-records', [
+        Sanctum::actingAs($doctor);
+
+        $create = $this->postJson('/api/medical-records', [
             'patient_user_id' => $patient->id,
             'category' => 'diagnosis',
             'metadata_encrypted' => ['payload' => 'encrypted'],
@@ -36,10 +39,12 @@ class MedicalRecordsTest extends TestCase
         ]);
 
         $create->assertCreated();
-        $create->assertJsonPath('record.patient_user_id', $patient->id);
-        $create->assertJsonPath('record.doctor_user_id', $doctor->id);
+        $create->assertJsonPath('data.record.patient_user_id', $patient->id);
+        $create->assertJsonPath('data.record.doctor_user_id', $doctor->id);
 
-        $list = $this->actingAs($patient, 'api')->getJson('/api/medical-records');
+        Sanctum::actingAs($patient);
+
+        $list = $this->getJson('/api/medical-records');
         $list->assertOk();
         $list->assertJsonCount(1, 'data');
         $list->assertJsonPath('data.0.category', 'diagnosis');
@@ -55,7 +60,9 @@ class MedicalRecordsTest extends TestCase
             'role' => 'PATIENT',
         ]);
 
-        $response = $this->actingAs($patient, 'api')->postJson('/api/medical-records', [
+        Sanctum::actingAs($patient);
+
+        $response = $this->postJson('/api/medical-records', [
             'patient_user_id' => '00000000-0000-0000-0000-000000000000',
             'category' => 'notes',
             'metadata_encrypted' => ['payload' => 'encrypted'],

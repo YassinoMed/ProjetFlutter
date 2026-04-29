@@ -1,10 +1,10 @@
 <?php
 
+use App\Enums\UserRole;
 use App\Models\Appointment;
 use App\Models\CallSession;
 use App\Models\Conversation;
 use App\Models\Teleconsultation;
-use App\Enums\UserRole;
 use App\Services\Teleconsultations\TeleconsultationSchemaGuard;
 use Illuminate\Support\Facades\Broadcast;
 

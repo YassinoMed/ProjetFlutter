@@ -1,6 +1,9 @@
 global:
   resolve_timeout: 5m
 
+# Non-sensitive repository defaults only.
+# Staging/production SMTP settings must be injected outside the repository.
+
 route:
   group_by: ["alertname", "service", "severity"]
   group_wait: 30s
@@ -15,11 +18,11 @@ route:
 receivers:
   - name: ops-email
     email_configs:
-      - to: ops@example.com
-        from: alertmanager@example.com
-        smarthost: smtp.example.com:587
-        auth_username: alertmanager@example.com
-        auth_password: change-me
+      - to: ops@example.invalid
+        from: alertmanager@example.invalid
+        smarthost: smtp.example.invalid:587
+        auth_username: alertmanager@example.invalid
+        auth_password: replace-via-secret-manager
         require_tls: true
 
 inhibit_rules:

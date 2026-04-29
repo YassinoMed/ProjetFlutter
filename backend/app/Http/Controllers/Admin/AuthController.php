@@ -143,6 +143,6 @@ class AuthController extends Controller
      */
     private function throttleKey(Request $request): string
     {
-        return 'admin-login:' . Str::lower(trim($request->input('email', ''))) . ':' . $request->ip();
+        return 'admin-login:'.Str::lower(trim($request->input('email', ''))).':'.$request->ip();
     }
 }

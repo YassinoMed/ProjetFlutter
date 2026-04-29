@@ -12,10 +12,12 @@ use App\Http\Requests\Documents\AskDocumentQuestionRequest;
 use App\Http\Requests\Documents\ReanalyzeDocumentRequest;
 use App\Http\Requests\Documents\UploadDocumentRequest;
 use App\Http\Resources\DocumentEntityResource;
+use App\Http\Resources\DocumentProcessingJobResource;
 use App\Http\Resources\DocumentResource;
 use App\Http\Resources\DocumentSummaryResource;
 use App\Jobs\ProcessDocumentJob;
 use App\Models\Document;
+use App\Models\DocumentExtraction;
 use App\Services\AuditService;
 use App\Services\DelegationContextService;
 use App\Services\Documents\Contracts\DocumentQuestionAnswerer;
@@ -120,9 +122,13 @@ class DocumentController extends Controller
                 'uploaded_from' => 'api',
                 'uploaded_by_role' => $user->role?->value ?? $user->role,
                 'acting_doctor_user_id' => $actingDoctorUserId,
+                'client_ocr' => $this->clientOcrMetadata($payload),
+                'client_image_quality' => $this->clientImageQualityMetadata($payload),
             ],
             ...$stored,
         ]);
+
+        $this->storeClientOcrExtraction($document, $payload);
 
         ProcessDocumentJob::dispatch($document->id);
 
@@ -145,13 +151,93 @@ class DocumentController extends Controller
         ], 'Document uploaded successfully', 201);
     }
 
+    private function storeClientOcrExtraction(Document $document, array $payload): void
+    {
+        $text = trim((string) ($payload['client_ocr_text'] ?? ''));
+
+        if ($text === '') {
+            return;
+        }
+
+        DocumentExtraction::query()->create([
+            'document_id' => $document->id,
+            'version' => 0,
+            'status' => DocumentProcessingStatus::COMPLETED->value,
+            'source' => 'client_ocr',
+            'engine' => $payload['client_ocr_engine'] ?? 'flutter_mlkit_text_recognition',
+            'language_code' => $payload['client_ocr_language'] ?? null,
+            'raw_text_encrypted' => $text,
+            'normalized_text_encrypted' => preg_replace('/\s+/', ' ', $text) ?? $text,
+            'confidence_score' => $payload['client_ocr_confidence'] ?? null,
+            'started_at_utc' => now('UTC'),
+            'completed_at_utc' => now('UTC'),
+            'meta' => [
+                'provided_by_mobile' => true,
+                'trusted_for_medical_decision' => false,
+                'privacy' => 'stored_encrypted_in_document_extractions',
+            ],
+        ]);
+    }
+
+    private function clientOcrMetadata(array $payload): ?array
+    {
+        $text = trim((string) ($payload['client_ocr_text'] ?? ''));
+
+        if ($text === '') {
+            return null;
+        }
+
+        return [
+            'provided' => true,
+            'engine' => $payload['client_ocr_engine'] ?? 'flutter_mlkit_text_recognition',
+            'language_code' => $payload['client_ocr_language'] ?? null,
+            'confidence_score' => $payload['client_ocr_confidence'] ?? null,
+            'text_length' => mb_strlen($text),
+            'received_at_utc' => now('UTC')->toISOString(),
+            'raw_text_stored_in_metadata' => false,
+        ];
+    }
+
+    private function clientImageQualityMetadata(array $payload): ?array
+    {
+        if (! isset($payload['client_image_quality_score'])) {
+            return null;
+        }
+
+        $warnings = [];
+        $rawWarnings = (string) ($payload['client_image_quality_warnings'] ?? '');
+
+        if ($rawWarnings !== '') {
+            $decoded = json_decode($rawWarnings, true);
+
+            if (is_array($decoded)) {
+                $warnings = collect($decoded)
+                    ->filter(fn ($warning) => is_string($warning) && trim($warning) !== '')
+                    ->map(fn (string $warning) => str($warning)->limit(220)->toString())
+                    ->values()
+                    ->all();
+            }
+        }
+
+        return [
+            'provided' => true,
+            'score' => round((float) $payload['client_image_quality_score'], 4),
+            'width' => isset($payload['client_image_width']) ? (int) $payload['client_image_width'] : null,
+            'height' => isset($payload['client_image_height']) ? (int) $payload['client_image_height'] : null,
+            'warnings' => $warnings,
+            'received_at_utc' => now('UTC')->toISOString(),
+            'contains_medical_content' => false,
+        ];
+    }
+
     public function show(string $documentId, Request $request): JsonResponse
     {
         $document = Document::query()
             ->with([
                 'latestExtraction',
-                'summaries' => fn (Builder $query) => $query->orderByDesc('version')->orderBy('audience')->orderBy('format'),
-                'entities' => fn (Builder $query) => $query->orderByDesc('version')->orderBy('entity_type'),
+                'summaries' => fn ($query) => $query->orderByDesc('version')->orderBy('audience')->orderBy('format'),
+                'entities' => fn ($query) => $query->orderByDesc('version')->orderBy('entity_type'),
+                'processingJobs' => fn ($query) => $query->orderByDesc('created_at')->orderByDesc('id'),
                 'tags',
             ])
             ->findOrFail($documentId);
@@ -169,6 +255,29 @@ class DocumentController extends Controller
         return $this->respondSuccess([
             'document' => new DocumentResource($document),
         ], 'Document retrieved successfully');
+    }
+
+    public function processing(string $documentId, Request $request): JsonResponse
+    {
+        $document = Document::query()
+            ->with([
+                'processingJobs' => fn ($query) => $query->orderByDesc('created_at')->orderByDesc('id'),
+            ])
+            ->findOrFail($documentId);
+
+        $this->authorize('view', $document);
+
+        $this->documentAccessLogService->log(
+            $document,
+            $request->user(),
+            'PROCESSING',
+            $request,
+            $this->defaultAudienceForUser($request)->value,
+        );
+
+        return $this->respondSuccess([
+            'processing_jobs' => DocumentProcessingJobResource::collection($document->processingJobs),
+        ], 'Document processing jobs retrieved successfully');
     }
 
     public function summary(string $documentId, Request $request): JsonResponse

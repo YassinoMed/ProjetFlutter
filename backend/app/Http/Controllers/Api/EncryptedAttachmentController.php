@@ -9,7 +9,6 @@ use App\Models\EncryptedAttachment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -43,7 +42,7 @@ class EncryptedAttachmentController extends Controller
         $ttlDays = $request->integer('ttl_days', $this->defaultTtlDays($request->string('attachable_type', '')));
 
         // Store the encrypted blob
-        $storagePath = $file->store('encrypted-attachments/' . $user->id, 'local');
+        $storagePath = $file->store('encrypted-attachments/'.$user->id, 'local');
 
         // Map attachable_type to model class
         $attachableType = match ($request->string('attachable_type', '')) {
@@ -103,7 +102,7 @@ class EncryptedAttachmentController extends Controller
 
         return Storage::disk('local')->download(
             $attachment->storage_path,
-            $attachment->original_filename . '.enc',
+            $attachment->original_filename.'.enc',
             [
                 'Content-Type' => 'application/octet-stream',
                 'X-Encryption-Algorithm' => $attachment->algorithm,

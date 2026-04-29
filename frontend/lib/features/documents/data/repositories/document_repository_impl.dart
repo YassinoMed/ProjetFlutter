@@ -31,6 +31,11 @@ class DocumentRepositoryImpl {
     return remoteDataSource.getDocument(documentId);
   }
 
+  Future<List<DocumentProcessingJobEntry>> getProcessingJobs(
+      String documentId) {
+    return remoteDataSource.getProcessingJobs(documentId);
+  }
+
   Future<List<DocumentSummaryItem>> getSummaries(String documentId) {
     return remoteDataSource.getSummaries(documentId);
   }
@@ -46,6 +51,14 @@ class DocumentRepositoryImpl {
     String? doctorUserId,
     String? documentTypeHint,
     DateTime? documentDateUtc,
+    String? clientOcrText,
+    String? clientOcrEngine,
+    String? clientOcrLanguage,
+    double? clientOcrConfidence,
+    double? clientImageQualityScore,
+    int? clientImageWidth,
+    int? clientImageHeight,
+    List<String>? clientImageQualityWarnings,
   }) {
     return remoteDataSource.uploadDocument(
       file: file,
@@ -54,6 +67,14 @@ class DocumentRepositoryImpl {
       doctorUserId: doctorUserId,
       documentTypeHint: documentTypeHint,
       documentDateUtc: documentDateUtc,
+      clientOcrText: clientOcrText,
+      clientOcrEngine: clientOcrEngine,
+      clientOcrLanguage: clientOcrLanguage,
+      clientOcrConfidence: clientOcrConfidence,
+      clientImageQualityScore: clientImageQualityScore,
+      clientImageWidth: clientImageWidth,
+      clientImageHeight: clientImageHeight,
+      clientImageQualityWarnings: clientImageQualityWarnings,
     );
   }
 

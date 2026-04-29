@@ -28,10 +28,10 @@ class MedicalRecordController extends Controller
         $records = $query->paginate(20);
 
         $stats = [
-            'total'      => MedicalRecordMetadata::count(),
-            'active'     => MedicalRecordMetadata::active()->count(),
-            'expired'    => MedicalRecordMetadata::whereNotNull('expires_at')
-                                ->where('expires_at', '<=', now())->count(),
+            'total' => MedicalRecordMetadata::count(),
+            'active' => MedicalRecordMetadata::active()->count(),
+            'expired' => MedicalRecordMetadata::whereNotNull('expires_at')
+                ->where('expires_at', '<=', now())->count(),
             'categories' => MedicalRecordMetadata::distinct('category')->pluck('category')->filter()->values(),
         ];
 

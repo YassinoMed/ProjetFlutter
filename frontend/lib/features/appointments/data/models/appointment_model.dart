@@ -11,6 +11,7 @@ class AppointmentModel extends Appointment {
     super.type,
     super.notes,
     super.patientName,
+    super.doctorName,
     super.durationMinutes,
     super.doctor,
   });
@@ -27,6 +28,19 @@ class AppointmentModel extends Appointment {
         patientName = patient['name'] as String?;
       }
     }
+    patientName ??= json['patient_name']?.toString();
+
+    String? doctorName;
+    if (json['doctor'] is Map<String, dynamic>) {
+      final doctor = json['doctor'] as Map<String, dynamic>;
+      final firstName = doctor['first_name'] as String? ?? '';
+      final lastName = doctor['last_name'] as String? ?? '';
+      doctorName = '$firstName $lastName'.trim();
+      if (doctorName.isEmpty) {
+        doctorName = doctor['name'] as String?;
+      }
+    }
+    doctorName ??= json['doctor_name']?.toString();
 
     // Parse type
     final typeStr = json['type'] as String? ??
@@ -48,6 +62,7 @@ class AppointmentModel extends Appointment {
       notes: json['metadata_encrypted']?['notes'] as String? ??
           json['notes'] as String?,
       patientName: patientName,
+      doctorName: doctorName,
       durationMinutes: (json['duration_minutes'] as int?) ?? 30,
       doctor: json['doctor'] != null
           ? DoctorModel.fromJson(json['doctor'] as Map<String, dynamic>)

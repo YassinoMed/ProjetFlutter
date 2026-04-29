@@ -9,8 +9,17 @@ enum AppointmentStatus {
   noShow;
 
   static AppointmentStatus fromString(String status) {
+    final normalized = status.trim().toLowerCase();
+
+    if (normalized == 'requested' || normalized == 'draft') {
+      return AppointmentStatus.pending;
+    }
+    if (normalized == 'no_show' || normalized == 'noshow') {
+      return AppointmentStatus.noShow;
+    }
+
     return AppointmentStatus.values.firstWhere(
-      (e) => e.name.toUpperCase() == status.toUpperCase(),
+      (e) => e.name.toLowerCase() == normalized,
       orElse: () => AppointmentStatus.pending,
     );
   }
@@ -43,6 +52,7 @@ class Appointment extends Equatable {
   final AppointmentType type;
   final String? notes;
   final String? patientName;
+  final String? doctorName;
   final int durationMinutes;
   final DoctorEntity? doctor;
 
@@ -55,11 +65,22 @@ class Appointment extends Equatable {
     this.type = AppointmentType.presential,
     this.notes,
     this.patientName,
+    this.doctorName,
     this.durationMinutes = 30,
     this.doctor,
   });
 
   @override
-  List<Object?> get props =>
-      [id, doctorId, patientId, dateTime, status, type, notes, doctor];
+  List<Object?> get props => [
+        id,
+        doctorId,
+        patientId,
+        dateTime,
+        status,
+        type,
+        notes,
+        patientName,
+        doctorName,
+        doctor
+      ];
 }

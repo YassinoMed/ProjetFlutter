@@ -56,22 +56,23 @@ class _LoginPageState extends ConsumerState<LoginPage>
       _emailController.text = lastEmail;
     }
 
-    final biometricAvailableAsync = ref.read(isBiometricAvailableProvider);
+    final available = await ref.read(isBiometricAvailableProvider.future);
+    if (!mounted) return;
+
     final canUseBiometricLogin = ref.read(canUseBiometricLoginProvider);
     final requiresUnlock = ref.read(requiresBiometricUnlockProvider);
 
-    biometricAvailableAsync.whenData((available) {
-      if (!mounted) return;
-
-      setState(() {
-        _biometricAvailable = available;
-        _showBiometricButton = available && canUseBiometricLogin;
-      });
-
-      if (available && requiresUnlock && canUseBiometricLogin) {
-        _handleBiometricLogin();
-      }
+    setState(() {
+      _biometricAvailable = available;
+      _showBiometricButton = available && canUseBiometricLogin;
     });
+
+    if (available && requiresUnlock && canUseBiometricLogin) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _handleBiometricLogin();
+      });
+    }
   }
 
   @override

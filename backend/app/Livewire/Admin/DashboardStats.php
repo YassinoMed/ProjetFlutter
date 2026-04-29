@@ -16,22 +16,30 @@ class DashboardStats extends Component
 {
     // Statistiques clés (Temps réel)
     public $totalPatients = 0;
+
     public $totalDoctors = 0;
+
     public $appointmentsToday = 0;
+
     public $activeConversations = 0;
 
     // Pourcentage changement réel
-    public $patientsGrowth = "0%";
-    public $doctorsGrowth = "0%";
+    public $patientsGrowth = '0%';
+
+    public $doctorsGrowth = '0%';
 
     // Chart datas
     public $appointmentsChartLabels = [];
+
     public $appointmentsChartData = [];
+
     public $specialtiesChartLabels = [];
+
     public $specialtiesChartData = [];
 
     // Recent activity
     public $recentUsers = [];
+
     public $recentAppointments = [];
 
     public function mount()
@@ -124,10 +132,11 @@ class DashboardStats extends Component
 
         if ($lastMonth > 0) {
             $pct = round(($thisMonth - $lastMonth) / $lastMonth * 100);
-            return ($pct >= 0 ? '+' : '') . $pct . '%';
+
+            return ($pct >= 0 ? '+' : '').$pct.'%';
         }
 
-        return '+' . $thisMonth;
+        return '+'.$thisMonth;
     }
 
     public function render()

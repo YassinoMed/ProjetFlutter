@@ -32,8 +32,8 @@ class TrustedDevice extends Model
 
     protected $casts = [
         'biometrics_enabled' => 'boolean',
-        'last_login_at'      => 'datetime',
-        'revoked_at'         => 'datetime',
+        'last_login_at' => 'datetime',
+        'revoked_at' => 'datetime',
     ];
 
     protected static function booted(): void

@@ -43,25 +43,25 @@ class RgpdController extends Controller
         $tokens = FcmToken::query()->where('user_id', $user->id)->get();
 
         $this->logAudit('rgpd_export', [
-            'user_id'      => $user->id,
+            'user_id' => $user->id,
             'appointments' => $appointments->count(),
-            'messages'     => $messages->count(),
+            'messages' => $messages->count(),
         ]);
 
         return $this->respondSuccess([
             'user' => [
-                'id'             => $user->id,
-                'email'          => $user->email,
-                'first_name'     => $user->first_name,
-                'last_name'      => $user->last_name,
-                'phone'          => $user->phone,
-                'role'           => $user->role?->value ?? $user->role,
+                'id' => $user->id,
+                'email' => $user->email,
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
+                'phone' => $user->phone,
+                'role' => $user->role?->value ?? $user->role,
                 'created_at_utc' => optional($user->created_at)?->setTimezone('UTC')?->toISOString(),
             ],
-            'appointments'   => $appointments,
-            'chat_messages'  => $messages,
-            'fcm_tokens'     => $tokens,
-            'consents'       => $consents,
+            'appointments' => $appointments,
+            'chat_messages' => $messages,
+            'fcm_tokens' => $tokens,
+            'consents' => $consents,
             'exported_at_utc' => now('UTC')->toISOString(),
         ], 'RGPD Export successful');
     }
@@ -76,20 +76,20 @@ class RgpdController extends Controller
 
         $consent = UserConsent::query()->updateOrCreate(
             [
-                'user_id'      => $user->id,
+                'user_id' => $user->id,
                 'consent_type' => $data['consent_type'],
             ],
             [
-                'consented'        => $data['consented'],
+                'consented' => $data['consented'],
                 'consented_at_utc' => $consentedAt,
-                'revoked_at_utc'   => $revokedAt,
+                'revoked_at_utc' => $revokedAt,
             ],
         );
 
         $this->logAudit('rgpd_consent', [
-            'user_id'      => $user->id,
+            'user_id' => $user->id,
             'consent_type' => $data['consent_type'],
-            'consented'    => $data['consented'],
+            'consented' => $data['consented'],
         ]);
 
         return $this->respondSuccess([

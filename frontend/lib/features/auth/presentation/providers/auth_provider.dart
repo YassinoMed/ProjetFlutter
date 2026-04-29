@@ -2,6 +2,8 @@
 /// Sanctum: Single opaque token, no refresh. Biometric = local gate.
 library;
 
+import 'dart:async';
+
 import 'package:dartz/dartz.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -10,6 +12,7 @@ import '../../../../core/errors/failures.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/network_info.dart';
 import '../../../../core/security/biometric_service.dart';
+import '../../../../core/security/e2ee_chat_crypto_service.dart';
 import '../../../../core/security/secure_storage_service.dart';
 import '../../../../core/utils/device_info_helper.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
@@ -158,6 +161,8 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
               .read(secureStorageProvider)
               .delete(key: AppConstants.keyActingDoctorUserId);
 
+          _registerE2eeDeviceInBackground();
+
           return AsyncValue.data(AuthStateEntity(
             user: data.user,
             isAuthenticated: true,
@@ -214,13 +219,17 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
 
       state = result.fold(
         (failure) => AsyncValue.error(failure.message, StackTrace.current),
-        (user) => AsyncValue.data(AuthStateEntity(
-          user: user,
-          isAuthenticated: true,
-          biometricEnabled: true,
-          canUseBiometricLogin: true,
-          requiresBiometricUnlock: false,
-        )),
+        (user) {
+          _registerE2eeDeviceInBackground();
+
+          return AsyncValue.data(AuthStateEntity(
+            user: user,
+            isAuthenticated: true,
+            biometricEnabled: true,
+            canUseBiometricLogin: true,
+            requiresBiometricUnlock: false,
+          ));
+        },
       );
     } on BiometricLockedOutException {
       state = AsyncValue.error(
@@ -285,10 +294,14 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
 
     state = result.fold(
       (failure) => AsyncValue.error(failure.message, StackTrace.current),
-      (data) => AsyncValue.data(AuthStateEntity(
-        user: data.user,
-        isAuthenticated: true,
-      )),
+      (data) {
+        _registerE2eeDeviceInBackground();
+
+        return AsyncValue.data(AuthStateEntity(
+          user: data.user,
+          isAuthenticated: true,
+        ));
+      },
     );
   }
 
@@ -321,11 +334,11 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
     final deviceHelper = ref.read(deviceInfoHelperProvider);
     final deviceInfo = await deviceHelper.getDeviceInfo();
 
-      final repository = ref.read(authRepositoryProvider);
-      final result = await repository.enableBiometric(
-        deviceId: deviceInfo.deviceId,
-        deviceName: deviceInfo.deviceName,
-        platform: deviceInfo.platform,
+    final repository = ref.read(authRepositoryProvider);
+    final result = await repository.enableBiometric(
+      deviceId: deviceInfo.deviceId,
+      deviceName: deviceInfo.deviceName,
+      platform: deviceInfo.platform,
     );
 
     // Step 4: Update state
@@ -530,7 +543,8 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
     }
 
     final secureStorage = ref.read(secureStorageProvider);
-    final currentDeviceId = await ref.read(deviceInfoHelperProvider).getDeviceId();
+    final currentDeviceId =
+        await ref.read(deviceInfoHelperProvider).getDeviceId();
     final storedDeviceId = await secureStorage.read(
       key: AppConstants.keyBiometricDeviceId,
     );
@@ -543,6 +557,18 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
         storedDeviceId == currentDeviceId &&
         boundUserId != null &&
         boundUserId == storedUserId;
+  }
+
+  void _registerE2eeDeviceInBackground() {
+    unawaited(
+      ref
+          .read(e2eeChatCryptoServiceProvider)
+          .ensureOwnDeviceRegistered(ref.read(dioProvider))
+          .catchError((_) {
+        // E2EE registration must not block login. The chat UI will show a
+        // clear encrypted-message error if the peer bundle is still missing.
+      }),
+    );
   }
 }
 

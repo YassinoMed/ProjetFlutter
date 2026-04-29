@@ -3,7 +3,7 @@ set -euo pipefail
 
 # ──────────────────────────────────────────────────────────────────────────────
 # MediConnect Pro – Setup local macOS (v2.1 – Reverb + E2EE + RGPD)
-# Compatible PHP 8.2 / 8.3 / 8.4
+# Requires PHP 8.4
 # ──────────────────────────────────────────────────────────────────────────────
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -16,17 +16,17 @@ cd "${ROOT_DIR}"
 
 # ── PHP version check ──────────────────────────────────────────
 if ! command -v php >/dev/null 2>&1; then
-  echo "php introuvable. Installe PHP 8.3 (brew install php@8.3) puis réessaie." >&2
+  echo "php introuvable. Installe PHP 8.4 (brew install php) puis réessaie." >&2
   exit 1
 fi
 
 PHP_MM="$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')"
 case "${PHP_MM}" in
-  8.2|8.3|8.4)
+  8.4)
     ;;
   *)
-    echo "Version PHP détectée: ${PHP_MM} (attendue: 8.2, 8.3 ou 8.4)." >&2
-    echo "Installe et active PHP via Homebrew (ex: 8.4) :" >&2
+    echo "Version PHP détectée: ${PHP_MM} (attendue: 8.4)." >&2
+    echo "Installe et active PHP 8.4 via Homebrew :" >&2
     echo "  brew install php" >&2
     echo "  brew unlink php || true" >&2
     echo "  brew link --overwrite --force php" >&2

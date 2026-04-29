@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class ProfileEndpointsTest extends TestCase
@@ -20,21 +21,25 @@ class ProfileEndpointsTest extends TestCase
             'role' => 'PATIENT',
         ]);
 
-        $response = $this->actingAs($patient, 'api')->putJson('/api/profile', [
+        Sanctum::actingAs($patient);
+
+        $response = $this->putJson('/api/profile', [
             'phone' => '+33123456789',
             'date_of_birth' => '1990-01-01',
             'sex' => 'F',
         ]);
 
         $response->assertOk();
-        $response->assertJsonPath('user.phone', '+33123456789');
-        $response->assertJsonPath('patient_profile.date_of_birth', '1990-01-01');
-        $response->assertJsonPath('patient_profile.sex', 'F');
-        $response->assertJsonPath('doctor_profile', null);
+        $response->assertJsonPath('data.user.phone', '+33123456789');
+        $response->assertJsonPath('data.patient_profile.date_of_birth', '1990-01-01');
+        $response->assertJsonPath('data.patient_profile.sex', 'F');
+        $response->assertJsonPath('data.doctor_profile', null);
 
-        $show = $this->actingAs($patient, 'api')->getJson('/api/profile');
+        Sanctum::actingAs($patient);
+
+        $show = $this->getJson('/api/profile');
         $show->assertOk();
-        $show->assertJsonPath('patient_profile.date_of_birth', '1990-01-01');
+        $show->assertJsonPath('data.patient_profile.date_of_birth', '1990-01-01');
     }
 
     public function test_doctor_can_update_profile(): void
@@ -47,14 +52,16 @@ class ProfileEndpointsTest extends TestCase
             'role' => 'DOCTOR',
         ]);
 
-        $response = $this->actingAs($doctor, 'api')->putJson('/api/profile', [
+        Sanctum::actingAs($doctor);
+
+        $response = $this->putJson('/api/profile', [
             'rpps' => 'RPPS-123456',
             'specialty' => 'Cardiologie',
         ]);
 
         $response->assertOk();
-        $response->assertJsonPath('doctor_profile.rpps', 'RPPS-123456');
-        $response->assertJsonPath('doctor_profile.specialty', 'Cardiologie');
-        $response->assertJsonPath('patient_profile', null);
+        $response->assertJsonPath('data.doctor_profile.rpps', 'RPPS-123456');
+        $response->assertJsonPath('data.doctor_profile.specialty', 'Cardiologie');
+        $response->assertJsonPath('data.patient_profile', null);
     }
 }

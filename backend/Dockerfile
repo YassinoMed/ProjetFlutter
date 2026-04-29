@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1.7
+# Official backend image for Jenkins, Docker Compose and production runtime.
 
-ARG PHP_VERSION=8.3
+ARG PHP_VERSION=8.4
 
 FROM composer:2 AS vendor
 
@@ -28,11 +29,16 @@ RUN apk add --no-cache \
         icu \
         libpq \
         libzip \
+        poppler-utils \
         su-exec \
+        tesseract-ocr \
+        tesseract-ocr-data-eng \
+        tesseract-ocr-data-fra \
         tzdata \
     && apk add --no-cache --virtual .build-deps \
         $PHPIZE_DEPS \
         icu-dev \
+        linux-headers \
         libzip-dev \
         oniguruma-dev \
         postgresql-dev \

@@ -27,10 +27,11 @@ class AdminMiddleware
     public function handle(Request $request, Closure $next): Response
     {
         // ── 1. Require authentication ─────────────────────────────
-        if (!auth('web')->check()) {
+        if (! auth('web')->check()) {
             if ($request->expectsJson()) {
                 return response()->json(['message' => 'Unauthenticated'], 401);
             }
+
             return redirect()->route('admin.login');
         }
 

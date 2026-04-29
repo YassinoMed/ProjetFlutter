@@ -1,5 +1,6 @@
 library;
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -51,6 +52,23 @@ class DocumentRemoteDataSource {
     return MedicalDocumentModel.fromJson(data);
   }
 
+  Future<List<DocumentProcessingJobEntryModel>> getProcessingJobs(
+    String documentId,
+  ) async {
+    final response = await dio.get(
+      ApiConstants.documentProcessing.replaceFirst('{id}', documentId),
+    );
+
+    final data = ((response.data['data']
+            as Map<String, dynamic>?)?['processing_jobs'] as List?) ??
+        const [];
+
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map(DocumentProcessingJobEntryModel.fromJson)
+        .toList();
+  }
+
   Future<List<DocumentSummaryModel>> getSummaries(String documentId) async {
     final response = await dio.get(
       ApiConstants.documentSummary.replaceFirst('{id}', documentId),
@@ -89,6 +107,14 @@ class DocumentRemoteDataSource {
     String? doctorUserId,
     String? documentTypeHint,
     DateTime? documentDateUtc,
+    String? clientOcrText,
+    String? clientOcrEngine,
+    String? clientOcrLanguage,
+    double? clientOcrConfidence,
+    double? clientImageQualityScore,
+    int? clientImageWidth,
+    int? clientImageHeight,
+    List<String>? clientImageQualityWarnings,
   }) async {
     final formData = FormData.fromMap({
       'title': title,
@@ -101,6 +127,21 @@ class DocumentRemoteDataSource {
       if (documentTypeHint != null) 'document_type_hint': documentTypeHint,
       if (documentDateUtc != null)
         'document_date_utc': documentDateUtc.toUtc().toIso8601String(),
+      if (clientOcrText != null && clientOcrText.trim().isNotEmpty)
+        'client_ocr_text': clientOcrText.trim(),
+      if (clientOcrEngine != null && clientOcrEngine.trim().isNotEmpty)
+        'client_ocr_engine': clientOcrEngine.trim(),
+      if (clientOcrLanguage != null && clientOcrLanguage.trim().isNotEmpty)
+        'client_ocr_language': clientOcrLanguage.trim(),
+      if (clientOcrConfidence != null)
+        'client_ocr_confidence': clientOcrConfidence,
+      if (clientImageQualityScore != null)
+        'client_image_quality_score': clientImageQualityScore,
+      if (clientImageWidth != null) 'client_image_width': clientImageWidth,
+      if (clientImageHeight != null) 'client_image_height': clientImageHeight,
+      if (clientImageQualityWarnings != null &&
+          clientImageQualityWarnings.isNotEmpty)
+        'client_image_quality_warnings': jsonEncode(clientImageQualityWarnings),
     });
 
     final response = await dio.post(

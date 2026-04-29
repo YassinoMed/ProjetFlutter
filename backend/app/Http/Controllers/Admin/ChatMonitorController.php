@@ -28,10 +28,10 @@ class ChatMonitorController extends Controller
         $messages = $query->orderByDesc('sent_at_utc')->paginate(20);
 
         $stats = [
-            'total_today'          => ChatMessage::whereDate('sent_at_utc', today())->count(),
-            'total_week'           => ChatMessage::where('sent_at_utc', '>=', now()->subWeek())->count(),
+            'total_today' => ChatMessage::whereDate('sent_at_utc', today())->count(),
+            'total_week' => ChatMessage::where('sent_at_utc', '>=', now()->subWeek())->count(),
             'active_consultations' => ChatMessage::where('sent_at_utc', '>=', now()->subDay())
-                                        ->distinct('consultation_id')->count('consultation_id'),
+                ->distinct('consultation_id')->count('consultation_id'),
         ];
 
         return view('admin.chat.index', compact('messages', 'stats'));

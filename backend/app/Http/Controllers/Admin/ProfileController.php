@@ -15,6 +15,7 @@ class ProfileController extends Controller
     public function index()
     {
         $admin = auth('web')->user();
+
         return view('admin.profile.index', compact('admin'));
     }
 
@@ -24,8 +25,8 @@ class ProfileController extends Controller
 
         $validated = $request->validate([
             'first_name' => ['required', 'string', 'max:100'],
-            'last_name'  => ['required', 'string', 'max:100'],
-            'phone'      => ['nullable', 'string', 'max:20'],
+            'last_name' => ['required', 'string', 'max:100'],
+            'phone' => ['nullable', 'string', 'max:20'],
         ]);
 
         $admin->update($validated);

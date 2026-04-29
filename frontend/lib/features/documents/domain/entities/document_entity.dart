@@ -179,6 +179,95 @@ class DocumentQuestionAnswer extends Equatable {
       ];
 }
 
+class DocumentProcessingStage extends Equatable {
+  final String stage;
+  final String label;
+  final String status;
+
+  const DocumentProcessingStage({
+    required this.stage,
+    required this.label,
+    required this.status,
+  });
+
+  @override
+  List<Object?> get props => [stage, label, status];
+}
+
+class DocumentProcessingPipeline extends Equatable {
+  final String overallStatus;
+  final bool ocrRequired;
+  final bool ocrUsed;
+  final DateTime? processedAtUtc;
+  final DateTime? failedAtUtc;
+  final List<DocumentProcessingStage> stages;
+
+  const DocumentProcessingPipeline({
+    required this.overallStatus,
+    required this.ocrRequired,
+    required this.ocrUsed,
+    this.processedAtUtc,
+    this.failedAtUtc,
+    this.stages = const [],
+  });
+
+  @override
+  List<Object?> get props => [
+        overallStatus,
+        ocrRequired,
+        ocrUsed,
+        processedAtUtc,
+        failedAtUtc,
+        stages,
+      ];
+}
+
+class DocumentProcessingJobEntry extends Equatable {
+  final String id;
+  final String jobType;
+  final String jobLabel;
+  final String? queueName;
+  final int attempt;
+  final String status;
+  final DateTime? startedAtUtc;
+  final DateTime? completedAtUtc;
+  final DateTime? failedAtUtc;
+  final String? errorCode;
+  final String? errorMessage;
+  final Map<String, dynamic>? meta;
+
+  const DocumentProcessingJobEntry({
+    required this.id,
+    required this.jobType,
+    required this.jobLabel,
+    this.queueName,
+    required this.attempt,
+    required this.status,
+    this.startedAtUtc,
+    this.completedAtUtc,
+    this.failedAtUtc,
+    this.errorCode,
+    this.errorMessage,
+    this.meta,
+  });
+
+  @override
+  List<Object?> get props => [
+        id,
+        jobType,
+        jobLabel,
+        queueName,
+        attempt,
+        status,
+        startedAtUtc,
+        completedAtUtc,
+        failedAtUtc,
+        errorCode,
+        errorMessage,
+        meta,
+      ];
+}
+
 class MedicalDocument extends Equatable {
   final String id;
   final String title;
@@ -205,6 +294,8 @@ class MedicalDocument extends Equatable {
   final String? lastErrorMessage;
   final Map<String, dynamic>? sourceMetadata;
   final List<Map<String, dynamic>> tags;
+  final DocumentProcessingPipeline? processingPipeline;
+  final List<DocumentProcessingJobEntry> processingJobs;
   final DocumentExtraction? latestExtraction;
   final List<DocumentSummaryItem> summaries;
   final List<DocumentExtractedEntity> entities;
@@ -235,6 +326,8 @@ class MedicalDocument extends Equatable {
     this.lastErrorMessage,
     this.sourceMetadata,
     this.tags = const [],
+    this.processingPipeline,
+    this.processingJobs = const [],
     this.latestExtraction,
     this.summaries = const [],
     this.entities = const [],
@@ -272,6 +365,8 @@ class MedicalDocument extends Equatable {
         lastErrorMessage,
         sourceMetadata,
         tags,
+        processingPipeline,
+        processingJobs,
         latestExtraction,
         summaries,
         entities,

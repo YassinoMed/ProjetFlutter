@@ -92,6 +92,8 @@ dependencies:
   pusher_channels_flutter: ^2.4.0
   web_socket_channel: ^3.0.3
   flutter_bloc: ^9.1.1
+  google_mlkit_text_recognition: ^0.15.1
+  image: ^4.8.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
