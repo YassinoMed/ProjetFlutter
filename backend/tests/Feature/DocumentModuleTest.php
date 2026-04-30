@@ -9,15 +9,18 @@ use App\Enums\DocumentType;
 use App\Enums\DocumentUrgency;
 use App\Jobs\ProcessDocumentJob;
 use App\Models\Document;
+use App\Models\DocumentAccessLog;
 use App\Models\DocumentExtraction;
 use App\Models\DocumentProcessingJob;
 use App\Models\User;
+use App\Services\Documents\Ai\HttpDocumentAiAnalyzer;
 use App\Services\Documents\Contracts\DocumentAiAnalyzer;
 use App\Services\Documents\Contracts\DocumentTextExtractor;
 use App\Services\Documents\Data\DocumentAnalysisResult;
 use App\Services\Documents\Data\TextExtractionResult;
 use App\Services\Documents\DocumentAnalysisPipeline;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
@@ -276,5 +279,158 @@ class DocumentModuleTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.processing_jobs.0.job_label', 'Analyse du document')
             ->assertJsonPath('data.processing_jobs.0.status', 'PROCESSING');
+    }
+
+    public function test_medical_api_provider_analyzes_document_via_generate_endpoint(): void
+    {
+        config()->set('documents.ai.provider', 'medical_api');
+        config()->set('documents.ai.base_url', 'https://medical-ai.test/proxy/8097');
+        config()->set('documents.ai.generate_path', '/generate');
+        config()->set('documents.ai.max_new_tokens', 512);
+        config()->set('documents.ai.temperature', 0.0);
+
+        Http::fake([
+            'https://medical-ai.test/proxy/8097/generate' => Http::response([
+                'response' => json_encode([
+                    'document_type' => 'LAB_RESULT',
+                    'document_date' => '2026-04-01',
+                    'patient_name' => 'Alice Martin',
+                    'important_lab_results' => [
+                        ['label' => 'HbA1c', 'value' => '7.2', 'unit' => '%', 'certainty' => 'HIGH'],
+                    ],
+                    'treatments' => ['Metformine 500 mg'],
+                    'recommendations' => ['Contrôle médical recommandé'],
+                    'urgency_level' => 'MEDIUM',
+                    'facts_only' => ['HbA1c: 7.2 %.', 'Traitement: Metformine 500 mg.'],
+                    'missing_fields' => [],
+                    'uncertainty_notes' => [],
+                    'keywords' => ['diabete'],
+                    'confidence' => 0.92,
+                ]),
+            ], 200),
+        ]);
+
+        $patient = User::factory()->create(['role' => 'PATIENT']);
+        $document = Document::query()->create([
+            'patient_user_id' => $patient->id,
+            'uploaded_by_user_id' => $patient->id,
+            'title' => 'Bilan HbA1c',
+            'original_filename' => 'hba1c.txt',
+            'mime_type' => 'text/plain',
+            'file_extension' => 'txt',
+            'file_size_bytes' => 10,
+            'storage_disk' => 'documents-tests',
+            'storage_path' => 'medical-documents/'.$patient->id.'/hba1c.txt',
+            'sha256_checksum' => hash('sha256', 'hba1c'),
+        ]);
+
+        $result = app(HttpDocumentAiAnalyzer::class)->analyze(
+            $document,
+            new TextExtractionResult(
+                rawText: 'HbA1c 7.2 %. Traitement: Metformine 500 mg.',
+                normalizedText: 'HbA1c 7.2 %. Traitement: Metformine 500 mg.',
+                source: 'plain_text',
+                engine: 'fake',
+                languageCode: 'fr',
+                confidenceScore: 1.0,
+            ),
+        );
+
+        $this->assertSame(DocumentType::LAB_RESULT, $result->documentType);
+        $this->assertSame(DocumentUrgency::MEDIUM, $result->urgency);
+        $this->assertSame('Alice Martin', $result->structuredFields['patient_name']);
+        $this->assertNotEmpty($result->summaries);
+
+        Http::assertSent(fn ($request) => $request->url() === 'https://medical-ai.test/proxy/8097/generate'
+            && $request['temperature'] === 0.0
+            && str_contains($request['prompt'], 'Texte OCR/extrait'));
+    }
+
+    public function test_medical_api_document_chat_uses_chat_endpoint_without_logging_plain_question(): void
+    {
+        config()->set('documents.document_chat_driver', 'http');
+        config()->set('documents.ai.provider', 'medical_api');
+        config()->set('documents.ai.base_url', 'https://medical-ai.test/proxy/8097');
+        config()->set('documents.ai.chat_path', '/chat');
+
+        Http::fake([
+            'https://medical-ai.test/proxy/8097/chat' => Http::response([
+                'response' => json_encode([
+                    'answer' => 'Le document mentionne une HbA1c à 7.2 %.',
+                    'insufficient_evidence' => false,
+                    'evidence' => [
+                        [
+                            'source' => 'document_text',
+                            'field' => 'important_lab_results',
+                            'excerpt' => 'HbA1c 7.2 %',
+                            'certainty' => 'HIGH',
+                        ],
+                    ],
+                    'uncertainty_notes' => [],
+                    'confidence_score' => 0.91,
+                ]),
+            ], 200),
+        ]);
+
+        $patient = User::factory()->create(['role' => 'PATIENT']);
+        $document = Document::query()->create([
+            'patient_user_id' => $patient->id,
+            'uploaded_by_user_id' => $patient->id,
+            'title' => 'Bilan HbA1c',
+            'original_filename' => 'hba1c.txt',
+            'mime_type' => 'text/plain',
+            'file_extension' => 'txt',
+            'file_size_bytes' => 10,
+            'storage_disk' => 'documents-tests',
+            'storage_path' => 'medical-documents/'.$patient->id.'/hba1c.txt',
+            'sha256_checksum' => hash('sha256', 'hba1c'),
+        ]);
+
+        DocumentExtraction::query()->create([
+            'document_id' => $document->id,
+            'version' => 1,
+            'status' => DocumentProcessingStatus::COMPLETED->value,
+            'source' => 'plain_text',
+            'engine' => 'fake',
+            'language_code' => 'fr',
+            'raw_text_encrypted' => 'HbA1c 7.2 %',
+            'normalized_text_encrypted' => 'HbA1c 7.2 %',
+            'structured_payload' => [
+                'important_lab_results' => ['HbA1c 7.2 %'],
+            ],
+            'confidence_score' => 1.0,
+            'started_at_utc' => now('UTC'),
+            'completed_at_utc' => now('UTC'),
+        ]);
+
+        Sanctum::actingAs($patient);
+
+        $question = 'Quelle est la valeur HbA1c dans ce document ?';
+
+        $this->postJson("/api/documents/{$document->id}/ask", [
+            'question' => $question,
+            'audience' => DocumentSummaryAudience::PATIENT->value,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.answer.answer', 'Le document mentionne une HbA1c à 7.2 %.')
+            ->assertJsonPath('data.answer.insufficient_evidence', false);
+
+        $this->assertDatabaseHas('document_access_logs', [
+            'document_id' => $document->id,
+            'action' => 'ASK',
+        ]);
+
+        $accessLog = DocumentAccessLog::query()
+            ->where('document_id', $document->id)
+            ->where('action', 'ASK')
+            ->latest('id')
+            ->firstOrFail();
+
+        $this->assertArrayNotHasKey('question', $accessLog->context);
+        $this->assertSame(hash('sha256', $question), $accessLog->context['question_hash']);
+
+        Http::assertSent(fn ($request) => $request->url() === 'https://medical-ai.test/proxy/8097/chat'
+            && $request['messages'][1]['content'] !== ''
+            && str_contains($request['messages'][1]['content'], 'Question utilisateur'));
     }
 }

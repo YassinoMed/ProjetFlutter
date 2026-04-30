@@ -11,11 +11,20 @@ use App\Http\Requests\WebRtc\WebRtcAnswerRequest;
 use App\Http\Requests\WebRtc\WebRtcIceCandidateRequest;
 use App\Http\Requests\WebRtc\WebRtcOfferRequest;
 use App\Models\Appointment;
+use App\Services\WebRtc\IceServerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class WebRtcController extends Controller
 {
+    public function iceServers(Request $request, IceServerService $iceServerService): JsonResponse
+    {
+        return $this->respondSuccess(
+            $iceServerService->forUser($request->user()),
+            'ICE servers retrieved successfully',
+        );
+    }
+
     public function join(string $appointmentId, Request $request): JsonResponse
     {
         $appointment = Appointment::query()->findOrFail($appointmentId);

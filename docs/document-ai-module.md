@@ -65,10 +65,11 @@ Version simple:
 
 Version avancée:
 
-- `DOCUMENTS_AI_DRIVER=http` pour utiliser un provider LLM compatible chat-completions
+- `DOCUMENTS_AI_DRIVER=http` pour utiliser un provider LLM compatible chat-completions ou l'API médicale `II-Medical-8B`
 - prompts JSON stricts
 - garde-fous anti-hallucinations
 - fallback automatique vers l’analyse heuristique si le provider IA échoue
+- `POST /api/documents/{id}/ask` peut utiliser `/chat` du provider IA pour le chat documentaire, avec fallback grounded local
 
 ### Fallback
 
@@ -95,6 +96,7 @@ Services:
 - `CompositeDocumentTextExtractor`
 - `HeuristicDocumentAiAnalyzer`
 - `HttpDocumentAiAnalyzer`
+- `HttpDocumentQuestionAnswerer`
 - `DocumentAnalysisPipeline`
 
 ## E. Frontend Flutter
@@ -145,6 +147,8 @@ Version avancée:
 - pas de texte OCR brut dans `source_metadata`
 - métadonnées qualité image limitées au score, dimensions et avertissements non médicaux
 - provider IA externe désactivé par défaut et activable uniquement par variables d’environnement
+- l'API IA externe reçoit uniquement le texte extrait du document quand `DOCUMENTS_AI_DRIVER=http`; vérifier la conformité contractuelle avant production
+- le texte brut des questions utilisateur n'est pas journalisé: seuls hash, longueur et statut de preuve insuffisante sont stockés
 - erreurs sanitizées
 - audit des uploads, suppressions, réanalyses et traitements
 
@@ -154,9 +158,28 @@ Variables utiles:
 - `DOCUMENTS_OCR_LANGUAGES=fra+eng`
 - `DOCUMENTS_PDF_OCR_MAX_PAGES=3`
 - `DOCUMENTS_AI_DRIVER=heuristic|http`
-- `DOCUMENTS_AI_BASE_URL=`
+- `DOCUMENTS_DOCUMENT_CHAT_DRIVER=heuristic|http`
+- `DOCUMENTS_AI_PROVIDER=medical_api|openai_compatible`
+- `DOCUMENTS_AI_BASE_URL=https://d672cc7a-3627-49c3-ae0c-7b3e611ee41e.notebook.gra.ai.cloud.ovh.net/proxy/8097`
 - `DOCUMENTS_AI_API_KEY=`
-- `DOCUMENTS_AI_MODEL=`
+- `DOCUMENTS_AI_MODEL=II-Medical-8B`
+- `DOCUMENTS_AI_GENERATE_PATH=/generate`
+- `DOCUMENTS_AI_CHAT_PATH=/chat`
+- `DOCUMENTS_AI_MAX_NEW_TOKENS=1024`
+- `DOCUMENTS_AI_TEMPERATURE=0`
+
+Exemple d'activation pour staging:
+
+```env
+DOCUMENTS_AI_DRIVER=http
+DOCUMENTS_DOCUMENT_CHAT_DRIVER=http
+DOCUMENTS_AI_PROVIDER=medical_api
+DOCUMENTS_AI_BASE_URL=https://d672cc7a-3627-49c3-ae0c-7b3e611ee41e.notebook.gra.ai.cloud.ovh.net/proxy/8097
+DOCUMENTS_AI_MODEL=II-Medical-8B
+DOCUMENTS_AI_GENERATE_PATH=/generate
+DOCUMENTS_AI_CHAT_PATH=/chat
+DOCUMENTS_AI_TEMPERATURE=0
+```
 
 ## I. Tests
 

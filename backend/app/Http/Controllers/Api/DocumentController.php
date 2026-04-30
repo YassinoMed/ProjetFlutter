@@ -430,7 +430,8 @@ class DocumentController extends Controller
             $request,
             $audience->value,
             [
-                'question' => $payload['question'],
+                'question_hash' => hash('sha256', $payload['question']),
+                'question_length' => mb_strlen($payload['question']),
                 'insufficient_evidence' => $answer->insufficientEvidence,
             ],
         );

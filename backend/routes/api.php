@@ -148,6 +148,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function (): void {
     Route::post('/messages/{messageId}/read', [MessageController::class, 'read'])->middleware('throttle:messages');
 
     // ── WebRTC Signaling ─────────────────────────────────
+    Route::get('/webrtc/ice-servers', [WebRtcController::class, 'iceServers'])->middleware('throttle:webrtc');
     Route::post('/consultations/{appointmentId}/webrtc/join', [WebRtcController::class, 'join'])->middleware('throttle:webrtc');
     Route::post('/consultations/{appointmentId}/webrtc/offer', [WebRtcController::class, 'offer'])->middleware('throttle:webrtc');
     Route::post('/consultations/{appointmentId}/webrtc/answer', [WebRtcController::class, 'answer'])->middleware('throttle:webrtc');

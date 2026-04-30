@@ -71,6 +71,7 @@ class MediConnectProApp extends ConsumerStatefulWidget {
 
 class _MediConnectProAppState extends ConsumerState<MediConnectProApp> {
   StreamSubscription<String>? _tokenRefreshSubscription;
+  Timer? _fcmHeartbeatTimer;
 
   @override
   void initState() {
@@ -83,6 +84,7 @@ class _MediConnectProAppState extends ConsumerState<MediConnectProApp> {
   @override
   void dispose() {
     _tokenRefreshSubscription?.cancel();
+    _fcmHeartbeatTimer?.cancel();
     super.dispose();
   }
 
@@ -96,6 +98,7 @@ class _MediConnectProAppState extends ConsumerState<MediConnectProApp> {
       await notificationService.initialize(onAction: _handleNotificationAction);
 
       await _registerFcmToken();
+      _startFcmHeartbeat();
       _tokenRefreshSubscription =
           FirebaseMessaging.instance.onTokenRefresh.listen((token) async {
         await ref
@@ -120,6 +123,13 @@ class _MediConnectProAppState extends ConsumerState<MediConnectProApp> {
     await ref
         .read(fcmTokenProvider.notifier)
         .registerToken(token, _platformName());
+  }
+
+  void _startFcmHeartbeat() {
+    _fcmHeartbeatTimer?.cancel();
+    _fcmHeartbeatTimer = Timer.periodic(const Duration(minutes: 30), (_) async {
+      await ref.read(fcmTokenProvider.notifier).heartbeat();
+    });
   }
 
   void _handleNotificationAction(String action, Map<String, dynamic> data) {

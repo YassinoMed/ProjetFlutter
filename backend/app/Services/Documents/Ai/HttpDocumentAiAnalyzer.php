@@ -31,7 +31,7 @@ class HttpDocumentAiAnalyzer implements DocumentAiAnalyzer
         }
 
         try {
-            $payload = $this->callProvider($extraction);
+            $payload = $this->callProvider($document, $extraction);
 
             if ($payload === null) {
                 return $fallbackResult;
@@ -45,49 +45,131 @@ class HttpDocumentAiAnalyzer implements DocumentAiAnalyzer
 
     private function isConfigured(): bool
     {
+        $provider = (string) config('documents.ai.provider', 'openai_compatible');
+
+        if ($provider === 'medical_api') {
+            return trim((string) config('documents.ai.base_url')) !== '';
+        }
+
         return trim((string) config('documents.ai.base_url')) !== ''
-            && trim((string) config('documents.ai.api_key')) !== ''
             && trim((string) config('documents.ai.model')) !== '';
     }
 
-    private function callProvider(TextExtractionResult $extraction): ?array
+    private function callProvider(Document $document, TextExtractionResult $extraction): ?array
+    {
+        if ((string) config('documents.ai.provider', 'openai_compatible') === 'medical_api') {
+            return $this->callMedicalApiProvider($document, $extraction);
+        }
+
+        return $this->callOpenAiCompatibleProvider($extraction);
+    }
+
+    private function callOpenAiCompatibleProvider(TextExtractionResult $extraction): ?array
+    {
+        $request = Http::timeout((int) config('documents.ai_timeout_seconds', 45))
+            ->acceptJson();
+
+        $apiKey = trim((string) config('documents.ai.api_key'));
+
+        if ($apiKey !== '') {
+            $request = $request->withToken($apiKey);
+        }
+
+        $response = $request->post((string) config('documents.ai.base_url'), [
+            'model' => (string) config('documents.ai.model'),
+            'temperature' => 0,
+            'response_format' => ['type' => 'json_object'],
+            'messages' => [
+                [
+                    'role' => 'system',
+                    'content' => $this->prompts->extractionPrompt(),
+                ],
+                [
+                    'role' => 'user',
+                    'content' => "Analyse le texte OCR suivant sans inventer d'information.\n\n".Str::limit($extraction->normalizedText, 12000, ''),
+                ],
+            ],
+        ]);
+
+        if (! $response->successful()) {
+            return null;
+        }
+
+        return $this->parseProviderPayload($response->json());
+    }
+
+    private function callMedicalApiProvider(Document $document, TextExtractionResult $extraction): ?array
     {
         $response = Http::timeout((int) config('documents.ai_timeout_seconds', 45))
             ->acceptJson()
-            ->withToken((string) config('documents.ai.api_key'))
-            ->post((string) config('documents.ai.base_url'), [
-                'model' => (string) config('documents.ai.model'),
-                'temperature' => 0,
-                'response_format' => ['type' => 'json_object'],
-                'messages' => [
-                    [
-                        'role' => 'system',
-                        'content' => $this->prompts->extractionPrompt(),
-                    ],
-                    [
-                        'role' => 'user',
-                        'content' => "Analyse le texte OCR suivant sans inventer d'information.\n\n".Str::limit($extraction->normalizedText, 12000, ''),
-                    ],
-                ],
+            ->post($this->endpoint((string) config('documents.ai.generate_path', '/generate')), [
+                'prompt' => $this->medicalApiAnalysisPrompt($extraction),
+                'max_new_tokens' => (int) config('documents.ai.max_new_tokens', 1024),
+                'temperature' => (float) config('documents.ai.temperature', 0.0),
+                'top_p' => (float) config('documents.ai.top_p', 0.9),
+                'repetition_penalty' => (float) config('documents.ai.repetition_penalty', 1.1),
+                'user_id' => 'document-'.sha1((string) $document->id),
             ]);
 
         if (! $response->successful()) {
             return null;
         }
 
-        $json = $response->json();
+        return $this->parseProviderPayload($response->json());
+    }
+
+    private function medicalApiAnalysisPrompt(TextExtractionResult $extraction): string
+    {
+        $textLimit = max(800, min((int) config('documents.ai.prompt_text_max_chars', 2600), 3200));
+
+        return implode("\n\n", [
+            $this->prompts->extractionPrompt(),
+            'Contexte: tu analyses un document medical patient dans MediConnect Pro.',
+            'Contraintes supplementaires: reponds uniquement avec le JSON attendu, sans markdown, sans commentaire et sans balise <think>.',
+            "Texte OCR/extrait:\n".Str::limit($extraction->normalizedText, $textLimit, ''),
+        ]);
+    }
+
+    private function endpoint(string $path): string
+    {
+        return rtrim((string) config('documents.ai.base_url'), '/').'/'.ltrim($path, '/');
+    }
+
+    private function parseProviderPayload(mixed $json): ?array
+    {
         $content = data_get($json, 'choices.0.message.content')
             ?? data_get($json, 'analysis')
             ?? data_get($json, 'output')
+            ?? data_get($json, 'response')
             ?? $json;
 
         if (is_string($content)) {
-            $decoded = json_decode($content, true);
-
-            return is_array($decoded) ? $decoded : null;
+            return $this->decodeJsonContent($content);
         }
 
         return is_array($content) ? $content : null;
+    }
+
+    private function decodeJsonContent(string $content): ?array
+    {
+        $content = trim(preg_replace('/```(?:json)?|```/i', '', $content) ?? $content);
+        $content = preg_replace('/<think>.*?<\/think>/is', '', $content) ?? $content;
+        $content = trim($content);
+
+        if (str_starts_with($content, '<think>')) {
+            return null;
+        }
+
+        $firstBrace = strpos($content, '{');
+        $lastBrace = strrpos($content, '}');
+
+        if ($firstBrace === false || $lastBrace === false || $lastBrace <= $firstBrace) {
+            return null;
+        }
+
+        $decoded = json_decode(substr($content, $firstBrace, $lastBrace - $firstBrace + 1), true);
+
+        return is_array($decoded) ? $decoded : null;
     }
 
     private function buildResult(

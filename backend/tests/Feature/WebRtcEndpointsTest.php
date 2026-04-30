@@ -84,4 +84,39 @@ class WebRtcEndpointsTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true);
     }
+
+    public function test_authenticated_user_receives_ephemeral_turn_credentials(): void
+    {
+        config()->set('webrtc.stun_urls', 'stun:stun.example.test:3478');
+        config()->set('webrtc.turn_urls', 'turn:turn.example.test:3478?transport=udp,turns:turn.example.test:5349?transport=tcp');
+        config()->set('webrtc.shared_secret', 'test-turn-shared-secret');
+        config()->set('webrtc.credential_ttl_seconds', 900);
+
+        $patient = User::query()->create([
+            'email' => 'turn-patient@example.com',
+            'password' => 'VeryStrongPassword123!',
+            'first_name' => 'Pat',
+            'last_name' => 'Turn',
+            'role' => 'PATIENT',
+        ]);
+
+        Sanctum::actingAs($patient);
+
+        $response = $this->getJson('/api/webrtc/ice-servers')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.credential_mode', 'ephemeral_hmac')
+            ->assertJsonPath('data.ice_servers.0.urls', 'stun:stun.example.test:3478')
+            ->assertJsonPath('data.ice_servers.1.urls.0', 'turn:turn.example.test:3478?transport=udp')
+            ->assertJsonPath('data.ice_servers.1.urls.1', 'turns:turn.example.test:5349?transport=tcp');
+
+        $username = $response->json('data.ice_servers.1.username');
+        $credential = $response->json('data.ice_servers.1.credential');
+
+        $this->assertStringEndsWith(':'.$patient->id, $username);
+        $this->assertSame(
+            base64_encode(hash_hmac('sha1', $username, 'test-turn-shared-secret', true)),
+            $credential,
+        );
+    }
 }

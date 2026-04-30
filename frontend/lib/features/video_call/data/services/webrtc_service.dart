@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:http/http.dart' as http;
 
+import '../../../../core/constants/api_constants.dart';
+
 class WebRTCService {
   RTCPeerConnection? _peerConnection;
   MediaStream? _localStream;
@@ -13,9 +15,9 @@ class WebRTCService {
   final String apiUrl;
   final String token;
 
-  // Default ICE configuration. TURN credentials must come from Laravel
-  // join/RTC configuration responses, never from hard-coded mobile code.
-  final Map<String, dynamic> _config = {
+  // Default fallback. Production TURN credentials are fetched from Laravel
+  // and are never hard-coded in the mobile application.
+  final Map<String, dynamic> _fallbackConfig = {
     'iceServers': [
       {'urls': 'stun:stun.l.google.com:19302'},
     ],
@@ -29,7 +31,9 @@ class WebRTCService {
   });
 
   Future<void> initialize() async {
-    _peerConnection = await createPeerConnection(_config, {
+    final iceConfig = await _fetchIceConfiguration();
+
+    _peerConnection = await createPeerConnection(iceConfig, {
       'mandatory': {},
       'optional': [
         {'DtlsSrtpKeyAgreement': true},
@@ -87,6 +91,42 @@ class WebRTCService {
         'Accept': 'application/json',
       },
     );
+  }
+
+  Future<Map<String, dynamic>> _fetchIceConfiguration() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$apiUrl${ApiConstants.webrtcIceServers}'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 8));
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return _fallbackConfig;
+      }
+
+      final payload = jsonDecode(response.body);
+      final data = payload is Map<String, dynamic>
+          ? payload['data'] as Map<String, dynamic>?
+          : null;
+      final iceServers = data?['ice_servers'];
+
+      if (iceServers is! List || iceServers.isEmpty) {
+        return _fallbackConfig;
+      }
+
+      return {
+        'iceServers': iceServers
+            .whereType<Map>()
+            .map((server) => Map<String, dynamic>.from(server))
+            .toList(),
+        'sdpSemantics': 'unified-plan',
+      };
+    } catch (_) {
+      return _fallbackConfig;
+    }
   }
 
   Future<void> createOffer() async {

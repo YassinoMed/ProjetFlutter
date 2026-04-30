@@ -72,6 +72,7 @@ class ApiConstants {
   static const String e2eePeerBundle = '/e2ee/users/{userId}/bundle';
 
   // ── WebRTC Signaling ──────────────────────────────────────
+  static const String webrtcIceServers = '/webrtc/ice-servers';
   static const String webrtcJoin = '/consultations/{id}/webrtc/join';
   static const String webrtcOffer = '/consultations/{id}/webrtc/offer';
   static const String webrtcAnswer = '/consultations/{id}/webrtc/answer';
@@ -116,6 +117,10 @@ class ApiConstants {
   static const String fcmTokenUpsert = '/fcm/tokens';
   static const String fcmTokenDelete = '/fcm/tokens';
   static const String fcmTokenHeartbeat = '/fcm/tokens/heartbeat';
+  static const String devicePushTokenRegister = '/devices/register-push-token';
+  static const String devicePushTokenHeartbeat =
+      '/devices/push-token-heartbeat';
+  static const String devicePushTokenDelete = '/devices/push-token';
 
   // ── Profile ───────────────────────────────────────────────
   static const String profile = '/profile';

@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Services\Documents\Ai\HeuristicDocumentAiAnalyzer;
 use App\Services\Documents\Ai\HeuristicGroundedDocumentQuestionAnswerer;
 use App\Services\Documents\Ai\HttpDocumentAiAnalyzer;
+use App\Services\Documents\Ai\HttpDocumentQuestionAnswerer;
 use App\Services\Documents\Contracts\DocumentAiAnalyzer;
 use App\Services\Documents\Contracts\DocumentQuestionAnswerer;
 use App\Services\Documents\Contracts\DocumentTextExtractor;
@@ -29,7 +30,11 @@ class AppServiceProvider extends ServiceProvider
                 ? $app->make(HttpDocumentAiAnalyzer::class)
                 : $app->make(HeuristicDocumentAiAnalyzer::class);
         });
-        $this->app->singleton(DocumentQuestionAnswerer::class, HeuristicGroundedDocumentQuestionAnswerer::class);
+        $this->app->singleton(DocumentQuestionAnswerer::class, function ($app) {
+            return (string) config('documents.document_chat_driver') === 'http'
+                ? $app->make(HttpDocumentQuestionAnswerer::class)
+                : $app->make(HeuristicGroundedDocumentQuestionAnswerer::class);
+        });
         $this->app->singleton(QueueMetricsRecorder::class);
     }
 

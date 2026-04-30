@@ -27,6 +27,13 @@ class FcmTokenNotifier extends StateNotifier<String?> {
         'token': token,
         'platform': platform,
       });
+
+      await _dio.post(ApiConstants.devicePushTokenRegister, data: {
+        'token': token,
+        'provider': 'FCM',
+        'platform': platform,
+      });
+
       state = token;
     } catch (e) {
       // Silently fail — token will be retried on next app launch
@@ -35,8 +42,17 @@ class FcmTokenNotifier extends StateNotifier<String?> {
 
   /// Remove FCM token from backend
   Future<void> removeToken() async {
+    final token = state;
+    if (token == null || token.isEmpty) {
+      return;
+    }
+
     try {
-      await _dio.delete(ApiConstants.fcmTokenDelete);
+      await _dio.delete(ApiConstants.fcmTokenDelete, data: {'token': token});
+      await _dio.delete(
+        ApiConstants.devicePushTokenDelete,
+        data: {'token': token},
+      );
       state = null;
     } catch (e) {
       // Silently fail
@@ -45,8 +61,17 @@ class FcmTokenNotifier extends StateNotifier<String?> {
 
   /// Heartbeat to keep token alive
   Future<void> heartbeat() async {
+    final token = state;
+    if (token == null || token.isEmpty) {
+      return;
+    }
+
     try {
-      await _dio.post(ApiConstants.fcmTokenHeartbeat);
+      await _dio.post(ApiConstants.fcmTokenHeartbeat, data: {'token': token});
+      await _dio.post(
+        ApiConstants.devicePushTokenHeartbeat,
+        data: {'token': token},
+      );
     } catch (e) {
       // Silently fail
     }
