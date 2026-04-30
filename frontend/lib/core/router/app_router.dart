@@ -167,17 +167,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+        path: AppRoutes.documentUpload,
+        name: 'document-upload',
+        builder: (context, state) => const DocumentUploadPage(),
+      ),
+      GoRoute(
         path: AppRoutes.documentDetail,
         name: 'document-detail',
         builder: (context, state) {
           final documentId = state.pathParameters['id']!;
           return DocumentDetailPage(documentId: documentId);
         },
-      ),
-      GoRoute(
-        path: AppRoutes.documentUpload,
-        name: 'document-upload',
-        builder: (context, state) => const DocumentUploadPage(),
       ),
       GoRoute(
         path: AppRoutes.patientRecords,

@@ -177,13 +177,13 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function (): void {
     Route::prefix('documents')->middleware('throttle:documents')->group(function (): void {
         Route::post('/upload', [DocumentController::class, 'upload']);
         Route::get('/', [DocumentController::class, 'index']);
-        Route::get('/{documentId}', [DocumentController::class, 'show']);
-        Route::get('/{documentId}/processing', [DocumentController::class, 'processing']);
-        Route::get('/{documentId}/summary', [DocumentController::class, 'summary']);
-        Route::get('/{documentId}/entities', [DocumentController::class, 'entities']);
-        Route::post('/{documentId}/reanalyze', [DocumentController::class, 'reanalyze']);
-        Route::post('/{documentId}/ask', [DocumentController::class, 'ask']);
-        Route::delete('/{documentId}', [DocumentController::class, 'destroy']);
+        Route::get('/{documentId}', [DocumentController::class, 'show'])->whereUuid('documentId');
+        Route::get('/{documentId}/processing', [DocumentController::class, 'processing'])->whereUuid('documentId');
+        Route::get('/{documentId}/summary', [DocumentController::class, 'summary'])->whereUuid('documentId');
+        Route::get('/{documentId}/entities', [DocumentController::class, 'entities'])->whereUuid('documentId');
+        Route::post('/{documentId}/reanalyze', [DocumentController::class, 'reanalyze'])->whereUuid('documentId');
+        Route::post('/{documentId}/ask', [DocumentController::class, 'ask'])->whereUuid('documentId');
+        Route::delete('/{documentId}', [DocumentController::class, 'destroy'])->whereUuid('documentId');
     });
 
     // ── E2EE Key Bundles ────────────────────────────────

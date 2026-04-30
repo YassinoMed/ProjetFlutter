@@ -53,8 +53,8 @@ class AppRoutes {
   // ── Medical Records ─────────────────────────────────────
   static const String recordDetail = '/records/:id';
   static const String addRecord = '/records/add';
-  static const String documentDetail = '/documents/:id';
   static const String documentUpload = '/documents/upload';
+  static const String documentDetail = '/documents/:id';
 
   // ── Settings ────────────────────────────────────────────
   static const String settings = '/settings';

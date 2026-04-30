@@ -69,6 +69,19 @@ class DocumentModuleTest extends TestCase
         Queue::assertPushed(ProcessDocumentJob::class, 1);
     }
 
+    public function test_upload_keyword_is_not_treated_as_document_id(): void
+    {
+        $patient = User::factory()->create(['role' => 'PATIENT']);
+
+        Sanctum::actingAs($patient);
+
+        $this->getJson('/api/documents/upload')
+            ->assertStatus(405)
+            ->assertJsonMissing([
+                'message' => 'No query results for model [App\\Models\\Document] upload',
+            ]);
+    }
+
     public function test_upload_stores_mobile_mlkit_ocr_as_encrypted_extraction_seed(): void
     {
         Queue::fake();
