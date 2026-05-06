@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -477,9 +476,8 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
     }
 
     final latestMessage = messages.last;
-    final shouldScroll = _lastVisibleMessageId == null ||
-        _isNearBottom() ||
-        latestMessage.isMe;
+    final shouldScroll =
+        _lastVisibleMessageId == null || _isNearBottom() || latestMessage.isMe;
 
     _lastVisibleMessageId = latestMessage.id;
 
@@ -497,7 +495,8 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
         return;
       }
 
-      if (latestMessage.isMe || _scrollController.position.maxScrollExtent > 0) {
+      if (latestMessage.isMe ||
+          _scrollController.position.maxScrollExtent > 0) {
         _scrollController.animateTo(
           target,
           duration: const Duration(milliseconds: 220),
@@ -514,7 +513,8 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
       return true;
     }
 
-    return (_scrollController.position.maxScrollExtent - _scrollController.offset)
+    return (_scrollController.position.maxScrollExtent -
+                _scrollController.offset)
             .abs() <
         160;
   }
@@ -526,7 +526,8 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
     }
 
     try {
-      await ref.read(messagesProvider(widget.conversationId).notifier)
+      await ref
+          .read(messagesProvider(widget.conversationId).notifier)
           .acknowledgeMessage(
             message.id,
             MessageStatus.read,
@@ -650,15 +651,28 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
     final result = await FilePicker.platform.pickFiles(
       type: FileType.any,
       allowMultiple: false,
+      withData: true,
     );
 
     if (result == null || result.files.isEmpty) return;
     if (!mounted) return;
 
-    final filePath = result.files.first.path;
-    if (filePath == null) return;
+    final picked = result.files.first;
+    final fileBytes = picked.bytes;
+    if (fileBytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Impossible de lire ce fichier. Réessayez.'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
 
-    final file = File(filePath);
+    final file = PlainAttachmentFile(
+      name: picked.name,
+      bytes: fileBytes,
+    );
 
     // Show uploading indicator
     if (mounted) {

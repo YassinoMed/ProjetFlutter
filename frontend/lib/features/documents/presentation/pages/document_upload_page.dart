@@ -1,17 +1,20 @@
 library;
 
-import 'dart:io';
+import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/ai/cloud_medical_ai_service.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../data/services/document_image_quality_service.dart';
 import '../../data/services/mlkit_document_ocr_service.dart';
+import '../../domain/entities/document_upload_file.dart';
 import '../providers/document_providers.dart';
 
 class DocumentUploadPage extends ConsumerStatefulWidget {
@@ -24,15 +27,18 @@ class DocumentUploadPage extends ConsumerStatefulWidget {
 class _DocumentUploadPageState extends ConsumerState<DocumentUploadPage> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
-  File? _selectedFile;
+  DocumentUploadFile? _selectedFile;
   String? _documentType;
   DateTime? _documentDate;
   MlkitOcrResult? _localOcr;
   DocumentImageQualityResult? _imageQuality;
+  String? _cloudAnalysis;
   String? _ocrError;
   String? _qualityError;
+  String? _cloudAnalysisError;
   bool _isOcrRunning = false;
   bool _isQualityRunning = false;
+  bool _isCloudAnalysisRunning = false;
   bool _isLoading = false;
 
   static const _types = [
@@ -136,7 +142,7 @@ class _DocumentUploadPageState extends ConsumerState<DocumentUploadPage> {
                     const Icon(Icons.upload_file_rounded, size: 42),
                     const SizedBox(height: 12),
                     Text(
-                      _selectedFile?.path.split('/').last ??
+                      _selectedFile?.name ??
                           'Choisir un PDF, une image scannée ou un texte',
                       textAlign: TextAlign.center,
                     ),
@@ -161,7 +167,19 @@ class _DocumentUploadPageState extends ConsumerState<DocumentUploadPage> {
                 isLoading: _isOcrRunning,
                 result: _localOcr,
                 error: _ocrError,
-                onRetry: _selectedFile == null ? null : _runLocalOcr,
+                onRetry: _selectedFile == null ? null : _rerunOcrAndCloud,
+              ),
+              const SizedBox(height: 20),
+            ],
+            if (_isCloudAnalysisRunning ||
+                _cloudAnalysis != null ||
+                _cloudAnalysisError != null) ...[
+              _CloudAnalysisCard(
+                isLoading: _isCloudAnalysisRunning,
+                analysis: _cloudAnalysis,
+                error: _cloudAnalysisError,
+                onRetry:
+                    _selectedFile == null ? null : _runCloudDocumentAnalysis,
               ),
               const SizedBox(height: 20),
             ],
@@ -186,23 +204,47 @@ class _DocumentUploadPageState extends ConsumerState<DocumentUploadPage> {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf', 'png', 'jpg', 'jpeg', 'txt', 'webp'],
+      allowMultiple: false,
+      withData: true,
     );
 
-    if (result?.files.single.path != null) {
-      final file = File(result!.files.single.path!);
-      setState(() {
-        _selectedFile = file;
-        _localOcr = null;
-        _imageQuality = null;
-        _ocrError = null;
-        _qualityError = null;
-      });
-
-      await Future.wait([
-        _runImageQualityCheck(),
-        _runLocalOcr(),
-      ]);
+    if (result == null || result.files.isEmpty) {
+      return;
     }
+
+    final picked = result.files.single;
+    final bytes = picked.bytes;
+    if (bytes == null) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Impossible de lire ce fichier. Réessayez.'),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _selectedFile = DocumentUploadFile(
+        name: picked.name,
+        bytes: bytes,
+        size: picked.size,
+        path: kIsWeb ? null : picked.path,
+      );
+      _localOcr = null;
+      _imageQuality = null;
+      _cloudAnalysis = null;
+      _ocrError = null;
+      _qualityError = null;
+      _cloudAnalysisError = null;
+    });
+
+    await Future.wait([
+      _runImageQualityCheck(),
+      _runLocalOcr(),
+    ]);
+    await _runCloudDocumentAnalysis();
   }
 
   Future<void> _runImageQualityCheck() async {
@@ -212,7 +254,7 @@ class _DocumentUploadPageState extends ConsumerState<DocumentUploadPage> {
     }
 
     final qualityService = ref.read(documentImageQualityServiceProvider);
-    if (!qualityService.supports(file)) {
+    if (!qualityService.supports(file.name)) {
       setState(() {
         _imageQuality = null;
         _qualityError =
@@ -227,7 +269,10 @@ class _DocumentUploadPageState extends ConsumerState<DocumentUploadPage> {
     });
 
     try {
-      final result = await qualityService.analyze(file);
+      final result = await qualityService.analyze(
+        filename: file.name,
+        bytes: file.bytes,
+      );
 
       if (!mounted) return;
 
@@ -256,11 +301,12 @@ class _DocumentUploadPageState extends ConsumerState<DocumentUploadPage> {
     }
 
     final ocrService = ref.read(mlkitDocumentOcrServiceProvider);
-    if (!ocrService.supports(file)) {
+    if (!ocrService.supports(filename: file.name, path: file.path)) {
       setState(() {
         _localOcr = null;
-        _ocrError =
-            'OCR local disponible seulement pour les images JPG, PNG ou WEBP sur mobile.';
+        _ocrError = _isPlainTextFile(file.name)
+            ? 'Fichier texte lu directement; OCR ML Kit non nécessaire.'
+            : 'OCR local disponible seulement pour les images JPG, PNG ou WEBP sur mobile.';
       });
       return;
     }
@@ -271,7 +317,10 @@ class _DocumentUploadPageState extends ConsumerState<DocumentUploadPage> {
     });
 
     try {
-      final result = await ocrService.extract(file);
+      final result = await ocrService.extract(
+        filename: file.name,
+        path: file.path,
+      );
 
       if (!mounted) return;
 
@@ -302,6 +351,93 @@ class _DocumentUploadPageState extends ConsumerState<DocumentUploadPage> {
         _ocrError = 'OCR local indisponible pour ce fichier.';
       });
     }
+  }
+
+  Future<void> _rerunOcrAndCloud() async {
+    await _runLocalOcr();
+    await _runCloudDocumentAnalysis();
+  }
+
+  Future<void> _runCloudDocumentAnalysis() async {
+    final file = _selectedFile;
+    if (file == null || !mounted) {
+      return;
+    }
+
+    final extractedText = _extractTextForCloud(file);
+    if (extractedText == null) {
+      setState(() {
+        _cloudAnalysis = null;
+        _isCloudAnalysisRunning = false;
+        _cloudAnalysisError = _cloudMissingTextMessage(file);
+      });
+      return;
+    }
+
+    setState(() {
+      _cloudAnalysis = null;
+      _cloudAnalysisError = null;
+      _isCloudAnalysisRunning = true;
+    });
+
+    try {
+      final response =
+          await ref.read(cloudMedicalAiServiceProvider).analyzeDocument(
+                extractedText: extractedText,
+                title: _titleController.text,
+                documentType: _documentType,
+                filename: file.name,
+              );
+
+      if (!mounted || _selectedFile != file) {
+        return;
+      }
+
+      setState(() {
+        _cloudAnalysis = response;
+        _cloudAnalysisError = null;
+        _isCloudAnalysisRunning = false;
+      });
+    } catch (error) {
+      if (!mounted || _selectedFile != file) {
+        return;
+      }
+
+      setState(() {
+        _cloudAnalysis = null;
+        _cloudAnalysisError = CloudMedicalAiService.friendlyError(error);
+        _isCloudAnalysisRunning = false;
+      });
+    }
+  }
+
+  String? _extractTextForCloud(DocumentUploadFile file) {
+    if (_localOcr?.hasReadableText == true) {
+      return _localOcr!.rawText;
+    }
+
+    if (_isPlainTextFile(file.name)) {
+      final text = utf8.decode(file.bytes, allowMalformed: true).trim();
+      return text.length >= 12 ? text : null;
+    }
+
+    return null;
+  }
+
+  bool _isPlainTextFile(String filename) {
+    return filename.toLowerCase().endsWith('.txt');
+  }
+
+  String _cloudMissingTextMessage(DocumentUploadFile file) {
+    if (_isPlainTextFile(file.name)) {
+      return 'Le fichier texte ne contient pas assez de contenu exploitable.';
+    }
+
+    if (kIsWeb) {
+      return 'Aucun texte ML Kit a envoyer a Gemini. ML Kit OCR fonctionne sur Android/iOS pour les images; sur Web, importez le document puis laissez l’analyse serveur traiter le PDF ou l’image.';
+    }
+
+    return 'Aucun texte OCR ML Kit exploitable a envoyer a Gemini. Utilisez une image JPG, PNG ou WEBP lisible.';
   }
 
   Future<void> _submit() async {
@@ -567,6 +703,94 @@ class _LocalOcrCard extends StatelessWidget {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CloudAnalysisCard extends StatelessWidget {
+  final bool isLoading;
+  final String? analysis;
+  final String? error;
+  final VoidCallback? onRetry;
+
+  const _CloudAnalysisCard({
+    required this.isLoading,
+    required this.analysis,
+    required this.error,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasAnalysis = analysis != null && analysis!.trim().isNotEmpty;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.neutralGray100,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppTheme.neutralGray200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                hasAnalysis
+                    ? Icons.cloud_done_rounded
+                    : Icons.cloud_sync_rounded,
+                color: hasAnalysis ? AppTheme.successColor : AppTheme.infoColor,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  isLoading
+                      ? 'Analyse Gemini en cours…'
+                      : 'Analyse Gemini du document',
+                  style: AppTheme.labelLarge,
+                ),
+              ),
+              if (onRetry != null)
+                IconButton(
+                  onPressed: isLoading ? null : onRetry,
+                  icon: const Icon(Icons.refresh_rounded),
+                  tooltip: 'Relancer l’analyse IA',
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              Chip(label: Text('POST')),
+              Chip(label: Text('Max tokens 900')),
+              Chip(label: Text('Température 0,7')),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (isLoading)
+            const LinearProgressIndicator()
+          else if (error != null)
+            Text(
+              error!,
+              style: AppTheme.bodySmall.copyWith(color: AppTheme.warningColor),
+            )
+          else if (hasAnalysis)
+            Text(
+              analysis!,
+              style: AppTheme.bodySmall,
+            ),
+          const SizedBox(height: 8),
+          Text(
+            'La réponse provient de Gemini à partir du texte extrait localement. Elle doit rester validée par le médecin.',
+            style: AppTheme.bodySmall.copyWith(
+              color: AppTheme.neutralGray500,
+            ),
+          ),
         ],
       ),
     );

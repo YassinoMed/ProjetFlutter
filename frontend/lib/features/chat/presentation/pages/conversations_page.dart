@@ -18,6 +18,10 @@ class ConversationsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final conversationsAsync = ref.watch(conversationsProvider);
+    final currentPath = GoRouterState.of(context).uri.path;
+    final isDoctorChat = currentPath.startsWith(AppRoutes.doctorChat);
+    final detailRoute =
+        isDoctorChat ? AppRoutes.doctorChatDetail : AppRoutes.chatDetail;
 
     return Scaffold(
       body: SafeArea(
@@ -62,6 +66,10 @@ class ConversationsPage extends ConsumerWidget {
                     compact: true,
                   ),
                   const SizedBox(height: 16),
+                  if (isDoctorChat) ...[
+                    const _AiAssistantTile(),
+                    const SizedBox(height: 16),
+                  ],
                   if (conversations.isEmpty)
                     const ClinicalEmptyState(
                       icon: Icons.chat_bubble_outline_rounded,
@@ -72,7 +80,10 @@ class ConversationsPage extends ConsumerWidget {
                   else
                     ...conversations.map((conversation) => Padding(
                           padding: const EdgeInsets.only(bottom: 12),
-                          child: _ConversationTile(conversation: conversation),
+                          child: _ConversationTile(
+                            conversation: conversation,
+                            detailRoute: detailRoute,
+                          ),
                         )),
                 ],
               ),
@@ -91,8 +102,12 @@ class ConversationsPage extends ConsumerWidget {
 
 class _ConversationTile extends StatelessWidget {
   final Conversation conversation;
+  final String detailRoute;
 
-  const _ConversationTile({required this.conversation});
+  const _ConversationTile({
+    required this.conversation,
+    required this.detailRoute,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -100,7 +115,7 @@ class _ConversationTile extends StatelessWidget {
 
     return ClinicalSurface(
       onTap: () => context.push(
-        AppRoutes.chatDetail.replaceFirst(':conversationId', conversation.id),
+        detailRoute.replaceFirst(':conversationId', conversation.id),
       ),
       child: Row(
         children: [
@@ -190,5 +205,55 @@ class _ConversationTile extends StatelessWidget {
     }
 
     return DateFormat('dd/MM').format(local);
+  }
+}
+
+class _AiAssistantTile extends StatelessWidget {
+  const _AiAssistantTile();
+
+  @override
+  Widget build(BuildContext context) {
+    return ClinicalSurface(
+      onTap: () => context.push(AppRoutes.doctorAiChat),
+      child: Row(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: AppTheme.softColor(AppTheme.infoColor),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.auto_awesome_rounded,
+              color: AppTheme.infoColor,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Assistant IA médical', style: AppTheme.titleMedium),
+                const SizedBox(height: 4),
+                Text(
+                  'Synthèse, réponse patient et checklist clinique.',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTheme.bodyMedium.copyWith(
+                    color: AppTheme.neutralGray500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Icon(
+            Icons.chevron_right_rounded,
+            color: AppTheme.neutralGray400,
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -1,11 +1,10 @@
 library;
 
-import 'dart:io';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/dio_client.dart';
 import '../../domain/entities/document_entity.dart';
+import '../../domain/entities/document_upload_file.dart';
 import '../datasources/document_remote_datasource.dart';
 
 class DocumentRepositoryImpl {
@@ -45,7 +44,7 @@ class DocumentRepositoryImpl {
   }
 
   Future<MedicalDocument> uploadDocument({
-    required File file,
+    required DocumentUploadFile file,
     required String title,
     String? patientUserId,
     String? doctorUserId,

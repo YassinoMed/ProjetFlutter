@@ -1,10 +1,8 @@
 library;
 
-import 'dart:io';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
-import 'package:path/path.dart' as path;
 
 class MlkitOcrResult {
   final String rawText;
@@ -33,18 +31,28 @@ class MlkitOcrResult {
 class MlkitDocumentOcrService {
   static const String engineName = 'flutter_mlkit_text_recognition';
 
-  bool supports(File file) {
-    if (!Platform.isAndroid && !Platform.isIOS) {
+  bool supports({
+    required String filename,
+    required String? path,
+  }) {
+    if (kIsWeb || path == null || path.isEmpty) {
       return false;
     }
 
-    final extension =
-        path.extension(file.path).toLowerCase().replaceAll('.', '');
+    if (defaultTargetPlatform != TargetPlatform.android &&
+        defaultTargetPlatform != TargetPlatform.iOS) {
+      return false;
+    }
+
+    final extension = _extension(filename);
     return const {'jpg', 'jpeg', 'png', 'webp'}.contains(extension);
   }
 
-  Future<MlkitOcrResult?> extract(File file) async {
-    if (!supports(file)) {
+  Future<MlkitOcrResult?> extract({
+    required String filename,
+    required String? path,
+  }) async {
+    if (!supports(filename: filename, path: path)) {
       return null;
     }
 
@@ -52,7 +60,7 @@ class MlkitDocumentOcrService {
 
     try {
       final recognized = await recognizer.processImage(
-        InputImage.fromFile(file),
+        InputImage.fromFilePath(path!),
       );
       final rawText = recognized.text.trim();
       final normalizedText = rawText.replaceAll(RegExp(r'\s+'), ' ').trim();
@@ -182,6 +190,15 @@ class MlkitDocumentOcrService {
     }
 
     return DateTime.utc(year, month, day);
+  }
+
+  String _extension(String filename) {
+    final index = filename.lastIndexOf('.');
+    if (index < 0 || index == filename.length - 1) {
+      return '';
+    }
+
+    return filename.substring(index + 1).toLowerCase();
   }
 }
 

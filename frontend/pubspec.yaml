@@ -89,7 +89,6 @@ dependencies:
   flutter_tts: ^4.2.5
   speech_to_text: ^7.3.0
   flutter_live_activities: ^0.0.5
-  pusher_channels_flutter: ^2.4.0
   web_socket_channel: ^3.0.3
   flutter_bloc: ^9.1.1
   google_mlkit_text_recognition: ^0.15.1

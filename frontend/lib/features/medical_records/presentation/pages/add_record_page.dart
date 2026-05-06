@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,7 +15,7 @@ class AddRecordPage extends ConsumerStatefulWidget {
 class _AddRecordPageState extends ConsumerState<AddRecordPage> {
   final _formKey = GlobalKey<FormState>();
   String _originalFileName = '';
-  File? _selectedFile;
+  String? _selectedFileName;
   String _category = 'other';
   bool _isLoading = false;
 
@@ -102,10 +100,10 @@ class _AddRecordPageState extends ConsumerState<AddRecordPage> {
                     child: Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withOpacity(0.05),
+                        color: AppTheme.primaryColor.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                         border: Border.all(
-                          color: AppTheme.primaryColor.withOpacity(0.3),
+                          color: AppTheme.primaryColor.withValues(alpha: 0.3),
                           style: BorderStyle.solid,
                           width: 1,
                         ),
@@ -113,7 +111,7 @@ class _AddRecordPageState extends ConsumerState<AddRecordPage> {
                       child: Column(
                         children: [
                           Icon(
-                            _selectedFile != null
+                            _selectedFileName != null
                                 ? Icons.file_present_rounded
                                 : Icons.upload_file_rounded,
                             size: 48,
@@ -121,15 +119,15 @@ class _AddRecordPageState extends ConsumerState<AddRecordPage> {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            _selectedFile != null
-                                ? _selectedFile!.path.split('/').last
+                            _selectedFileName != null
+                                ? _selectedFileName!
                                 : 'Appuyez pour sélectionner un fichier',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: _selectedFile != null
+                              color: _selectedFileName != null
                                   ? Colors.black87
                                   : AppTheme.primaryColor,
-                              fontWeight: _selectedFile != null
+                              fontWeight: _selectedFileName != null
                                   ? FontWeight.bold
                                   : FontWeight.normal,
                             ),
@@ -176,20 +174,26 @@ class _AddRecordPageState extends ConsumerState<AddRecordPage> {
   }
 
   Future<void> _pickFile() async {
-    final result = await FilePicker.platform.pickFiles();
-    if (result != null && result.files.single.path != null) {
-      setState(() {
-        _selectedFile = File(result.files.single.path!);
-        if (_originalFileName.isEmpty) {
-          _originalFileName = result.files.single.name;
-        }
-      });
+    final result = await FilePicker.platform.pickFiles(
+      allowMultiple: false,
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) {
+      return;
     }
+
+    final picked = result.files.single;
+    setState(() {
+      _selectedFileName = picked.name;
+      if (_originalFileName.isEmpty) {
+        _originalFileName = picked.name;
+      }
+    });
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedFile == null) {
+    if (_selectedFileName == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text('Veuillez sélectionner un fichier'),

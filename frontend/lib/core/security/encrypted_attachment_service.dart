@@ -4,7 +4,6 @@
 library;
 
 import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
@@ -12,7 +11,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logger/logger.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import '../network/dio_client.dart';
 import '../security/encryption_service.dart';
 
@@ -75,6 +73,16 @@ class EncryptedAttachmentMeta {
   }
 }
 
+class PlainAttachmentFile {
+  final String name;
+  final Uint8List bytes;
+
+  const PlainAttachmentFile({
+    required this.name,
+    required this.bytes,
+  });
+}
+
 // ── Service ─────────────────────────────────────────────────
 
 class EncryptedAttachmentService {
@@ -94,20 +102,17 @@ class EncryptedAttachmentService {
   /// [attachableType] – Optional: 'chat_message' or 'medical_record'
   /// [attachableId]   – Optional: UUID of the parent entity
   Future<EncryptedAttachmentMeta> uploadEncrypted({
-    required File file,
+    required PlainAttachmentFile file,
     required Uint8List sharedKey,
     String? attachableType,
     String? attachableId,
     int? ttlDays,
   }) async {
-    _logger.i('Encrypting file: ${file.path}');
-
-    // 1. Read the plaintext file
-    final plainBytes = await file.readAsBytes();
+    _logger.i('Encrypting file: ${file.name}');
 
     // 2. Encrypt using AES-256-GCM
     final encryptedBase64 = _encryption.encrypt(
-      base64.encode(plainBytes),
+      base64.encode(file.bytes),
       sharedKey,
     );
     final encryptedBytes = base64.decode(encryptedBase64);
@@ -118,50 +123,39 @@ class EncryptedAttachmentService {
     // 3. Calculate SHA-256 checksum of the encrypted blob
     final checksumSha256 = sha256.convert(encryptedBytes).toString();
 
-    // 4. Create a temp file with the encrypted content
-    final tempDir = await getTemporaryDirectory();
-    final encFile = File(
-        p.join(tempDir.path, 'enc_${DateTime.now().millisecondsSinceEpoch}'));
-    await encFile.writeAsBytes(encryptedBytes);
+    // 4. Upload to server
+    final formData = FormData.fromMap({
+      'file': MultipartFile.fromBytes(
+        encryptedBytes,
+        filename: '${p.basenameWithoutExtension(file.name)}.enc',
+      ),
+      'encrypted_key': base64.encode(sharedKey),
+      'nonce': nonce,
+      'algorithm': 'AES-256-GCM',
+      'original_filename': p.basename(file.name),
+      'mime_type': _guessMimeType(file.name),
+      'checksum_sha256': checksumSha256,
+      if (attachableType != null) 'attachable_type': attachableType,
+      if (attachableId != null) 'attachable_id': attachableId,
+      if (ttlDays != null) 'ttl_days': ttlDays.toString(),
+    });
 
-    try {
-      // 5. Upload to server
-      final formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(encFile.path,
-            filename: '${p.basenameWithoutExtension(file.path)}.enc'),
-        'encrypted_key': base64.encode(sharedKey),
-        'nonce': nonce,
-        'algorithm': 'AES-256-GCM',
-        'original_filename': p.basename(file.path),
-        'mime_type': _guessMimeType(file.path),
-        'checksum_sha256': checksumSha256,
-        if (attachableType != null) 'attachable_type': attachableType,
-        if (attachableId != null) 'attachable_id': attachableId,
-        if (ttlDays != null) 'ttl_days': ttlDays.toString(),
-      });
+    final response = await _dio.post(
+      '/attachments/upload',
+      data: formData,
+      options: Options(contentType: 'multipart/form-data'),
+    );
 
-      final response = await _dio.post(
-        '/attachments/upload',
-        data: formData,
-        options: Options(contentType: 'multipart/form-data'),
-      );
-
-      _logger.i('Encrypted file uploaded successfully.');
-      return EncryptedAttachmentMeta.fromJson(
-        response.data['attachment'] as Map<String, dynamic>,
-      );
-    } finally {
-      // Clean up temp file
-      if (await encFile.exists()) {
-        await encFile.delete();
-      }
-    }
+    _logger.i('Encrypted file uploaded successfully.');
+    return EncryptedAttachmentMeta.fromJson(
+      response.data['attachment'] as Map<String, dynamic>,
+    );
   }
 
   /// Download and decrypt an attachment.
   ///
-  /// Returns the decrypted file saved to the app's temp directory.
-  Future<File> downloadAndDecrypt({
+  /// Returns the decrypted bytes.
+  Future<Uint8List> downloadAndDecrypt({
     required String attachmentId,
     required Uint8List sharedKey,
     String? saveFilename,
@@ -190,16 +184,10 @@ class EncryptedAttachmentService {
       base64.encode(encryptedBytes),
       sharedKey,
     );
-    final decryptedBytes = base64.decode(decryptedBase64);
+    final decryptedBytes = Uint8List.fromList(base64.decode(decryptedBase64));
 
-    // 4. Save to temp directory
-    final tempDir = await getTemporaryDirectory();
-    final filename = saveFilename ?? 'decrypted_$attachmentId';
-    final outFile = File(p.join(tempDir.path, filename));
-    await outFile.writeAsBytes(decryptedBytes);
-
-    _logger.i('File decrypted and saved: ${outFile.path}');
-    return outFile;
+    _logger.i('Attachment decrypted: ${saveFilename ?? attachmentId}');
+    return decryptedBytes;
   }
 
   /// Get attachment metadata (without downloading the file).

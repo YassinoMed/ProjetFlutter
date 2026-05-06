@@ -1,11 +1,10 @@
 library;
 
-import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image/image.dart' as img;
-import 'package:path/path.dart' as path;
 
 class DocumentImageQualityResult {
   final int width;
@@ -30,18 +29,19 @@ class DocumentImageQualityResult {
 }
 
 class DocumentImageQualityService {
-  bool supports(File file) {
-    final extension =
-        path.extension(file.path).toLowerCase().replaceAll('.', '');
+  bool supports(String filename) {
+    final extension = _extension(filename);
     return const {'jpg', 'jpeg', 'png', 'webp'}.contains(extension);
   }
 
-  Future<DocumentImageQualityResult?> analyze(File file) async {
-    if (!supports(file)) {
+  Future<DocumentImageQualityResult?> analyze({
+    required String filename,
+    required Uint8List bytes,
+  }) async {
+    if (!supports(filename)) {
       return null;
     }
 
-    final bytes = await file.readAsBytes();
     final decoded = img.decodeImage(bytes);
 
     if (decoded == null) {
@@ -153,6 +153,15 @@ class DocumentImageQualityService {
         values.length;
 
     return sqrt(variance);
+  }
+
+  String _extension(String filename) {
+    final index = filename.lastIndexOf('.');
+    if (index < 0 || index == filename.length - 1) {
+      return '';
+    }
+
+    return filename.substring(index + 1).toLowerCase();
   }
 }
 

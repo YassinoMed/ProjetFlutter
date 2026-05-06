@@ -1,11 +1,10 @@
 library;
 
-import 'dart:io';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/repositories/document_repository_impl.dart';
 import '../../domain/entities/document_entity.dart';
+import '../../domain/entities/document_upload_file.dart';
 
 final documentSearchQueryProvider = StateProvider<String>((ref) => '');
 final documentStatusFilterProvider = StateProvider<String?>((ref) => null);
@@ -73,7 +72,7 @@ class DocumentActionsController {
       ref.read(documentRepositoryProvider);
 
   Future<MedicalDocument> upload({
-    required File file,
+    required DocumentUploadFile file,
     required String title,
     String? patientUserId,
     String? doctorUserId,

@@ -1,12 +1,11 @@
 library;
 
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:dio/dio.dart';
-import 'package:path/path.dart' as path;
 
 import '../../../../core/constants/api_constants.dart';
+import '../../domain/entities/document_upload_file.dart';
 import '../models/document_model.dart';
 
 class DocumentRemoteDataSource {
@@ -101,7 +100,7 @@ class DocumentRemoteDataSource {
   }
 
   Future<MedicalDocumentModel> uploadDocument({
-    required File file,
+    required DocumentUploadFile file,
     required String title,
     String? patientUserId,
     String? doctorUserId,
@@ -118,9 +117,9 @@ class DocumentRemoteDataSource {
   }) async {
     final formData = FormData.fromMap({
       'title': title,
-      'file': await MultipartFile.fromFile(
-        file.path,
-        filename: path.basename(file.path),
+      'file': MultipartFile.fromBytes(
+        file.bytes,
+        filename: file.name,
       ),
       if (patientUserId != null) 'patient_user_id': patientUserId,
       if (doctorUserId != null) 'doctor_user_id': doctorUserId,

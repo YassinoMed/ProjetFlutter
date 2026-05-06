@@ -70,6 +70,7 @@ class ApiConstants {
   static const String secureMessageRead = '/messages/{id}/read';
   static const String e2eeDevices = '/e2ee/devices';
   static const String e2eePeerBundle = '/e2ee/users/{userId}/bundle';
+  static const String geminiChat = '/gemini/chat';
 
   // ── WebRTC Signaling ──────────────────────────────────────
   static const String webrtcIceServers = '/webrtc/ice-servers';

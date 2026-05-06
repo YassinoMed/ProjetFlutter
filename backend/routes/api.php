@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\E2eeKeyController;
 use App\Http\Controllers\Api\EncryptedAttachmentController;
 use App\Http\Controllers\Api\FcmTokenController;
+use App\Http\Controllers\Api\GeminiController;
 use App\Http\Controllers\Api\MeDelegationController;
 use App\Http\Controllers\Api\MedicalRecordMetadataController;
 use App\Http\Controllers\Api\MessageController;
@@ -146,6 +147,9 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function (): void {
     Route::post('/messages', [MessageController::class, 'store'])->middleware('throttle:messages');
     Route::post('/messages/{messageId}/delivered', [MessageController::class, 'delivered'])->middleware('throttle:messages');
     Route::post('/messages/{messageId}/read', [MessageController::class, 'read'])->middleware('throttle:messages');
+
+    // ── AI Assistant via Gemini ──────────────────────────
+    Route::post('/gemini/chat', [GeminiController::class, 'chat'])->middleware('throttle:chat-messages');
 
     // ── WebRTC Signaling ─────────────────────────────────
     Route::get('/webrtc/ice-servers', [WebRtcController::class, 'iceServers'])->middleware('throttle:webrtc');

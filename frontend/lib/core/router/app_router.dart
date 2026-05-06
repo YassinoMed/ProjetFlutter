@@ -13,6 +13,7 @@ import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/auth/presentation/pages/trusted_devices_page.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
+import '../../features/chat/presentation/pages/ai_chatbot_page.dart';
 import '../../features/chat/presentation/pages/chat_detail_page.dart';
 import '../../features/documents/presentation/pages/document_detail_page.dart';
 import '../../features/documents/presentation/pages/document_upload_page.dart';
@@ -123,6 +124,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.chatDetail,
         name: 'chat-detail',
+        builder: (context, state) {
+          final conversationId = state.pathParameters['conversationId']!;
+          return ChatDetailPage(conversationId: conversationId);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.doctorAiChat,
+        name: 'doctor-ai-chat',
+        builder: (context, state) => const AiChatbotPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.doctorChatDetail,
+        name: 'doctor-chat-detail',
         builder: (context, state) {
           final conversationId = state.pathParameters['conversationId']!;
           return ChatDetailPage(conversationId: conversationId);

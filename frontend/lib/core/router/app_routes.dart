@@ -39,6 +39,7 @@ class AppRoutes {
   static const String doctorProfile = '/doctor/profile';
   static const String doctorPatients = '/doctor/patients';
   static const String doctorSecretaries = '/doctor/secretaries';
+  static const String doctorAiChat = '/doctor/chat/ai';
 
   // ── Doctor Sub-routes ───────────────────────────────────
   static const String doctorAppointmentDetail = '/doctor/appointment/:id';
