@@ -3,10 +3,10 @@ library;
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../constants/api_constants.dart';
-import '../network/dio_client.dart';
 
 class CloudAiChatMessage {
   final String role;
@@ -304,5 +304,29 @@ Sois clair, bref et actionnable.
 }
 
 final cloudMedicalAiServiceProvider = Provider<CloudMedicalAiService>((ref) {
-  return CloudMedicalAiService(ref.watch(dioProvider));
+  return CloudMedicalAiService(_createGeminiDio());
 });
+
+Dio _createGeminiDio() {
+  const overrideBaseUrl = String.fromEnvironment('GEMINI_API_BASE_URL');
+  final baseUrl = overrideBaseUrl.isNotEmpty
+      ? overrideBaseUrl
+      : (kDebugMode && kIsWeb
+          ? ApiConstants.geminiBaseUrlDev
+          : ApiConstants.baseUrl);
+
+  return Dio(
+    BaseOptions(
+      baseUrl: baseUrl,
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 90),
+      sendTimeout: const Duration(seconds: 30),
+      headers: const {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-Tenant-Identifier': ApiConstants.defaultTenantId,
+      },
+      validateStatus: (status) => status != null && status < 600,
+    ),
+  );
+}

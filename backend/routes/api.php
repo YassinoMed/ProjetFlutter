@@ -81,6 +81,11 @@ if (! app()->environment('testing')) {
     Broadcast::routes(['middleware' => ['auth:sanctum']]);
 }
 
+// ── AI Assistant via Gemini ─────────────────────────────────
+// Public in local/dev so Flutter Web can use the local Laravel proxy without
+// depending on the remote Sanctum token. Keep throttling enabled.
+Route::post('/gemini/chat', [GeminiController::class, 'chat'])->middleware('throttle:api');
+
 // ── Authenticated Routes ─────────────────────────────────────
 Route::middleware(['auth:sanctum', 'throttle:api'])->group(function (): void {
 
@@ -147,9 +152,6 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function (): void {
     Route::post('/messages', [MessageController::class, 'store'])->middleware('throttle:messages');
     Route::post('/messages/{messageId}/delivered', [MessageController::class, 'delivered'])->middleware('throttle:messages');
     Route::post('/messages/{messageId}/read', [MessageController::class, 'read'])->middleware('throttle:messages');
-
-    // ── AI Assistant via Gemini ──────────────────────────
-    Route::post('/gemini/chat', [GeminiController::class, 'chat'])->middleware('throttle:chat-messages');
 
     // ── WebRTC Signaling ─────────────────────────────────
     Route::get('/webrtc/ice-servers', [WebRtcController::class, 'iceServers'])->middleware('throttle:webrtc');

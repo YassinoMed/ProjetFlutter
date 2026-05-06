@@ -10,6 +10,7 @@ class ApiConstants {
   static const String baseUrl = 'http://51.210.243.30:8081/api';
   static const String baseUrlIos = 'http://51.210.243.30:8081/api';
   static const String baseUrlProd = 'http://51.210.243.30:8081/api';
+  static const String geminiBaseUrlDev = 'http://127.0.0.1:8081/api';
 
   // ── WebSocket (Reverb – Laravel native) ───────────────────
   static const String wsUrl = 'http://51.210.243.30:8081';
