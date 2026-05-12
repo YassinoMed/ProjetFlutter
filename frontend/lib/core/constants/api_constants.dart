@@ -108,6 +108,7 @@ class ApiConstants {
   static const String teleconsultationIce =
       '/teleconsultations/{id}/signal/ice-candidate';
   static const String teleconsultationEvents = '/teleconsultations/{id}/events';
+  static const String callLiveKitToken = '/calls/{id}/livekit-token';
 
   // ── E2EE Encrypted Attachments ────────────────────────────
   static const String attachmentUpload = '/attachments/upload';

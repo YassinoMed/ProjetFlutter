@@ -1,5 +1,26 @@
 import 'package:mediconnect_pro/features/video_call/domain/entities/video_call_entity.dart';
 
+class LiveKitConnectionModel extends LiveKitConnectionInfo {
+  const LiveKitConnectionModel({
+    required super.url,
+    required super.token,
+    required super.room,
+    super.expiresAtUtc,
+  });
+
+  factory LiveKitConnectionModel.fromJson(Map<String, dynamic> json) {
+    final expiresAtRaw = json['expires_at_utc']?.toString();
+
+    return LiveKitConnectionModel(
+      url: json['url']?.toString() ?? '',
+      token: json['token']?.toString() ?? '',
+      room: json['room']?.toString() ?? '',
+      expiresAtUtc:
+          expiresAtRaw == null ? null : DateTime.tryParse(expiresAtRaw),
+    );
+  }
+}
+
 class VideoCallIceServerModel extends VideoCallIceServer {
   const VideoCallIceServerModel({
     required super.urls,
@@ -27,6 +48,7 @@ class VideoCallSessionModel extends VideoCallSessionContext {
   const VideoCallSessionModel({
     required super.teleconsultationId,
     required super.teleconsultationStatus,
+    super.callType,
     super.callSessionId,
     super.conversationId,
     super.selfUserId,
@@ -38,11 +60,14 @@ class VideoCallSessionModel extends VideoCallSessionContext {
       Map<String, dynamic> json) {
     final callSession =
         json['current_call_session'] as Map<String, dynamic>? ?? const {};
+    final callTypeRaw =
+        json['call_type']?.toString() ?? callSession['call_type']?.toString();
 
     return VideoCallSessionModel(
       teleconsultationId: json['id'].toString(),
       teleconsultationStatus:
           json['status']?.toString().toLowerCase() ?? 'scheduled',
+      callType: VideoCallType.fromRaw(callTypeRaw),
       callSessionId: json['current_call_session_id']?.toString() ??
           callSession['id']?.toString(),
       conversationId: json['conversation_id']?.toString(),
@@ -52,6 +77,8 @@ class VideoCallSessionModel extends VideoCallSessionContext {
   factory VideoCallSessionModel.fromJoinResponse(Map<String, dynamic> json) {
     final teleconsultation =
         json['teleconsultation'] as Map<String, dynamic>? ?? const {};
+    final callSession =
+        json['call_session'] as Map<String, dynamic>? ?? const {};
     final rtcConfiguration =
         json['rtc_configuration'] as Map<String, dynamic>? ?? const {};
     final iceServers = (rtcConfiguration['ice_servers'] as List? ?? const [])
@@ -63,9 +90,12 @@ class VideoCallSessionModel extends VideoCallSessionContext {
       teleconsultationId: teleconsultation['id'].toString(),
       teleconsultationStatus:
           teleconsultation['status']?.toString().toLowerCase() ?? 'scheduled',
-      callSessionId:
-          json['call_session']?['id']?.toString() ??
-              teleconsultation['current_call_session_id']?.toString(),
+      callType: VideoCallType.fromRaw(
+        teleconsultation['call_type']?.toString() ??
+            callSession['call_type']?.toString(),
+      ),
+      callSessionId: callSession['id']?.toString() ??
+          teleconsultation['current_call_session_id']?.toString(),
       conversationId: teleconsultation['conversation_id']?.toString(),
       selfUserId: json['self_user_id']?.toString(),
       remoteUserId: json['remote_user_id']?.toString(),

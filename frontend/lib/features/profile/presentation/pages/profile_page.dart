@@ -8,6 +8,7 @@ import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/clinical_ui.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../documents/presentation/providers/document_providers.dart';
 import '../../../secretaries/presentation/widgets/acting_doctor_banner.dart';
 
 class ProfilePage extends ConsumerWidget {
@@ -141,16 +142,7 @@ class ProfilePage extends ConsumerWidget {
                     onTap: () => context.push(AppRoutes.editProfile),
                   ),
                   _DividerLine(),
-                  _ProfileTile(
-                    icon: Icons.folder_open_rounded,
-                    title: 'Documents',
-                    trailing: const ClinicalStatusChip(
-                      label: '12',
-                      color: AppTheme.primaryColor,
-                      compact: true,
-                    ),
-                    onTap: () => context.push(AppRoutes.documents),
-                  ),
+                  _DocumentsTile(),
                   if (user?.isDoctor == true) ...[
                     _DividerLine(),
                     _ProfileTile(
@@ -318,5 +310,45 @@ class _DividerLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Divider(height: 1, indent: 16, endIndent: 16);
+  }
+}
+
+class _DocumentsTile extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final documentsAsync = ref.watch(documentsProvider);
+
+    return documentsAsync.when(
+      data: (documents) => _ProfileTile(
+        icon: Icons.folder_open_rounded,
+        title: 'Documents',
+        trailing: ClinicalStatusChip(
+          label: '${documents.length}',
+          color: AppTheme.primaryColor,
+          compact: true,
+        ),
+        onTap: () => context.push(AppRoutes.documents),
+      ),
+      loading: () => _ProfileTile(
+        icon: Icons.folder_open_rounded,
+        title: 'Documents',
+        trailing: const SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+        onTap: () => context.push(AppRoutes.documents),
+      ),
+      error: (_, __) => _ProfileTile(
+        icon: Icons.folder_open_rounded,
+        title: 'Documents',
+        trailing: const ClinicalStatusChip(
+          label: '0',
+          color: AppTheme.neutralGray500,
+          compact: true,
+        ),
+        onTap: () => context.push(AppRoutes.documents),
+      ),
+    );
   }
 }

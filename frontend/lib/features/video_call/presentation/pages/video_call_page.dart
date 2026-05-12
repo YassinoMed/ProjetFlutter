@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:livekit_client/livekit_client.dart' as lk;
 import 'package:mediconnect_pro/core/theme/app_theme.dart';
 import 'package:mediconnect_pro/features/video_call/domain/entities/video_call_entity.dart';
 import 'package:mediconnect_pro/features/video_call/presentation/providers/video_call_providers.dart';
@@ -94,16 +95,14 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
             Positioned.fill(
               child: callState.state == CallState.connected &&
                       callState.hasRemoteVideo
-                  ? RTCVideoView(
-                      notifier.remoteRenderer,
-                      objectFit:
-                          RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
-                    )
+                  ? _buildRemoteVideo(notifier)
                   : _buildWaitingState(callState, notifier),
             ),
 
             // ── Local Video (PiP overlay) ───────────────────
-            if (callState.isVideoEnabled && callState.hasMediaPermissions)
+            if (callState.requiresVideo &&
+                callState.isVideoEnabled &&
+                callState.hasMediaPermissions)
               Positioned(
                 top: MediaQuery.of(context).padding.top + 16,
                 right: 16,
@@ -196,8 +195,12 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
     IconData statusIcon;
 
     if (callState.mediaPermissionState == CallMediaPermissionState.checking) {
-      statusText = 'Verification de la caméra et du microphone…';
-      statusIcon = Icons.perm_camera_mic_rounded;
+      statusText = callState.requiresVideo
+          ? 'Verification de la caméra et du microphone…'
+          : 'Verification du microphone…';
+      statusIcon = callState.requiresVideo
+          ? Icons.perm_camera_mic_rounded
+          : Icons.mic_rounded;
     } else {
       switch (callState.state) {
         case CallState.idle:
@@ -211,8 +214,19 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
           statusText = 'Appel en cours…';
           statusIcon = Icons.ring_volume_rounded;
         case CallState.joining:
-          statusText = 'Connexion a la session…';
-          statusIcon = Icons.video_call_rounded;
+          statusText = callState.isAudioOnly
+              ? 'Connexion a l’appel audio…'
+              : 'Connexion a la session…';
+          statusIcon = callState.isAudioOnly
+              ? Icons.call_rounded
+              : Icons.video_call_rounded;
+        case CallState.connected:
+          statusText = callState.isAudioOnly
+              ? 'Appel audio en cours…'
+              : 'Appel vidéo en cours…';
+          statusIcon = callState.isAudioOnly
+              ? Icons.call_rounded
+              : Icons.videocam_rounded;
         case CallState.reconnecting:
           statusText = 'Reconnexion…';
           statusIcon = Icons.wifi_off_rounded;
@@ -222,9 +236,6 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
         case CallState.ended:
           statusText = 'Appel terminé';
           statusIcon = Icons.call_end_rounded;
-        default:
-          statusText = 'En attente…';
-          statusIcon = Icons.hourglass_top_rounded;
       }
     }
 
@@ -320,15 +331,19 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
                         shape: BoxShape.circle,
                         color: Colors.white.withValues(alpha: 0.08),
                       ),
-                      child: const Icon(
-                        Icons.perm_camera_mic_rounded,
+                      child: Icon(
+                        callState.requiresVideo
+                            ? Icons.perm_camera_mic_rounded
+                            : Icons.mic_rounded,
                         color: Colors.white,
                         size: 36,
                       ),
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      'Autorisations requises',
+                      callState.requiresVideo
+                          ? 'Autorisations requises'
+                          : 'Microphone requis',
                       textAlign: TextAlign.center,
                       style: AppTheme.titleLarge.copyWith(
                         color: Colors.white,
@@ -338,7 +353,9 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
                     const SizedBox(height: 12),
                     Text(
                       callState.mediaPermissionMessage ??
-                          'La caméra et le microphone sont nécessaires pour la téléconsultation.',
+                          (callState.requiresVideo
+                              ? 'La caméra et le microphone sont nécessaires pour la téléconsultation.'
+                              : 'Le microphone est nécessaire pour l’appel vocal.'),
                       textAlign: TextAlign.center,
                       style: AppTheme.bodyLarge.copyWith(
                         color: Colors.white70,
@@ -390,6 +407,8 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
   }
 
   Widget _buildLocalVideo(VideoCallNotifier notifier) {
+    final liveKitTrack = notifier.liveKitLocalVideoTrack;
+
     return GestureDetector(
       onDoubleTap: () => notifier.switchCamera(),
       child: Container(
@@ -400,12 +419,34 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
           boxShadow: AppTheme.shadowLg,
         ),
         clipBehavior: Clip.antiAlias,
-        child: RTCVideoView(
-          notifier.localRenderer,
-          mirror: true,
-          objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
-        ),
+        child: liveKitTrack != null
+            ? lk.VideoTrackRenderer(
+                liveKitTrack,
+                fit: lk.VideoViewFit.cover,
+                mirrorMode: lk.VideoViewMirrorMode.mirror,
+              )
+            : RTCVideoView(
+                notifier.localRenderer,
+                mirror: true,
+                objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+              ),
       ),
+    );
+  }
+
+  Widget _buildRemoteVideo(VideoCallNotifier notifier) {
+    final liveKitTrack = notifier.liveKitRemoteVideoTrack;
+
+    if (liveKitTrack != null) {
+      return lk.VideoTrackRenderer(
+        liveKitTrack,
+        fit: lk.VideoViewFit.cover,
+      );
+    }
+
+    return RTCVideoView(
+      notifier.remoteRenderer,
+      objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
     );
   }
 
@@ -523,14 +564,15 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
             isActive: !callState.isAudioMuted,
             onPressed: () => notifier.toggleAudio(),
           ),
-          _ControlBtn(
-            icon: callState.isVideoEnabled
-                ? Icons.videocam_rounded
-                : Icons.videocam_off_rounded,
-            label: callState.isVideoEnabled ? 'Caméra' : 'Caméra Off',
-            isActive: callState.isVideoEnabled,
-            onPressed: () => notifier.toggleVideo(),
-          ),
+          if (callState.requiresVideo)
+            _ControlBtn(
+              icon: callState.isVideoEnabled
+                  ? Icons.videocam_rounded
+                  : Icons.videocam_off_rounded,
+              label: callState.isVideoEnabled ? 'Caméra' : 'Caméra Off',
+              isActive: callState.isVideoEnabled,
+              onPressed: () => notifier.toggleVideo(),
+            ),
           _ControlBtn(
             icon: Icons.call_end_rounded,
             label: 'Raccrocher',
@@ -545,12 +587,13 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
             isActive: callState.isSpeakerOn,
             onPressed: () => notifier.toggleSpeaker(),
           ),
-          _ControlBtn(
-            icon: Icons.switch_camera_rounded,
-            label: 'Retourner',
-            isActive: true,
-            onPressed: () => notifier.switchCamera(),
-          ),
+          if (callState.requiresVideo)
+            _ControlBtn(
+              icon: Icons.switch_camera_rounded,
+              label: 'Retourner',
+              isActive: true,
+              onPressed: () => notifier.switchCamera(),
+            ),
           _ControlBtn(
             icon: _showChatPanel
                 ? Icons.chat_bubble_rounded

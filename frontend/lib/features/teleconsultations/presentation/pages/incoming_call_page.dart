@@ -76,6 +76,7 @@ class _IncomingCallPageState extends ConsumerState<IncomingCallPage>
     final callerName =
         widget.payload?['caller_name']?.toString() ?? 'Votre médecin';
     final callType = widget.payload?['call_type']?.toString() ?? 'VIDEO';
+    final isAudioCall = callType.toUpperCase() == 'AUDIO';
 
     return Scaffold(
       backgroundColor: AppTheme.darkBackground,
@@ -113,8 +114,10 @@ class _IncomingCallPageState extends ConsumerState<IncomingCallPage>
                               width: 2,
                             ),
                           ),
-                          child: const Icon(
-                            Icons.video_camera_front_rounded,
+                          child: Icon(
+                            isAudioCall
+                                ? Icons.call_rounded
+                                : Icons.video_camera_front_rounded,
                             color: Colors.white,
                             size: 62,
                           ),

@@ -10,7 +10,11 @@ abstract class VideoCallRepository {
       String teleconsultationId);
 
   Future<Either<Failure, VideoCallSessionContext>> joinTeleconsultation(
-      String teleconsultationId);
+    String teleconsultationId, {
+    String? deviceLabel,
+    bool? cameraEnabled,
+    bool? microphoneEnabled,
+  });
 
   Future<Either<Failure, void>> endTeleconsultation(String teleconsultationId);
 
@@ -18,6 +22,9 @@ abstract class VideoCallRepository {
     String teleconsultationId, {
     String? reason,
   });
+
+  Future<Either<Failure, LiveKitConnectionInfo>> getLiveKitConnection(
+      String callSessionId);
 
   Future<Either<Failure, void>> sendOffer({
     required String teleconsultationId,

@@ -1,5 +1,22 @@
 import 'package:equatable/equatable.dart';
 
+enum VideoCallType {
+  video,
+  audio;
+
+  static VideoCallType fromRaw(String? raw) {
+    return raw?.toUpperCase() == 'AUDIO'
+        ? VideoCallType.audio
+        : VideoCallType.video;
+  }
+
+  String get rawValue => this == VideoCallType.audio ? 'AUDIO' : 'VIDEO';
+
+  bool get requiresVideo => this == VideoCallType.video;
+
+  String get labelFr => this == VideoCallType.audio ? 'audio' : 'vidéo';
+}
+
 enum CallState {
   idle,
   resolvingSession,
@@ -36,6 +53,23 @@ class VideoCallIceServer extends Equatable {
   List<Object?> get props => [urls, username, credential];
 }
 
+class LiveKitConnectionInfo extends Equatable {
+  final String url;
+  final String token;
+  final String room;
+  final DateTime? expiresAtUtc;
+
+  const LiveKitConnectionInfo({
+    required this.url,
+    required this.token,
+    required this.room,
+    this.expiresAtUtc,
+  });
+
+  @override
+  List<Object?> get props => [url, token, room, expiresAtUtc];
+}
+
 class VideoCallSessionContext extends Equatable {
   final String teleconsultationId;
   final String? callSessionId;
@@ -43,11 +77,13 @@ class VideoCallSessionContext extends Equatable {
   final String? selfUserId;
   final String? remoteUserId;
   final String teleconsultationStatus;
+  final VideoCallType callType;
   final List<VideoCallIceServer> iceServers;
 
   const VideoCallSessionContext({
     required this.teleconsultationId,
     required this.teleconsultationStatus,
+    this.callType = VideoCallType.video,
     this.callSessionId,
     this.conversationId,
     this.selfUserId,
@@ -62,6 +98,7 @@ class VideoCallSessionContext extends Equatable {
     String? selfUserId,
     String? remoteUserId,
     String? teleconsultationStatus,
+    VideoCallType? callType,
     List<VideoCallIceServer>? iceServers,
   }) {
     return VideoCallSessionContext(
@@ -72,6 +109,7 @@ class VideoCallSessionContext extends Equatable {
       remoteUserId: remoteUserId ?? this.remoteUserId,
       teleconsultationStatus:
           teleconsultationStatus ?? this.teleconsultationStatus,
+      callType: callType ?? this.callType,
       iceServers: iceServers ?? this.iceServers,
     );
   }
@@ -84,6 +122,7 @@ class VideoCallSessionContext extends Equatable {
         selfUserId,
         remoteUserId,
         teleconsultationStatus,
+        callType,
         iceServers,
       ];
 }
@@ -95,6 +134,7 @@ class VideoCallEntity extends Equatable {
   final String? callSessionId;
   final String? conversationId;
   final String? teleconsultationStatus;
+  final VideoCallType callType;
   final bool isAudioMuted;
   final bool isVideoEnabled;
   final bool isFrontCamera;
@@ -112,6 +152,7 @@ class VideoCallEntity extends Equatable {
     this.callSessionId,
     this.conversationId,
     this.teleconsultationStatus,
+    this.callType = VideoCallType.video,
     this.isAudioMuted = false,
     this.isVideoEnabled = true,
     this.isFrontCamera = true,
@@ -126,6 +167,10 @@ class VideoCallEntity extends Equatable {
   bool get hasMediaPermissions =>
       mediaPermissionState == CallMediaPermissionState.granted;
 
+  bool get isAudioOnly => !callType.requiresVideo;
+
+  bool get requiresVideo => callType.requiresVideo;
+
   bool get shouldOpenPermissionSettings =>
       mediaPermissionState == CallMediaPermissionState.permanentlyDenied;
 
@@ -135,6 +180,7 @@ class VideoCallEntity extends Equatable {
     String? callSessionId,
     String? conversationId,
     String? teleconsultationStatus,
+    VideoCallType? callType,
     bool? isAudioMuted,
     bool? isVideoEnabled,
     bool? isFrontCamera,
@@ -155,6 +201,7 @@ class VideoCallEntity extends Equatable {
       conversationId: conversationId ?? this.conversationId,
       teleconsultationStatus:
           teleconsultationStatus ?? this.teleconsultationStatus,
+      callType: callType ?? this.callType,
       isAudioMuted: isAudioMuted ?? this.isAudioMuted,
       isVideoEnabled: isVideoEnabled ?? this.isVideoEnabled,
       isFrontCamera: isFrontCamera ?? this.isFrontCamera,
@@ -178,6 +225,7 @@ class VideoCallEntity extends Equatable {
         callSessionId,
         conversationId,
         teleconsultationStatus,
+        callType,
         isAudioMuted,
         isVideoEnabled,
         isFrontCamera,

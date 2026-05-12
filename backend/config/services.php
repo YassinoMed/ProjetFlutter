@@ -34,6 +34,13 @@ return [
         'timeout' => env('GEMINI_TIMEOUT_SECONDS', 60),
     ],
 
+    'livekit' => [
+        'url' => env('LIVEKIT_URL', 'ws://127.0.0.1:7880'),
+        'api_key' => env('LIVEKIT_API_KEY'),
+        'api_secret' => env('LIVEKIT_API_SECRET'),
+        'token_ttl_seconds' => (int) env('LIVEKIT_TOKEN_TTL_SECONDS', 3600),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:livekit_client/livekit_client.dart' as lk;
 import 'package:mediconnect_pro/core/network/dio_client.dart';
 import 'package:mediconnect_pro/core/network/websocket_service.dart';
 import 'package:mediconnect_pro/features/auth/presentation/providers/auth_provider.dart';
@@ -49,6 +51,10 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
   RTCPeerConnection? _peerConnection;
   MediaStream? _localStream;
   MediaStream? _remoteStream;
+  lk.Room? _liveKitRoom;
+  lk.EventsListener<lk.RoomEvent>? _liveKitListener;
+  lk.VideoTrack? _liveKitLocalVideoTrack;
+  lk.VideoTrack? _liveKitRemoteVideoTrack;
   Timer? _durationTimer;
   VideoCallSessionContext? _sessionContext;
   String? _subscribedTeleconsultationId;
@@ -64,6 +70,12 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
 
   RTCVideoRenderer localRenderer = RTCVideoRenderer();
   RTCVideoRenderer remoteRenderer = RTCVideoRenderer();
+
+  lk.VideoTrack? get liveKitLocalVideoTrack => _liveKitLocalVideoTrack;
+
+  lk.VideoTrack? get liveKitRemoteVideoTrack => _liveKitRemoteVideoTrack;
+
+  bool get isUsingLiveKit => _liveKitRoom != null;
 
   VideoCallNotifier({
     required String appointmentId,
@@ -91,25 +103,6 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
 
     try {
       await _ensureRenderersInitialized();
-      final permissionResult = await permissionService.ensureMediaPermissions(
-        requestIfNeeded: requestPermissions,
-      );
-
-      _applyPermissionResult(permissionResult);
-      if (!permissionResult.isGranted) {
-        return;
-      }
-
-      _awaitingPermissionSettingsResult = false;
-
-      final missingDeviceMessage = await _validateRequiredMediaDevices();
-      if (missingDeviceMessage != null) {
-        await _setError(missingDeviceMessage);
-        return;
-      }
-
-      await _ensureLocalMedia();
-
       final teleconsultationResult =
           await repository.ensureTeleconsultation(state.appointmentId);
 
@@ -119,6 +112,37 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
           _applySessionContext(teleconsultation);
           await _subscribeToTeleconsultation(
               teleconsultation.teleconsultationId);
+
+          if (kIsWeb) {
+            await _ensureLocalMedia(teleconsultation.callType);
+            state = state.copyWith(
+              mediaPermissionState: CallMediaPermissionState.granted,
+              clearMediaPermissionMessage: true,
+            );
+          } else {
+            final permissionResult =
+                await permissionService.ensureMediaPermissions(
+              requestIfNeeded: requestPermissions,
+              requireVideo: teleconsultation.callType.requiresVideo,
+            );
+
+            _applyPermissionResult(permissionResult);
+            if (!permissionResult.isGranted) {
+              return;
+            }
+
+            _awaitingPermissionSettingsResult = false;
+
+            final missingDeviceMessage = await _validateRequiredMediaDevices(
+              requireVideo: teleconsultation.callType.requiresVideo,
+            );
+            if (missingDeviceMessage != null) {
+              await _setError(missingDeviceMessage);
+              return;
+            }
+
+            await _ensureLocalMedia(teleconsultation.callType);
+          }
 
           var currentContext = teleconsultation;
 
@@ -207,7 +231,16 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
   }
 
   Future<void> refreshPermissionsAfterSettings() async {
-    final result = await permissionService.checkMediaPermissions();
+    if (kIsWeb) {
+      if (_localStream == null) {
+        await initializeCall(requestPermissions: false);
+      }
+      return;
+    }
+
+    final result = await permissionService.checkMediaPermissions(
+      requireVideo: state.requiresVideo,
+    );
     _applyPermissionResult(result);
 
     if (!result.isGranted) {
@@ -220,6 +253,10 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
   }
 
   Future<void> createOffer({bool iceRestart = false}) async {
+    if (_liveKitRoom != null) {
+      return;
+    }
+
     if (_offerInFlight ||
         _peerConnection == null ||
         _sessionContext?.remoteUserId == null ||
@@ -231,7 +268,7 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
       _offerInFlight = true;
       final offer = await _peerConnection!.createOffer({
         'offerToReceiveAudio': true,
-        'offerToReceiveVideo': true,
+        'offerToReceiveVideo': state.requiresVideo,
         if (iceRestart) 'iceRestart': true,
       });
 
@@ -253,6 +290,10 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
   }
 
   Future<void> handleOffer(String sdp, String type) async {
+    if (_liveKitRoom != null) {
+      return;
+    }
+
     if (_peerConnection == null ||
         _sessionContext?.remoteUserId == null ||
         state.teleconsultationId == null) {
@@ -275,6 +316,10 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
   }
 
   Future<void> handleAnswer(String sdp, String type) async {
+    if (_liveKitRoom != null) {
+      return;
+    }
+
     if (_peerConnection == null) {
       return;
     }
@@ -288,6 +333,10 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
     String? sdpMid,
     int? sdpMLineIndex,
   ) async {
+    if (_liveKitRoom != null) {
+      return;
+    }
+
     if (_peerConnection == null) {
       return;
     }
@@ -297,6 +346,14 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
   }
 
   void toggleAudio() {
+    final liveKitParticipant = _liveKitRoom?.localParticipant;
+    if (liveKitParticipant != null) {
+      final nextMuted = !state.isAudioMuted;
+      unawaited(liveKitParticipant.setMicrophoneEnabled(!nextMuted));
+      state = state.copyWith(isAudioMuted: nextMuted);
+      return;
+    }
+
     final audioTracks = _localStream?.getAudioTracks() ?? const [];
     if (audioTracks.isEmpty) {
       return;
@@ -308,6 +365,23 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
   }
 
   void toggleVideo() {
+    if (!state.requiresVideo) {
+      return;
+    }
+
+    final liveKitParticipant = _liveKitRoom?.localParticipant;
+    if (liveKitParticipant != null) {
+      final nextEnabled = !state.isVideoEnabled;
+      unawaited(liveKitParticipant.setCameraEnabled(nextEnabled).then((_) {
+        _syncLiveKitTracks();
+      }));
+      state = state.copyWith(
+        isVideoEnabled: nextEnabled,
+        hasRemoteVideo: state.hasRemoteVideo,
+      );
+      return;
+    }
+
     final videoTracks = _localStream?.getVideoTracks() ?? const [];
     if (videoTracks.isEmpty) {
       return;
@@ -320,11 +394,29 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
 
   Future<void> toggleSpeaker() async {
     final nextValue = !state.isSpeakerOn;
-    await Helper.setSpeakerphoneOn(nextValue);
+    if (!kIsWeb) {
+      await Helper.setSpeakerphoneOn(nextValue);
+    }
     state = state.copyWith(isSpeakerOn: nextValue);
   }
 
   Future<void> switchCamera() async {
+    if (!state.requiresVideo) {
+      return;
+    }
+
+    final liveKitParticipant = _liveKitRoom?.localParticipant;
+    if (liveKitParticipant != null) {
+      final track = _firstLocalLiveKitVideoTrack(liveKitParticipant);
+      if (track == null) {
+        return;
+      }
+
+      await Helper.switchCamera(track.mediaStreamTrack);
+      state = state.copyWith(isFrontCamera: !state.isFrontCamera);
+      return;
+    }
+
     final videoTracks = _localStream?.getVideoTracks() ?? const [];
     if (videoTracks.isEmpty) {
       return;
@@ -357,6 +449,26 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
         _localStream == null) {
       await refreshPermissionsAfterSettings();
       _awaitingPermissionSettingsResult = false;
+    }
+
+    final liveKitParticipant = _liveKitRoom?.localParticipant;
+    if (liveKitParticipant != null) {
+      if (appLifecycleState == AppLifecycleState.paused ||
+          appLifecycleState == AppLifecycleState.inactive) {
+        if (state.requiresVideo) {
+          await liveKitParticipant.setCameraEnabled(false);
+          _syncLiveKitTracks();
+        }
+        return;
+      }
+
+      if (appLifecycleState == AppLifecycleState.resumed &&
+          state.requiresVideo &&
+          state.isVideoEnabled) {
+        await liveKitParticipant.setCameraEnabled(true);
+        _syncLiveKitTracks();
+      }
+      return;
     }
 
     final videoTracks = _localStream?.getVideoTracks() ?? const [];
@@ -393,7 +505,11 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
         clearErrorMessage: true,
       );
 
-      final result = await repository.joinTeleconsultation(teleconsultationId);
+      final result = await repository.joinTeleconsultation(
+        teleconsultationId,
+        cameraEnabled: state.requiresVideo ? state.isVideoEnabled : false,
+        microphoneEnabled: !state.isAudioMuted,
+      );
 
       await result.fold(
         (failure) async {
@@ -407,14 +523,13 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
         (context) async {
           _sessionContext = context;
           _applySessionContext(context);
-          await _ensurePeerConnection(context);
+          final connectedWithLiveKit = await _ensureLiveKitRoom(context);
+          if (!connectedWithLiveKit) {
+            return;
+          }
 
           if (context.callSessionId != null) {
             await _subscribeToCallSession(context.callSessionId!);
-          }
-
-          if (isDoctor && context.teleconsultationStatus == 'active') {
-            await createOffer();
           }
         },
       );
@@ -433,7 +548,7 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
     _renderersInitialized = true;
   }
 
-  Future<void> _ensureLocalMedia() async {
+  Future<void> _ensureLocalMedia(VideoCallType callType) async {
     if (_localStream != null) {
       return;
     }
@@ -441,20 +556,183 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
     try {
       _localStream = await navigator.mediaDevices.getUserMedia({
         'audio': true,
-        'video': {
-          'facingMode': 'user',
-          'width': {'ideal': 1280},
-          'height': {'ideal': 720},
-        },
+        'video': callType.requiresVideo
+            ? {
+                'facingMode': 'user',
+                'width': {'ideal': 1280},
+                'height': {'ideal': 720},
+              }
+            : false,
       });
     } catch (error) {
       throw await _mapLocalMediaError(error);
     }
 
     localRenderer.srcObject = _localStream;
-    await Helper.setSpeakerphoneOn(state.isSpeakerOn);
+    if (!kIsWeb) {
+      await Helper.setSpeakerphoneOn(state.isSpeakerOn);
+    }
   }
 
+  Future<bool> _ensureLiveKitRoom(VideoCallSessionContext context) async {
+    final callSessionId = context.callSessionId;
+    if (callSessionId == null || callSessionId.isEmpty) {
+      await _setError('Session d’appel introuvable.');
+      return false;
+    }
+
+    if (_liveKitRoom != null && callSessionId == state.callSessionId) {
+      return true;
+    }
+
+    final tokenResult = await repository.getLiveKitConnection(callSessionId);
+
+    return tokenResult.fold(
+      (failure) async {
+        await _setError(failure.message);
+        return false;
+      },
+      (connection) async {
+        await _disconnectLiveKitRoom();
+        await _releaseLocalPreviewStream();
+
+        final room = lk.Room(
+          roomOptions: const lk.RoomOptions(
+            adaptiveStream: true,
+            dynacast: true,
+          ),
+        );
+        final listener = room.createListener();
+
+        _liveKitRoom = room;
+        _liveKitListener = listener;
+        room.addListener(_syncLiveKitTracks);
+        _setUpLiveKitListeners(listener);
+
+        try {
+          await room.connect(
+            connection.url,
+            connection.token,
+            connectOptions: const lk.ConnectOptions(autoSubscribe: true),
+          );
+
+          await room.localParticipant?.setMicrophoneEnabled(
+            !state.isAudioMuted,
+          );
+
+          if (context.callType.requiresVideo) {
+            await room.localParticipant?.setCameraEnabled(
+              state.isVideoEnabled,
+            );
+          }
+
+          _syncLiveKitTracks();
+          if (mounted) {
+            state = state.copyWith(
+              state: CallState.connected,
+              teleconsultationStatus: 'active',
+              clearErrorMessage: true,
+            );
+          }
+          _startDurationTimer();
+
+          return true;
+        } catch (error) {
+          await _disconnectLiveKitRoom();
+          await _setError(_resolveFriendlyLiveKitError(error));
+          return false;
+        }
+      },
+    );
+  }
+
+  void _setUpLiveKitListeners(lk.EventsListener<lk.RoomEvent> listener) {
+    listener
+      ..on<lk.RoomReconnectingEvent>((_) {
+        if (mounted) {
+          state = state.copyWith(state: CallState.reconnecting);
+        }
+      })
+      ..on<lk.RoomReconnectedEvent>((_) {
+        if (mounted) {
+          state = state.copyWith(
+            state: CallState.connected,
+            teleconsultationStatus: 'active',
+          );
+        }
+        _startDurationTimer();
+        _syncLiveKitTracks();
+      })
+      ..on<lk.RoomDisconnectedEvent>((_) {
+        _durationTimer?.cancel();
+        if (mounted && state.state != CallState.ended) {
+          state = state.copyWith(
+            state: CallState.ended,
+            hasRemoteVideo: false,
+          );
+        }
+      })
+      ..on<lk.ParticipantEvent>((_) => _syncLiveKitTracks())
+      ..on<lk.LocalTrackPublishedEvent>((_) => _syncLiveKitTracks())
+      ..on<lk.LocalTrackUnpublishedEvent>((_) => _syncLiveKitTracks())
+      ..on<lk.TrackSubscribedEvent>((_) => _syncLiveKitTracks())
+      ..on<lk.TrackUnsubscribedEvent>((_) => _syncLiveKitTracks());
+  }
+
+  void _syncLiveKitTracks() {
+    final room = _liveKitRoom;
+    if (room == null) {
+      _liveKitLocalVideoTrack = null;
+      _liveKitRemoteVideoTrack = null;
+      return;
+    }
+
+    _liveKitLocalVideoTrack = room.localParticipant == null
+        ? null
+        : _firstLocalLiveKitVideoTrack(room.localParticipant!);
+    _liveKitRemoteVideoTrack = _firstRemoteLiveKitVideoTrack(room);
+
+    if (!mounted) {
+      return;
+    }
+
+    final isConnected = room.connectionState == lk.ConnectionState.connected;
+    state = state.copyWith(
+      state: isConnected ? CallState.connected : state.state,
+      teleconsultationStatus:
+          isConnected ? 'active' : state.teleconsultationStatus,
+      hasRemoteVideo: state.requiresVideo && _liveKitRemoteVideoTrack != null,
+    );
+  }
+
+  lk.VideoTrack? _firstLocalLiveKitVideoTrack(
+    lk.LocalParticipant participant,
+  ) {
+    for (final publication in participant.videoTrackPublications) {
+      final track = publication.track;
+      if (track != null && !publication.muted) {
+        return track;
+      }
+    }
+
+    return null;
+  }
+
+  lk.VideoTrack? _firstRemoteLiveKitVideoTrack(lk.Room room) {
+    for (final participant in room.remoteParticipants.values) {
+      for (final publication in participant.videoTrackPublications) {
+        final track = publication.track;
+        if (track != null && !publication.muted) {
+          return track;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  // Kept for the legacy peer-to-peer signaling path while LiveKit is the primary media provider.
+  // ignore: unused_element
   Future<void> _ensurePeerConnection(VideoCallSessionContext context) async {
     if (_peerConnection != null &&
         context.callSessionId != null &&
@@ -494,7 +772,9 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
 
       _remoteStream = event.streams.first;
       remoteRenderer.srcObject = _remoteStream;
-      state = state.copyWith(hasRemoteVideo: true);
+      state = state.copyWith(
+        hasRemoteVideo: state.requiresVideo && event.track.kind == 'video',
+      );
     };
 
     _peerConnection?.onIceCandidate = (RTCIceCandidate candidate) {
@@ -590,6 +870,12 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
         state = state.copyWith(
           state: CallState.ringing,
           callSessionId: callSession['id']?.toString() ?? state.callSessionId,
+          callType: VideoCallType.fromRaw(callSession['call_type']?.toString()),
+          isVideoEnabled:
+              VideoCallType.fromRaw(callSession['call_type']?.toString())
+                      .requiresVideo
+                  ? state.isVideoEnabled
+                  : false,
         );
         break;
       case 'webrtc.accepted':
@@ -598,6 +884,12 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
           state: CallState.joining,
           teleconsultationStatus: 'active',
           callSessionId: callSession['id']?.toString() ?? state.callSessionId,
+          callType: VideoCallType.fromRaw(callSession['call_type']?.toString()),
+          isVideoEnabled:
+              VideoCallType.fromRaw(callSession['call_type']?.toString())
+                      .requiresVideo
+                  ? state.isVideoEnabled
+                  : false,
         );
         if (isDoctor) {
           await createOffer();
@@ -655,12 +947,18 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
     final callSessionId =
         teleconsultation['current_call_session_id']?.toString();
     final conversationId = teleconsultation['conversation_id']?.toString();
+    final callType = VideoCallType.fromRaw(
+      teleconsultation['call_type']?.toString(),
+    );
 
     state = state.copyWith(
       teleconsultationId: teleconsultationId ?? state.teleconsultationId,
       teleconsultationStatus: status ?? state.teleconsultationStatus,
       callSessionId: callSessionId ?? state.callSessionId,
       conversationId: conversationId ?? state.conversationId,
+      callType: callType,
+      isVideoEnabled: callType.requiresVideo ? state.isVideoEnabled : false,
+      hasRemoteVideo: callType.requiresVideo ? state.hasRemoteVideo : false,
       state: _isTerminalTeleconsultationStatus(status)
           ? CallState.ended
           : (status == 'scheduled' && !isDoctor
@@ -721,9 +1019,12 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
       callSessionId: context.callSessionId,
       conversationId: context.conversationId,
       teleconsultationStatus: context.teleconsultationStatus,
+      callType: context.callType,
+      isVideoEnabled:
+          context.callType.requiresVideo ? state.isVideoEnabled : false,
+      hasRemoteVideo:
+          context.callType.requiresVideo ? state.hasRemoteVideo : false,
       state: _stateForTeleconsultationStatus(context.teleconsultationStatus),
-      mediaPermissionState: CallMediaPermissionState.granted,
-      clearMediaPermissionMessage: true,
       clearErrorMessage: true,
     );
   }
@@ -785,9 +1086,39 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
     );
   }
 
+  String _resolveFriendlyLiveKitError(Object error) {
+    final rawMessage = error.toString().toLowerCase();
+
+    if (rawMessage.contains('401') ||
+        rawMessage.contains('unauthorized') ||
+        rawMessage.contains('token')) {
+      return 'Le jeton LiveKit est invalide ou expiré. Relancez l’appel.';
+    }
+
+    if (rawMessage.contains('websocket') ||
+        rawMessage.contains('connection') ||
+        rawMessage.contains('failed host lookup') ||
+        rawMessage.contains('xmlhttprequest')) {
+      return 'Impossible de joindre le serveur LiveKit. Vérifiez LIVEKIT_URL et le réseau.';
+    }
+
+    if (rawMessage.contains('notallowederror') ||
+        rawMessage.contains('permission denied')) {
+      return state.requiresVideo
+          ? 'Autorisez la caméra et le microphone pour rejoindre l’appel vidéo.'
+          : 'Autorisez le microphone pour rejoindre l’appel vocal.';
+    }
+
+    return state.requiresVideo
+        ? 'Impossible de démarrer l’appel vidéo LiveKit.'
+        : 'Impossible de démarrer l’appel vocal LiveKit.';
+  }
+
   Future<_LocalMediaAccessException> _mapLocalMediaError(Object error) async {
     final rawMessage = error.toString().toLowerCase();
-    final permissionResult = await permissionService.checkMediaPermissions();
+    final permissionResult = await permissionService.checkMediaPermissions(
+      requireVideo: state.requiresVideo,
+    );
 
     if (rawMessage.contains('notallowederror') ||
         rawMessage.contains('permission denied')) {
@@ -795,8 +1126,11 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
           ? CallMediaPermissionState.denied
           : permissionResult.state;
       final userMessage = permissionResult.isGranted
-          ? 'L’accès à la caméra ou au microphone a été refusé par l’appareil. '
-              'Vérifiez les autorisations et les réglages de confidentialité, puis réessayez.'
+          ? state.requiresVideo
+              ? 'L’accès à la caméra ou au microphone a été refusé par l’appareil. '
+                  'Vérifiez les autorisations et les réglages de confidentialité, puis réessayez.'
+              : 'L’accès au microphone a été refusé par l’appareil. '
+                  'Vérifiez les autorisations et les réglages de confidentialité, puis réessayez.'
           : permissionResult.userMessage;
 
       return _LocalMediaAccessException(
@@ -806,17 +1140,19 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
     }
 
     if (rawMessage.contains('notfounderror')) {
-      return const _LocalMediaAccessException(
-        userMessage:
-            'Aucune caméra ou aucun microphone compatible n’a été détecté sur cet appareil.',
+      return _LocalMediaAccessException(
+        userMessage: state.requiresVideo
+            ? 'Aucune caméra ou aucun microphone compatible n’a été détecté sur cet appareil.'
+            : 'Aucun microphone compatible n’a été détecté sur cet appareil.',
       );
     }
 
     if (rawMessage.contains('notreadableerror') ||
         rawMessage.contains('trackstarterror')) {
-      return const _LocalMediaAccessException(
-        userMessage:
-            'La caméra ou le microphone est déjà utilisé par une autre application. Fermez-la puis réessayez.',
+      return _LocalMediaAccessException(
+        userMessage: state.requiresVideo
+            ? 'La caméra ou le microphone est déjà utilisé par une autre application. Fermez-la puis réessayez.'
+            : 'Le microphone est déjà utilisé par une autre application. Fermez-la puis réessayez.',
       );
     }
 
@@ -831,37 +1167,49 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
     final rawMessage = error.toString().toLowerCase();
 
     if (rawMessage.contains('notallowederror')) {
-      return 'La caméra et le microphone sont nécessaires pour la téléconsultation.';
+      return state.requiresVideo
+          ? 'La caméra et le microphone sont nécessaires pour la téléconsultation.'
+          : 'Le microphone est nécessaire pour l’appel vocal.';
     }
 
     if (rawMessage.contains('notreadableerror') ||
         rawMessage.contains('trackstarterror')) {
-      return 'Impossible d’utiliser la caméra ou le microphone pour le moment. Fermez les autres applications qui les utilisent puis réessayez.';
+      return state.requiresVideo
+          ? 'Impossible d’utiliser la caméra ou le microphone pour le moment. Fermez les autres applications qui les utilisent puis réessayez.'
+          : 'Impossible d’utiliser le microphone pour le moment. Fermez les autres applications qui l’utilisent puis réessayez.';
     }
 
     if (rawMessage.contains('notfounderror')) {
-      return 'Aucune caméra ou aucun microphone compatible n’a été détecté sur cet appareil.';
+      return state.requiresVideo
+          ? 'Aucune caméra ou aucun microphone compatible n’a été détecté sur cet appareil.'
+          : 'Aucun microphone compatible n’a été détecté sur cet appareil.';
     }
 
-    return 'Impossible de démarrer la téléconsultation. Vérifiez la caméra et le microphone puis réessayez.';
+    return state.requiresVideo
+        ? 'Impossible de démarrer la téléconsultation. Vérifiez la caméra et le microphone puis réessayez.'
+        : 'Impossible de démarrer l’appel vocal. Vérifiez le microphone puis réessayez.';
   }
 
-  Future<String?> _validateRequiredMediaDevices() async {
+  Future<String?> _validateRequiredMediaDevices({
+    required bool requireVideo,
+  }) async {
     final devices = await navigator.mediaDevices.enumerateDevices();
 
     final hasCamera = devices.any((device) => device.kind == 'videoinput');
     final hasMicrophone = devices.any((device) => device.kind == 'audioinput');
 
-    if (!hasCamera && !hasMicrophone) {
+    if (requireVideo && !hasCamera && !hasMicrophone) {
       return 'Aucune caméra ni aucun microphone ne sont disponibles sur cet appareil.';
     }
 
-    if (!hasCamera) {
+    if (requireVideo && !hasCamera) {
       return 'Aucune caméra disponible sur cet appareil pour la téléconsultation.';
     }
 
     if (!hasMicrophone) {
-      return 'Aucun microphone disponible sur cet appareil pour la téléconsultation.';
+      return requireVideo
+          ? 'Aucun microphone disponible sur cet appareil pour la téléconsultation.'
+          : 'Aucun microphone disponible sur cet appareil pour l’appel vocal.';
     }
 
     return null;
@@ -883,10 +1231,43 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
     remoteRenderer.srcObject = null;
   }
 
+  Future<void> _releaseLocalPreviewStream() async {
+    final localTracks = _localStream?.getTracks() ?? const [];
+    for (final track in localTracks) {
+      track.stop();
+    }
+
+    await _localStream?.dispose();
+    _localStream = null;
+    localRenderer.srcObject = null;
+  }
+
+  Future<void> _disconnectLiveKitRoom() async {
+    final room = _liveKitRoom;
+    final listener = _liveKitListener;
+
+    _liveKitRoom = null;
+    _liveKitListener = null;
+    _liveKitLocalVideoTrack = null;
+    _liveKitRemoteVideoTrack = null;
+
+    if (room == null) {
+      await listener?.dispose();
+      return;
+    }
+
+    room.removeListener(_syncLiveKitTracks);
+    await room.disconnect();
+    await listener?.dispose();
+    await room.dispose();
+  }
+
   Future<void> _teardownCallResources({
     required bool disposeRenderers,
   }) async {
     _durationTimer?.cancel();
+
+    await _disconnectLiveKitRoom();
 
     if (_subscribedCallSessionId != null) {
       await websocketService.unsubscribeCallSession(

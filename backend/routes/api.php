@@ -167,6 +167,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function (): void {
     Route::post('/calls/{callSessionId}/reject', [CallSessionController::class, 'reject'])->middleware('throttle:calls');
     Route::post('/calls/{callSessionId}/cancel', [CallSessionController::class, 'cancel'])->middleware('throttle:calls');
     Route::post('/calls/{callSessionId}/end', [CallSessionController::class, 'end'])->middleware('throttle:calls');
+    Route::post('/calls/{callSessionId}/livekit-token', [CallSessionController::class, 'liveKitToken'])->middleware('throttle:calls');
     Route::post('/calls/{callSessionId}/offer', [WebRtcSignalingController::class, 'offer'])->middleware('throttle:webrtc');
     Route::post('/calls/{callSessionId}/answer', [WebRtcSignalingController::class, 'answer'])->middleware('throttle:webrtc');
     Route::post('/calls/{callSessionId}/ice-candidates', [WebRtcSignalingController::class, 'ice'])->middleware('throttle:webrtc');

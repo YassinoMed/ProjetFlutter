@@ -30,6 +30,7 @@ class _AiChatbotPageState extends ConsumerState<AiChatbotPage> {
 
   @override
   Widget build(BuildContext context) {
+    _normalizeLegacyMessages();
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -193,7 +194,9 @@ class _AiChatbotPageState extends ConsumerState<AiChatbotPage> {
       setState(() {
         _messages.add(
           _AiMessage.assistant(
-            'Impossible de contacter Gemini pour le moment.\n\n${CloudMedicalAiService.friendlyError(error)}',
+            CloudMedicalAiService.normalizeLegacyCloudText(
+              'Impossible de contacter Gemini pour le moment.\n\n${CloudMedicalAiService.friendlyError(error)}',
+            ),
           ),
         );
         _isThinking = false;
@@ -215,6 +218,23 @@ class _AiChatbotPageState extends ConsumerState<AiChatbotPage> {
         curve: Curves.easeOut,
       );
     });
+  }
+
+  void _normalizeLegacyMessages() {
+    for (var index = 0; index < _messages.length; index++) {
+      final message = _messages[index];
+      if (message.isUser) {
+        continue;
+      }
+
+      final normalized =
+          CloudMedicalAiService.normalizeLegacyCloudText(message.content);
+      if (normalized == message.content) {
+        continue;
+      }
+
+      _messages[index] = _AiMessage.assistant(normalized);
+    }
   }
 }
 

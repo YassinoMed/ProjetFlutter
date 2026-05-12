@@ -59,6 +59,10 @@ x-laravel-env: &laravel-env
   COTURN_STUN_URLS: ${COTURN_STUN_URLS:-stun:stun.l.google.com:19302}
   COTURN_TURN_URLS: ${COTURN_TURN_URLS:-turn:localhost:3478?transport=udp,turn:localhost:3478?transport=tcp}
   COTURN_SHARED_SECRET: ${COTURN_SHARED_SECRET:-change-me-turn-secret}
+  LIVEKIT_URL: ${LIVEKIT_URL:-ws://localhost:7880}
+  LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}
+  LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-secret}
+  LIVEKIT_TOKEN_TTL_SECONDS: ${LIVEKIT_TOKEN_TTL_SECONDS:-3600}
 
 x-laravel-service: &laravel-service
   build:
@@ -204,6 +208,17 @@ services:
       - "5349:5349"
       - "5349:5349/udp"
       - "49160-49200:49160-49200/udp"
+    networks:
+      - mediconnect
+
+  livekit:
+    image: livekit/livekit-server:latest
+    restart: unless-stopped
+    command: ["--dev", "--bind", "0.0.0.0"]
+    ports:
+      - "${LIVEKIT_PORT_FORWARD:-7880}:7880"
+      - "${LIVEKIT_RTC_TCP_PORT_FORWARD:-7881}:7881"
+      - "${LIVEKIT_RTC_UDP_PORT_FORWARD:-7882}:7882/udp"
     networks:
       - mediconnect
 

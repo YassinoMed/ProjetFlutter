@@ -7,12 +7,17 @@ use App\Http\Requests\Calls\InitiateCallRequest;
 use App\Http\Resources\CallSessionResource;
 use App\Models\CallSession;
 use App\Services\Calls\CallSessionService;
+use App\Services\Calls\LiveKitTokenService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use RuntimeException;
 
 class CallSessionController extends Controller
 {
-    public function __construct(private readonly CallSessionService $callSessionService) {}
+    public function __construct(
+        private readonly CallSessionService $callSessionService,
+        private readonly LiveKitTokenService $liveKitTokenService,
+    ) {}
 
     public function show(string $callSessionId, Request $request): JsonResponse
     {
@@ -85,6 +90,26 @@ class CallSessionController extends Controller
         return $this->respondSuccess(
             ['call_session' => new CallSessionResource($callSession)],
             'Call ended successfully',
+        );
+    }
+
+    public function liveKitToken(string $callSessionId, Request $request): JsonResponse
+    {
+        $callSession = CallSession::query()->with('participants')->findOrFail($callSessionId);
+        $this->authorize('view', $callSession);
+
+        try {
+            $livekit = $this->liveKitTokenService->issueForCall($callSession, $request->user());
+        } catch (RuntimeException $exception) {
+            return $this->respondError($exception->getMessage(), 503);
+        }
+
+        return $this->respondSuccess(
+            [
+                'call_session' => new CallSessionResource($callSession),
+                'livekit' => $livekit,
+            ],
+            'LiveKit token issued successfully',
         );
     }
 }

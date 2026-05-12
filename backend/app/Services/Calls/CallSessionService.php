@@ -23,6 +23,7 @@ use App\Services\Teleconsultations\TeleconsultationEventLogger;
 use App\Services\Teleconsultations\TeleconsultationStateSynchronizer;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
@@ -68,7 +69,14 @@ class CallSessionService
         }
 
         return DB::transaction(function () use ($conversation, $actor, $payload): CallSession {
+            $callSessionId = (string) Str::uuid();
+            $serverMetadata = $this->serverMetadataForMediaProvider(
+                $payload['server_metadata'] ?? [],
+                $callSessionId,
+            );
+
             $call = CallSession::query()->create([
+                'id' => $callSessionId,
                 'consultation_id' => $payload['consultation_id'] ?? $conversation->consultation_id,
                 'conversation_id' => $conversation->id,
                 'initiated_by_user_id' => $actor->id,
@@ -76,7 +84,7 @@ class CallSessionService
                 'current_state' => CallSessionState::RINGING->value,
                 'started_ringing_at_utc' => now('UTC'),
                 'expires_at_utc' => now('UTC')->addSeconds(config('mediconnect.call_ring_timeout_seconds', 45)),
-                'server_metadata' => $payload['server_metadata'] ?? null,
+                'server_metadata' => $serverMetadata,
             ]);
 
             foreach ($conversation->participants as $participant) {
@@ -454,5 +462,14 @@ class CallSessionService
     private function callState(CallSession $call): string
     {
         return $call->current_state->value;
+    }
+
+    private function serverMetadataForMediaProvider(mixed $metadata, string $callSessionId): array
+    {
+        $metadata = is_array($metadata) ? $metadata : [];
+        $metadata['media_provider'] ??= 'livekit';
+        $metadata['livekit_room'] ??= 'call-'.$callSessionId;
+
+        return $metadata;
     }
 }

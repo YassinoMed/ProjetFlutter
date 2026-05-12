@@ -63,11 +63,22 @@ class VideoCallRepositoryImpl implements VideoCallRepository {
 
   @override
   Future<Either<Failure, VideoCallSessionContext>> joinTeleconsultation(
-      String teleconsultationId) async {
+    String teleconsultationId, {
+    String? deviceLabel,
+    bool? cameraEnabled,
+    bool? microphoneEnabled,
+  }) async {
     try {
       final response = await dio.post(
         ApiConstants.teleconsultationJoin
             .replaceFirst('{id}', teleconsultationId),
+        data: {
+          if (deviceLabel != null && deviceLabel.isNotEmpty)
+            'device_label': deviceLabel,
+          if (cameraEnabled != null) 'camera_enabled': cameraEnabled,
+          if (microphoneEnabled != null)
+            'microphone_enabled': microphoneEnabled,
+        },
       );
 
       final data = (response.data['data'] as Map<String, dynamic>?) ??
@@ -76,8 +87,7 @@ class VideoCallRepositoryImpl implements VideoCallRepository {
       return Right(VideoCallSessionModel.fromJoinResponse(data));
     } on DioException catch (e) {
       return Left(ServerFailure(
-          message:
-              e.response?.data?['message']?.toString() ?? 'Join failed'));
+          message: e.response?.data?['message']?.toString() ?? 'Join failed'));
     } catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
@@ -88,13 +98,13 @@ class VideoCallRepositoryImpl implements VideoCallRepository {
       String teleconsultationId) async {
     try {
       await dio.post(
-        ApiConstants.teleconsultationEnd.replaceFirst('{id}', teleconsultationId),
+        ApiConstants.teleconsultationEnd
+            .replaceFirst('{id}', teleconsultationId),
       );
       return const Right(null);
     } on DioException catch (e) {
       return Left(ServerFailure(
-          message:
-              e.response?.data?['message']?.toString() ?? 'End failed'));
+          message: e.response?.data?['message']?.toString() ?? 'End failed'));
     } catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
@@ -116,6 +126,36 @@ class VideoCallRepositoryImpl implements VideoCallRepository {
       return Left(ServerFailure(
           message:
               e.response?.data?['message']?.toString() ?? 'Cancel failed'));
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, LiveKitConnectionInfo>> getLiveKitConnection(
+      String callSessionId) async {
+    try {
+      final response = await dio.post(
+        ApiConstants.callLiveKitToken.replaceFirst('{id}', callSessionId),
+      );
+
+      final data = (response.data['data'] as Map<String, dynamic>?) ??
+          const <String, dynamic>{};
+      final livekit = data['livekit'] as Map<String, dynamic>? ?? const {};
+      final connection = LiveKitConnectionModel.fromJson(livekit);
+
+      if (connection.url.isEmpty || connection.token.isEmpty) {
+        return const Left(ServerFailure(
+          message: 'Configuration LiveKit incomplète.',
+        ));
+      }
+
+      return Right(connection);
+    } on DioException catch (e) {
+      return Left(ServerFailure(
+        message: e.response?.data?['message']?.toString() ??
+            'Impossible de préparer l’appel LiveKit.',
+      ));
     } catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
@@ -183,7 +223,8 @@ class VideoCallRepositoryImpl implements VideoCallRepository {
   }) async {
     try {
       await dio.post(
-        ApiConstants.teleconsultationIce.replaceFirst('{id}', teleconsultationId),
+        ApiConstants.teleconsultationIce
+            .replaceFirst('{id}', teleconsultationId),
         data: {
           'target_user_id': targetUserId,
           'candidate': {

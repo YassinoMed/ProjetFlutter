@@ -12,6 +12,8 @@ import 'package:intl/intl.dart';
 import '../../../../core/ai/cloud_medical_ai_service.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../appointments/presentation/providers/appointment_providers.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/services/document_image_quality_service.dart';
 import '../../data/services/mlkit_document_ocr_service.dart';
 import '../../domain/entities/document_upload_file.dart';
@@ -30,6 +32,8 @@ class _DocumentUploadPageState extends ConsumerState<DocumentUploadPage> {
   DocumentUploadFile? _selectedFile;
   String? _documentType;
   DateTime? _documentDate;
+  String? _selectedPatientId;
+  String? _selectedPatientName;
   MlkitOcrResult? _localOcr;
   DocumentImageQualityResult? _imageQuality;
   String? _cloudAnalysis;
@@ -123,6 +127,17 @@ class _DocumentUploadPageState extends ConsumerState<DocumentUploadPage> {
                   ],
                 ),
               ),
+            ),
+            const SizedBox(height: 16),
+            _PatientSelector(
+              selectedPatientId: _selectedPatientId,
+              selectedPatientName: _selectedPatientName,
+              onChanged: (patientId, patientName) {
+                setState(() {
+                  _selectedPatientId = patientId;
+                  _selectedPatientName = patientName;
+                });
+              },
             ),
             const SizedBox(height: 20),
             InkWell(
@@ -449,12 +464,24 @@ class _DocumentUploadPageState extends ConsumerState<DocumentUploadPage> {
       return;
     }
 
+    final user = ref.read(currentUserProvider);
+    if ((user?.isDoctor == true || user?.isSecretary == true) &&
+        (_selectedPatientId == null || _selectedPatientId!.isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Veuillez sélectionner un patient'),
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
       final document = await ref.read(documentActionsProvider).upload(
             file: _selectedFile!,
             title: _titleController.text.trim(),
+            patientUserId: _selectedPatientId,
             documentTypeHint: _documentType,
             documentDateUtc: _documentDate,
             clientOcrText:
@@ -792,6 +819,90 @@ class _CloudAnalysisCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _PatientSelector extends ConsumerWidget {
+  final String? selectedPatientId;
+  final String? selectedPatientName;
+  final void Function(String? patientId, String? patientName) onChanged;
+
+  const _PatientSelector({
+    required this.selectedPatientId,
+    required this.selectedPatientName,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider);
+    if (user?.isDoctor != true && user?.isSecretary != true) {
+      return const SizedBox.shrink();
+    }
+
+    final appointmentsAsync = ref.watch(myAppointmentsProvider);
+
+    return appointmentsAsync.when(
+      data: (appointments) {
+        final patients = <String, String>{};
+        for (final appointment in appointments) {
+          if (appointment.patientId.isNotEmpty) {
+            patients[appointment.patientId] = appointment.patientName ??
+                'Patient ${appointment.patientId.substring(0, 8)}';
+          }
+        }
+
+        if (patients.isEmpty) {
+          return TextFormField(
+            initialValue: selectedPatientId,
+            decoration: const InputDecoration(
+              labelText: 'ID du patient (requis)',
+              hintText: 'Entrez l\'UUID du patient',
+              helperText: 'Requis pour les médecins et secrétaires',
+            ),
+            onChanged: (value) {
+              onChanged(value.isEmpty ? null : value, null);
+            },
+          );
+        }
+
+        final patientList = patients.entries.toList();
+
+        return DropdownButtonFormField<String>(
+          initialValue: selectedPatientId,
+          decoration: const InputDecoration(
+            labelText: 'Patient',
+            helperText: 'Sélectionnez le patient concerné',
+          ),
+          items: patientList
+              .map((entry) => DropdownMenuItem(
+                    value: entry.key,
+                    child: Text(entry.value),
+                  ))
+              .toList(),
+          onChanged: (value) {
+            final name = value != null ? patients[value] : null;
+            onChanged(value, name);
+          },
+        );
+      },
+      loading: () => const SizedBox(
+        height: 50,
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      ),
+      error: (_, __) => TextFormField(
+        initialValue: selectedPatientId,
+        decoration: const InputDecoration(
+          labelText: 'ID du patient (requis)',
+          hintText: 'Entrez l\'UUID du patient',
+          helperText: 'Requis pour les médecins et secrétaires',
+          errorText: 'Impossible de charger la liste des patients',
+        ),
+        onChanged: (value) {
+          onChanged(value.isEmpty ? null : value, null);
+        },
       ),
     );
   }

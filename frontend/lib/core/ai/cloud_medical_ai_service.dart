@@ -159,18 +159,18 @@ Sois clair, bref et actionnable.
 
   static String friendlyError(Object error) {
     if (error is CloudMedicalAiException) {
-      return error.message;
+      return normalizeLegacyCloudText(error.message);
     }
 
     if (error is DioException) {
       final providerMessage = _extractProviderError(error.response?.data);
       if (providerMessage != null) {
-        return providerMessage;
+        return normalizeLegacyCloudText(providerMessage);
       }
 
       final message = error.message;
       if (message != null && message.trim().isNotEmpty) {
-        return message.trim();
+        return normalizeLegacyCloudText(message.trim());
       }
 
       if (error.type == DioExceptionType.connectionTimeout ||
@@ -180,7 +180,31 @@ Sois clair, bref et actionnable.
       }
     }
 
-    return 'Le service Gemini est indisponible pour le moment.';
+    return normalizeLegacyCloudText(
+      'Le service Gemini est indisponible pour le moment.',
+    );
+  }
+
+  static String normalizeLegacyCloudText(String value) {
+    return value
+        .replaceAll(
+          'Impossible de contacter le modele cloud pour le moment.',
+          'Impossible de contacter Gemini pour le moment.',
+        )
+        .replaceAll(
+          'Impossible de contacter le modèle cloud pour le moment.',
+          'Impossible de contacter Gemini pour le moment.',
+        )
+        .replaceAll(
+          'Le modele cloud est indisponible pour le moment.',
+          'Le service Gemini est indisponible pour le moment.',
+        )
+        .replaceAll(
+          'Le modèle cloud est indisponible pour le moment.',
+          'Le service Gemini est indisponible pour le moment.',
+        )
+        .replaceAll('modele cloud', 'service Gemini')
+        .replaceAll('modèle cloud', 'service Gemini');
   }
 
   static String _roleLabel(String role) {
