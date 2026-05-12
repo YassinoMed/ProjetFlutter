@@ -20,10 +20,11 @@ final _logger = Logger(printer: PrettyPrinter(methodCount: 0));
 /// Resolve base URL based on platform
 String get _resolvedBaseUrl {
   if (kReleaseMode) return ApiConstants.baseUrlProd;
+  if (kIsWeb) return ApiConstants.baseUrlWeb;
   if (defaultTargetPlatform == TargetPlatform.iOS) {
     return ApiConstants.baseUrlIos;
   }
-  return ApiConstants.baseUrl; // Android emulator
+  return ApiConstants.baseUrl;
 }
 
 // ── Dio Client ──────────────────────────────────────────────

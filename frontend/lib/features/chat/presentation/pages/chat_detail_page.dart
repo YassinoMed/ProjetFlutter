@@ -5,13 +5,16 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:mediconnect_pro/core/network/websocket_service.dart';
+import 'package:mediconnect_pro/core/router/app_routes.dart';
 import 'package:mediconnect_pro/core/security/encrypted_attachment_service.dart';
 import 'package:mediconnect_pro/core/theme/app_theme.dart';
 import 'package:mediconnect_pro/core/voice/voice_service.dart';
 import 'package:mediconnect_pro/features/chat/domain/entities/chat_entities.dart';
 import 'package:mediconnect_pro/features/chat/presentation/providers/chat_providers.dart';
+import 'package:mediconnect_pro/features/video_call/domain/entities/video_call_entity.dart';
 import 'package:mediconnect_pro/shared/widgets/clinical_ui.dart';
 import '../../../../shared/widgets/error_display.dart';
 
@@ -116,10 +119,14 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
             onPressed: () => _readLastMessage(),
           ),
           IconButton(
+            icon: const Icon(Icons.call_rounded),
+            tooltip: 'Appel vocal',
+            onPressed: () => _startCall(VideoCallType.audio),
+          ),
+          IconButton(
             icon: const Icon(Icons.videocam_rounded),
-            onPressed: () {
-              // TODO: Start video call
-            },
+            tooltip: 'Appel vidéo',
+            onPressed: () => _startCall(VideoCallType.video),
           ),
           IconButton(
             icon: const Icon(Icons.attach_file_rounded),
@@ -643,6 +650,14 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
         );
       }
     });
+  }
+
+  void _startCall(VideoCallType callType) {
+    final route = AppRoutes.videoCall.replaceFirst(
+      ':appointmentId',
+      widget.conversationId,
+    );
+    context.push('$route?type=${callType.rawValue}');
   }
 
   Future<void> _pickAndUploadFile({String? type}) async {

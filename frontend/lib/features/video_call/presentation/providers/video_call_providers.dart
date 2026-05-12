@@ -86,12 +86,17 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
     required this.isDoctor,
   }) : super(VideoCallEntity(appointmentId: appointmentId));
 
+  VideoCallType? _desiredCallType;
+
   Future<void> initializeCall({
     bool requestPermissions = true,
+    VideoCallType? desiredCallType,
   }) async {
     if (_isInitializingCall) {
       return;
     }
+
+    _desiredCallType = desiredCallType ?? _desiredCallType;
 
     _isInitializingCall = true;
     state = state.copyWith(
@@ -103,8 +108,10 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
 
     try {
       await _ensureRenderersInitialized();
-      final teleconsultationResult =
-          await repository.ensureTeleconsultation(state.appointmentId);
+      final teleconsultationResult = await repository.ensureTeleconsultation(
+        state.appointmentId,
+        callType: _desiredCallType,
+      );
 
       await teleconsultationResult.fold(
         (failure) async => _setError(failure.message),

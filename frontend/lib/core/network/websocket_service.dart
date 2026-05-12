@@ -36,12 +36,19 @@ class WebSocketService {
   int _listenerSequence = 0;
   int _reconnectAttempts = 0;
   bool _manuallyClosed = false;
+  bool _configurationRejected = false;
 
   WebSocketService(this._dio);
 
   bool get _isConnected => _channel != null && _socketId != null;
 
   Future<void> init() async {
+    if (_configurationRejected) {
+      throw StateError(
+        'Reverb application key rejected by server. Verify REVERB_APP_KEY.',
+      );
+    }
+
     if (_isConnected) {
       return;
     }
@@ -53,6 +60,7 @@ class WebSocketService {
 
     _manuallyClosed = false;
     final completer = Completer<void>();
+    unawaited(completer.future.catchError((_) {}));
     _connectCompleter = completer;
 
     try {
@@ -61,6 +69,17 @@ class WebSocketService {
 
       final channel = WebSocketChannel.connect(uri);
       _channel = channel;
+      unawaited(
+        channel.ready.timeout(const Duration(seconds: 12)).catchError(
+          (Object error, StackTrace stackTrace) {
+            _logger.e('Reverb socket ready failed: $error');
+            if (identical(_channel, channel)) {
+              _completeConnectError(error, stackTrace);
+              _handleDisconnect();
+            }
+          },
+        ),
+      );
       _socketSubscription = channel.stream.listen(
         _handleSocketMessage,
         onError: _handleSocketError,
@@ -71,11 +90,14 @@ class WebSocketService {
       return completer.future.timeout(
         const Duration(seconds: 12),
         onTimeout: () {
-          throw TimeoutException('Reverb connection timed out');
+          final error = TimeoutException('Reverb connection timed out');
+          _completeConnectError(error);
+          _handleDisconnect();
+          throw error;
         },
       );
-    } catch (error) {
-      _completeConnectError(error);
+    } catch (error, stackTrace) {
+      _completeConnectError(error, stackTrace);
       _cleanupSocket();
       rethrow;
     }
@@ -312,6 +334,15 @@ class WebSocketService {
 
       if (eventName == 'pusher:error') {
         _logger.e('Reverb error event: $data');
+        if (data['code']?.toString() == '4001') {
+          _configurationRejected = true;
+          _completeConnectError(
+            StateError(
+              'Reverb application does not exist for the configured key.',
+            ),
+          );
+          unawaited(_channel?.sink.close());
+        }
         return;
       }
 
@@ -342,6 +373,7 @@ class WebSocketService {
   void _handleConnectionEstablished(Map<String, dynamic> data) {
     _socketId = data['socket_id']?.toString();
     _reconnectAttempts = 0;
+    _configurationRejected = false;
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
 
@@ -368,9 +400,9 @@ class WebSocketService {
     }
   }
 
-  void _handleSocketError(Object error) {
+  void _handleSocketError(Object error, [StackTrace? stackTrace]) {
     _logger.e('Reverb socket error: $error');
-    _completeConnectError(error);
+    _completeConnectError(error, stackTrace);
     _handleDisconnect();
   }
 
@@ -384,13 +416,17 @@ class WebSocketService {
     _activeChannels.clear();
     _pendingSubscriptions.clear();
 
-    if (!_manuallyClosed && _channelListeners.isNotEmpty) {
+    if (!_manuallyClosed &&
+        !_configurationRejected &&
+        _channelListeners.isNotEmpty) {
       _scheduleReconnect();
     }
   }
 
   void _scheduleReconnect() {
-    if (_manuallyClosed || _channelListeners.isEmpty) {
+    if (_manuallyClosed ||
+        _configurationRejected ||
+        _channelListeners.isEmpty) {
       return;
     }
 
@@ -438,10 +474,10 @@ class WebSocketService {
     socket.sink.add(jsonEncode(payload));
   }
 
-  void _completeConnectError(Object error) {
+  void _completeConnectError(Object error, [StackTrace? stackTrace]) {
     final connectCompleter = _connectCompleter;
     if (connectCompleter != null && !connectCompleter.isCompleted) {
-      connectCompleter.completeError(error);
+      connectCompleter.completeError(error, stackTrace ?? StackTrace.current);
     }
     _connectCompleter = null;
   }
@@ -515,6 +551,10 @@ class WebSocketService {
   String _getWebSocketBaseUrl() {
     if (kReleaseMode) {
       return ApiConstants.wsUrlProd;
+    }
+
+    if (kIsWeb) {
+      return ApiConstants.wsUrlWeb;
     }
 
     if (defaultTargetPlatform == TargetPlatform.iOS) {

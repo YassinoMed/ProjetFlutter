@@ -40,6 +40,7 @@ class AppConstants {
   static const String keyTenantId = 'tenant_id';
   static const String keyUserId = 'user_id';
   static const String keyUserRole = 'user_role';
+  static const String keyDeviceId = 'device_id';
   static const String keyBiometricEnabled = 'biometric_enabled';
   static const String keyBiometricDeviceId = 'biometric_device_id';
   static const String keyBiometricUserId = 'biometric_user_id';

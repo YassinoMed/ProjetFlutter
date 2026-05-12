@@ -20,13 +20,15 @@ final teleconsultationDetailProvider =
   return repository.getTeleconsultation(id);
 });
 
-final teleconsultationEventsProvider = FutureProvider.family<
-    List<TeleconsultationEventEntity>, String>((ref, id) async {
+final teleconsultationEventsProvider =
+    FutureProvider.family<List<TeleconsultationEventEntity>, String>(
+        (ref, id) async {
   final repository = ref.watch(teleconsultationRepositoryProvider);
   return repository.getEvents(id);
 });
 
-final teleconsultationActionsProvider = Provider<TeleconsultationActions>((ref) {
+final teleconsultationActionsProvider =
+    Provider<TeleconsultationActions>((ref) {
   return TeleconsultationActions(ref);
 });
 

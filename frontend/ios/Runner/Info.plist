@@ -33,6 +33,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>La camera est necessaire pour permettre la teleconsultation video avec votre medecin.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Face ID ou Touch ID est utilise pour deverrouiller votre session MediConnect sur cet appareil.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Le microphone est necessaire pour permettre la teleconsultation audio avec votre medecin.</string>
 	<key>UIApplicationSceneManifest</key>

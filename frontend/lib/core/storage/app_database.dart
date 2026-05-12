@@ -129,13 +129,13 @@ class AppDatabase extends _$AppDatabase {
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-    onCreate: (Migrator m) async {
-      await m.createAll();
-    },
-    onUpgrade: (Migrator m, int from, int to) async {
-      // Future migrations will go here
-    },
-  );
+        onCreate: (Migrator m) async {
+          await m.createAll();
+        },
+        onUpgrade: (Migrator m, int from, int to) async {
+          // Future migrations will go here
+        },
+      );
 }
 
 // ── Database Initialization ─────────────────────────────────
@@ -143,7 +143,7 @@ class AppDatabase extends _$AppDatabase {
 LazyDatabase _openDatabase(String encryptionKey) {
   return LazyDatabase(() async {
     open.overrideFor(OperatingSystem.android, openCipherOnAndroid);
-    
+
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'mediconnect_pro.db'));
 
@@ -164,7 +164,8 @@ Future<String> _getOrCreateDbKey(SecureStorageService secureStorage) async {
   if (key == null) {
     final random = sql.sqlite3.openInMemory();
     random.execute("SELECT hex(randomblob(32))");
-    key = random.select("SELECT hex(randomblob(32))").first.values.first as String;
+    key = random.select("SELECT hex(randomblob(32))").first.values.first
+        as String;
     random.dispose();
     await secureStorage.write(key: AppConstants.keyDbEncryptionKey, value: key);
   }

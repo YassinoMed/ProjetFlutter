@@ -10,7 +10,12 @@ import 'package:mediconnect_pro/features/video_call/presentation/widgets/inline_
 
 class VideoCallPage extends ConsumerStatefulWidget {
   final String appointmentId;
-  const VideoCallPage({super.key, required this.appointmentId});
+  final VideoCallType? initialCallType;
+  const VideoCallPage({
+    super.key,
+    required this.appointmentId,
+    this.initialCallType,
+  });
 
   @override
   ConsumerState<VideoCallPage> createState() => _VideoCallPageState();
@@ -39,7 +44,7 @@ class _VideoCallPageState extends ConsumerState<VideoCallPage>
       }
       ref
           .read(videoCallNotifierProvider(widget.appointmentId).notifier)
-          .initializeCall();
+          .initializeCall(desiredCallType: widget.initialCallType);
     });
 
     _startControlsTimer();

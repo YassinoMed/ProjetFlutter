@@ -1,6 +1,7 @@
 import '../../domain/entities/teleconsultation_entity.dart';
 
-class TeleconsultationParticipantModel extends TeleconsultationParticipantEntity {
+class TeleconsultationParticipantModel
+    extends TeleconsultationParticipantEntity {
   const TeleconsultationParticipantModel({
     required super.userId,
     required super.role,

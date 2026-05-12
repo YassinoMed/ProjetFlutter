@@ -13,11 +13,16 @@ class VideoCallRepositoryImpl implements VideoCallRepository {
 
   @override
   Future<Either<Failure, VideoCallSessionContext>> ensureTeleconsultation(
-      String appointmentId) async {
+    String appointmentId, {
+    VideoCallType? callType,
+  }) async {
     try {
       final response = await dio.post(
         ApiConstants.teleconsultations,
-        data: {'appointment_id': appointmentId},
+        data: {
+          'appointment_id': appointmentId,
+          if (callType != null) 'call_type': callType.rawValue,
+        },
       );
 
       final data = (response.data['data'] as Map<String, dynamic>?) ??

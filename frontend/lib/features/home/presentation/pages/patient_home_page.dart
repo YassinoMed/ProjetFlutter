@@ -12,6 +12,7 @@ import '../../../../shared/widgets/error_display.dart';
 import '../../../appointments/domain/entities/appointment_entity.dart';
 import '../../../appointments/presentation/providers/appointment_providers.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../notifications/presentation/pages/notifications_page.dart';
 
 class PatientHomePage extends ConsumerWidget {
   const PatientHomePage({super.key});
@@ -54,6 +55,8 @@ class PatientHomePage extends ConsumerWidget {
                       ],
                     ),
                   ),
+                  _NotificationsBell(ref: ref),
+                  const SizedBox(width: 8),
                   ClinicalAvatar(
                     name: user?.name ?? 'Patient',
                     imageUrl: user?.avatarUrl,
@@ -508,6 +511,27 @@ class _BarChartPlaceholder extends StatelessWidget {
           ),
         );
       }),
+    );
+  }
+}
+
+/// Cloche de notifications avec badge non lus, ouvre la page Notifications.
+class _NotificationsBell extends StatelessWidget {
+  final WidgetRef ref;
+  const _NotificationsBell({required this.ref});
+
+  @override
+  Widget build(BuildContext context) {
+    final count = ref.watch(notificationsUnreadCountProvider);
+    return IconButton(
+      tooltip: 'Notifications',
+      icon: Badge(
+        isLabelVisible: count > 0,
+        label: Text(count > 99 ? '99+' : '$count'),
+        backgroundColor: AppTheme.errorColor,
+        child: const Icon(Icons.notifications_rounded),
+      ),
+      onPressed: () => context.push(AppRoutes.notifications),
     );
   }
 }

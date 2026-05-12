@@ -14,6 +14,7 @@ library;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:local_auth/error_codes.dart' as auth_error;
 import 'package:local_auth/local_auth.dart';
 import 'package:logger/logger.dart';
 
@@ -44,9 +45,18 @@ class BiometricService {
     if (!_isSupportedPlatform) return false;
 
     try {
-      final canCheck = await _localAuth.canCheckBiometrics;
       final isSupported = await _localAuth.isDeviceSupported();
-      return canCheck && isSupported;
+      if (!isSupported) return false;
+
+      if (defaultTargetPlatform == TargetPlatform.windows) {
+        return true;
+      }
+
+      final canCheck = await _localAuth.canCheckBiometrics;
+      if (!canCheck) return false;
+
+      final biometrics = await _localAuth.getAvailableBiometrics();
+      return biometrics.isNotEmpty;
     } on PlatformException catch (e) {
       _logger.w('Biometric availability check failed: $e');
       return false;
@@ -87,15 +97,13 @@ class BiometricService {
   Future<bool> authenticate({
     String reason = 'Utilisez votre empreinte pour vous connecter',
   }) async {
-    if (!_isSupportedPlatform) {
-      throw BiometricNotAvailableException();
-    }
-
     try {
+      await _ensureCanAuthenticate();
+
       final result = await _localAuth.authenticate(
         localizedReason: reason,
-        options: const AuthenticationOptions(
-          biometricOnly: true,
+        options: AuthenticationOptions(
+          biometricOnly: defaultTargetPlatform != TargetPlatform.windows,
           stickyAuth: true,
           useErrorDialogs: true,
           sensitiveTransaction: true,
@@ -113,23 +121,57 @@ class BiometricService {
     } on PlatformException catch (e) {
       _logger.e('Biometric authentication error: ${e.code} - ${e.message}');
 
-      // Handle specific error codes
       switch (e.code) {
-        case 'NotAvailable':
+        case auth_error.notAvailable:
+        case 'BiometricNotAvailable':
+        case auth_error.otherOperatingSystem:
           throw BiometricNotAvailableException();
-        case 'LockedOut':
+        case auth_error.notEnrolled:
+          throw BiometricNotEnrolledException();
+        case auth_error.passcodeNotSet:
+          throw BiometricPasscodeNotSetException();
+        case auth_error.lockedOut:
           throw BiometricLockedOutException();
-        case 'PermanentlyLockedOut':
+        case auth_error.permanentlyLockedOut:
           throw BiometricPermanentlyLockedOutException();
+        case auth_error.biometricOnlyNotSupported:
+          throw BiometricNotAvailableException();
         default:
           throw BiometricException(
             message: e.message ?? 'Erreur d\'authentification biométrique',
             code: e.code,
           );
       }
+    } on BiometricException {
+      rethrow;
     } catch (e) {
       _logger.e('Biometric authentication unsupported: $e');
       throw BiometricNotAvailableException();
+    }
+  }
+
+  Future<void> _ensureCanAuthenticate() async {
+    if (!_isSupportedPlatform) {
+      throw BiometricNotAvailableException();
+    }
+
+    final isSupported = await _localAuth.isDeviceSupported();
+    if (!isSupported) {
+      throw BiometricNotAvailableException();
+    }
+
+    if (defaultTargetPlatform == TargetPlatform.windows) {
+      return;
+    }
+
+    final canCheck = await _localAuth.canCheckBiometrics;
+    if (!canCheck) {
+      throw BiometricNotAvailableException();
+    }
+
+    final biometrics = await _localAuth.getAvailableBiometrics();
+    if (biometrics.isEmpty) {
+      throw BiometricNotEnrolledException();
     }
   }
 
@@ -159,7 +201,25 @@ class BiometricNotAvailableException extends BiometricException {
   BiometricNotAvailableException()
       : super(
           message: "La biométrie n'est pas disponible sur cet appareil",
-          code: 'NotAvailable',
+          code: auth_error.notAvailable,
+        );
+}
+
+class BiometricNotEnrolledException extends BiometricException {
+  BiometricNotEnrolledException()
+      : super(
+          message:
+              "Aucune empreinte ou biométrie n'est configurée sur cet appareil.",
+          code: auth_error.notEnrolled,
+        );
+}
+
+class BiometricPasscodeNotSetException extends BiometricException {
+  BiometricPasscodeNotSetException()
+      : super(
+          message:
+              "Définissez un code de verrouillage sur l'appareil avant d'activer la biométrie.",
+          code: auth_error.passcodeNotSet,
         );
 }
 
@@ -167,7 +227,7 @@ class BiometricLockedOutException extends BiometricException {
   BiometricLockedOutException()
       : super(
           message: 'Trop de tentatives. Veuillez réessayer plus tard.',
-          code: 'LockedOut',
+          code: auth_error.lockedOut,
         );
 }
 
@@ -176,7 +236,7 @@ class BiometricPermanentlyLockedOutException extends BiometricException {
       : super(
           message:
               'Biométrie désactivée. Veuillez utiliser votre mot de passe.',
-          code: 'PermanentlyLockedOut',
+          code: auth_error.permanentlyLockedOut,
         );
 }
 

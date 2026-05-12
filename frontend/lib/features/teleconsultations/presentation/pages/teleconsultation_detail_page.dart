@@ -128,8 +128,7 @@ class TeleconsultationDetailPage extends ConsumerWidget {
                         .toList(),
                   );
                 },
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, _) => Text(error.toString()),
               ),
             ],

@@ -89,7 +89,8 @@ class _InlineCallChatPanelState extends ConsumerState<InlineCallChatPanel> {
     setState(() => _sending = true);
 
     try {
-      await ref.read(messagesProvider(widget.appointmentId).notifier)
+      await ref
+          .read(messagesProvider(widget.appointmentId).notifier)
           .sendMessage(content);
       _controller.clear();
     } catch (error) {

@@ -380,7 +380,9 @@ class _DocumentUploadPageState extends ConsumerState<DocumentUploadPage> {
     }
 
     final extractedText = _extractTextForCloud(file);
-    if (extractedText == null) {
+    final binaryMime = extractedText == null ? _binaryMimeForCloud(file) : null;
+
+    if (extractedText == null && binaryMime == null) {
       setState(() {
         _cloudAnalysis = null;
         _isCloudAnalysisRunning = false;
@@ -396,13 +398,21 @@ class _DocumentUploadPageState extends ConsumerState<DocumentUploadPage> {
     });
 
     try {
-      final response =
-          await ref.read(cloudMedicalAiServiceProvider).analyzeDocument(
-                extractedText: extractedText,
-                title: _titleController.text,
-                documentType: _documentType,
-                filename: file.name,
-              );
+      final service = ref.read(cloudMedicalAiServiceProvider);
+      final response = extractedText != null
+          ? await service.analyzeDocument(
+              extractedText: extractedText,
+              title: _titleController.text,
+              documentType: _documentType,
+              filename: file.name,
+            )
+          : await service.analyzeDocumentFile(
+              bytes: file.bytes,
+              mimeType: binaryMime!,
+              title: _titleController.text,
+              documentType: _documentType,
+              filename: file.name,
+            );
 
       if (!mounted || _selectedFile != file) {
         return;
@@ -424,6 +434,21 @@ class _DocumentUploadPageState extends ConsumerState<DocumentUploadPage> {
         _isCloudAnalysisRunning = false;
       });
     }
+  }
+
+  /// Renvoie le mime-type si le fichier peut être envoyé tel quel à Gemini
+  /// via `inlineData` (PDF / image). Sinon `null`.
+  String? _binaryMimeForCloud(DocumentUploadFile file) {
+    final ext = file.extension;
+    return switch (ext) {
+      'pdf' => 'application/pdf',
+      'png' => 'image/png',
+      'jpg' || 'jpeg' => 'image/jpeg',
+      'webp' => 'image/webp',
+      'heic' => 'image/heic',
+      'heif' => 'image/heif',
+      _ => null,
+    };
   }
 
   String? _extractTextForCloud(DocumentUploadFile file) {
@@ -448,11 +473,8 @@ class _DocumentUploadPageState extends ConsumerState<DocumentUploadPage> {
       return 'Le fichier texte ne contient pas assez de contenu exploitable.';
     }
 
-    if (kIsWeb) {
-      return 'Aucun texte ML Kit a envoyer a Gemini. ML Kit OCR fonctionne sur Android/iOS pour les images; sur Web, importez le document puis laissez l’analyse serveur traiter le PDF ou l’image.';
-    }
-
-    return 'Aucun texte OCR ML Kit exploitable a envoyer a Gemini. Utilisez une image JPG, PNG ou WEBP lisible.';
+    return 'Format non pris en charge pour l’analyse Gemini. '
+        'Formats acceptés: PDF, JPG, PNG, WEBP, HEIC, TXT.';
   }
 
   Future<void> _submit() async {

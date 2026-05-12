@@ -8,6 +8,7 @@ import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/clinical_ui.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../auth/presentation/widgets/biometric_settings_card.dart';
 import '../../../documents/presentation/providers/document_providers.dart';
 import '../../../secretaries/presentation/widgets/acting_doctor_banner.dart';
 
@@ -186,11 +187,14 @@ class ProfilePage extends ConsumerWidget {
                   _ProfileTile(
                     icon: Icons.notifications_outlined,
                     title: 'Notifications',
-                    onTap: () {},
+                    onTap: () => context.push(AppRoutes.notifications),
                   ),
                 ],
               ),
             ),
+            const SizedBox(height: 16),
+            // Toggle empreinte digitale — masqué si l'appareil n'a pas de capteur
+            const BiometricSettingsCard(),
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: () {},

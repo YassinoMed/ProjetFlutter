@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mediconnect_pro/core/constants/api_constants.dart';
 import 'package:mediconnect_pro/core/constants/app_constants.dart';
 import 'package:mediconnect_pro/core/network/api_response.dart';
+import 'package:mediconnect_pro/core/security/e2ee_biometric_gate.dart';
 import 'package:mediconnect_pro/core/security/encryption_service.dart';
 import 'package:mediconnect_pro/core/security/secure_storage_service.dart';
 import 'package:mediconnect_pro/core/utils/device_info_helper.dart';
@@ -44,11 +45,13 @@ class E2eeChatCryptoService {
   final SecureStorageService secureStorage;
   final DeviceInfoHelper deviceInfoHelper;
   final EncryptionService encryptionService;
+  final E2eeBiometricGate? biometricGate;
 
   const E2eeChatCryptoService({
     required this.secureStorage,
     required this.deviceInfoHelper,
     required this.encryptionService,
+    this.biometricGate,
   });
 
   Future<void> ensureOwnDeviceRegistered(Dio dio) async {
@@ -189,6 +192,18 @@ class E2eeChatCryptoService {
   }
 
   Future<PrivateKey> _readLocalPrivateKey() async {
+    // Gate biométrique applicative: la première opération crypto de la session
+    // déclenche l'invite empreinte si la gate est activée (préférence user).
+    final gate = biometricGate;
+    if (gate != null) {
+      final ok = await gate.unlock();
+      if (!ok) {
+        throw const E2eeUnavailableException(
+          'Déchiffrement annulé — empreinte requise.',
+        );
+      }
+    }
+
     await _ensureLocalIdentityKeyPair();
     final privateKey = await secureStorage.read(
       key: AppConstants.keyE2ePrivateKey,
@@ -273,5 +288,6 @@ final e2eeChatCryptoServiceProvider = Provider<E2eeChatCryptoService>((ref) {
     secureStorage: ref.watch(secureStorageProvider),
     deviceInfoHelper: ref.watch(deviceInfoHelperProvider),
     encryptionService: EncryptionService(),
+    biometricGate: ref.watch(e2eeBiometricGateProvider),
   );
 });

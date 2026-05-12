@@ -25,10 +25,12 @@ import '../../features/profile/presentation/pages/change_password_page.dart';
 import '../../features/profile/presentation/pages/edit_profile_page.dart';
 import '../../features/profile/presentation/pages/gdpr_settings_page.dart';
 import '../../features/secretaries/presentation/pages/doctor_secretaries_page.dart';
+import '../../features/notifications/presentation/pages/notifications_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 import '../../features/teleconsultations/presentation/pages/incoming_call_page.dart';
 import '../../features/teleconsultations/presentation/pages/teleconsultation_detail_page.dart';
 import '../../features/teleconsultations/presentation/pages/teleconsultations_page.dart';
+import '../../features/video_call/domain/entities/video_call_entity.dart';
 import '../../features/video_call/presentation/pages/video_call_page.dart';
 import '../constants/app_constants.dart';
 import 'app_routes.dart';
@@ -147,7 +149,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: 'video-call',
         builder: (context, state) {
           final appointmentId = state.pathParameters['appointmentId']!;
-          return VideoCallPage(appointmentId: appointmentId);
+          final typeParam = state.uri.queryParameters['type'];
+          final initialCallType =
+              typeParam == null ? null : VideoCallType.fromRaw(typeParam);
+          return VideoCallPage(
+            appointmentId: appointmentId,
+            initialCallType: initialCallType,
+          );
         },
       ),
       GoRoute(
@@ -192,6 +200,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           final documentId = state.pathParameters['id']!;
           return DocumentDetailPage(documentId: documentId);
         },
+      ),
+      GoRoute(
+        path: AppRoutes.notifications,
+        name: 'notifications',
+        builder: (context, state) => const NotificationsPage(),
       ),
       GoRoute(
         path: AppRoutes.patientRecords,

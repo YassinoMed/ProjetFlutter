@@ -25,32 +25,28 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
       icon: Icons.calendar_month_rounded,
       iconColor: AppTheme.appointmentColor,
       title: 'Prenez rendez-vous\nen quelques clics',
-      description:
-          'Trouvez le médecin idéal, consultez ses disponibilités '
+      description: 'Trouvez le médecin idéal, consultez ses disponibilités '
           'et réservez votre créneau en temps réel.',
     ),
     const _OnboardingSlide(
       icon: Icons.chat_rounded,
       iconColor: AppTheme.chatColor,
       title: 'Messagerie\nsécurisée E2E',
-      description:
-          'Échangez avec votre médecin en toute confidentialité '
+      description: 'Échangez avec votre médecin en toute confidentialité '
           'grâce au chiffrement de bout en bout.',
     ),
     const _OnboardingSlide(
       icon: Icons.videocam_rounded,
       iconColor: AppTheme.videoCallColor,
       title: 'Visioconsultation\nHD',
-      description:
-          'Consultez votre médecin à distance en vidéo HD, '
+      description: 'Consultez votre médecin à distance en vidéo HD, '
           'comme si vous y étiez.',
     ),
     const _OnboardingSlide(
       icon: Icons.shield_rounded,
       iconColor: AppTheme.recordsColor,
       title: 'Dossier médical\nsécurisé',
-      description:
-          'Vos données de santé sont chiffrées et protégées '
+      description: 'Vos données de santé sont chiffrées et protégées '
           'conformément au RGPD.',
     ),
   ];

@@ -1,13 +1,19 @@
 library;
 
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../constants/api_constants.dart';
-
+/// Service IA appelant **directement** l'API Google Generative Language
+/// depuis le client Flutter (aucun relay backend).
+///
+/// ⚠️ Sécurité: la clé Gemini est embarquée dans le binaire/bundle JS via
+/// `--dart-define=GEMINI_API_KEY=...`. Sur Flutter Web, n'importe qui peut
+/// l'extraire du bundle téléchargé. Restreindre la clé dans Google Cloud
+/// Console (API restricted → generativelanguage.googleapis.com,
+/// HTTP referrer / IP ranges) avant tout déploiement.
 class CloudAiChatMessage {
   final String role;
   final String content;
@@ -43,9 +49,20 @@ class CloudMedicalAiService {
   static const maxTokens = 900;
   static const temperature = 0.7;
 
+  /// Clé Gemini fournie au build via `--dart-define=GEMINI_API_KEY=...`.
+  static const String _apiKey =
+      String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
+
+  /// Modèle Gemini, surchargeable via `--dart-define=GEMINI_MODEL=...`.
+  static const String _model =
+      String.fromEnvironment('GEMINI_MODEL', defaultValue: 'gemini-2.5-flash');
+
+  static const String _apiBase =
+      'https://generativelanguage.googleapis.com/v1beta';
+
   static const documentSystemPrompt = '''
 Tu es un assistant medical pour MediConnect Pro.
-Analyse le texte OCR fourni par ML Kit sans inventer d'information.
+Analyse le texte OCR fourni par ML Kit (ou le document brut joint) sans inventer d'information.
 Reponds en francais, de maniere concise et structuree.
 Inclure: resume, points cliniques importants, valeurs ou traitements detectes, alertes/incertitudes, questions a verifier, action conseillee.
 Ne pose jamais de diagnostic ferme et rappelle la validation medicale si necessaire.
@@ -62,6 +79,9 @@ Sois clair, bref et actionnable.
 
   const CloudMedicalAiService(this._dio);
 
+  bool get hasApiKey => _apiKey.trim().isNotEmpty;
+
+  /// Analyse un document à partir d'un texte déjà extrait (ex: ML Kit OCR).
   Future<String> analyzeDocument({
     required String extractedText,
     String? title,
@@ -86,7 +106,52 @@ Sois clair, bref et actionnable.
       text.length > 12000 ? text.substring(0, 12000) : text,
     ].join('\n\n');
 
-    return _postPrompt(prompt);
+    return _generate(parts: [
+      {'text': prompt},
+    ]);
+  }
+
+  /// Analyse un document à partir des **bytes** du fichier (PDF/image).
+  /// Utilisé côté Web où ML Kit n'est pas disponible — Gemini lit le fichier
+  /// directement via `inlineData`.
+  Future<String> analyzeDocumentFile({
+    required Uint8List bytes,
+    required String mimeType,
+    String? title,
+    String? documentType,
+    String? filename,
+  }) {
+    if (bytes.isEmpty) {
+      throw const CloudMedicalAiException('Fichier vide.');
+    }
+
+    // Limite raisonnable côté client (Gemini accepte ~20 Mo inline).
+    if (bytes.length > 18 * 1024 * 1024) {
+      throw const CloudMedicalAiException(
+        'Document trop volumineux pour l\'analyse en ligne (>18 Mo). '
+        'Ré-essayez avec une version compressée.',
+      );
+    }
+
+    final instructions = [
+      documentSystemPrompt.trim(),
+      if (title != null && title.trim().isNotEmpty) 'Titre: ${title.trim()}',
+      if (documentType != null && documentType.trim().isNotEmpty)
+        'Type suggere: ${documentType.trim()}',
+      if (filename != null && filename.trim().isNotEmpty)
+        'Fichier: ${filename.trim()}',
+      'Analyse le document joint et retourne ta synthese clinique.',
+    ].join('\n\n');
+
+    return _generate(parts: [
+      {'text': instructions},
+      {
+        'inline_data': {
+          'mime_type': mimeType,
+          'data': base64Encode(bytes),
+        }
+      },
+    ]);
   }
 
   Future<String> chat({
@@ -117,21 +182,42 @@ Sois clair, bref et actionnable.
       'Reponds au dernier message utilisateur.',
     ].join('\n\n');
 
-    return _postPrompt(prompt);
+    return _generate(parts: [
+      {'text': prompt},
+    ]);
   }
 
-  Future<String> _postPrompt(String prompt) async {
+  // ── HTTP ───────────────────────────────────────────────────
+
+  Future<String> _generate({required List<Map<String, dynamic>> parts}) async {
+    if (!hasApiKey) {
+      throw const CloudMedicalAiException(
+        'Clé Gemini absente. Lancez l\'app avec '
+        '--dart-define=GEMINI_API_KEY=<votre-clé>.',
+      );
+    }
+
+    const url = '$_apiBase/models/$_model:generateContent?key=$_apiKey';
+
     try {
       final response = await _dio.post<dynamic>(
-        ApiConstants.geminiChat,
+        url,
         data: {
-          'prompt': prompt,
-          'max_tokens': maxTokens,
-          'temperature': temperature,
+          'contents': [
+            {
+              'role': 'user',
+              'parts': parts,
+            }
+          ],
+          'generationConfig': {
+            'temperature': temperature,
+            'maxOutputTokens': maxTokens,
+          },
         },
         options: Options(
-          receiveTimeout: const Duration(seconds: 90),
-          sendTimeout: const Duration(seconds: 30),
+          receiveTimeout: const Duration(seconds: 120),
+          sendTimeout: const Duration(seconds: 60),
+          headers: const {'Content-Type': 'application/json'},
           validateStatus: (status) => status != null && status < 600,
         ),
       );
@@ -144,14 +230,14 @@ Sois clair, bref et actionnable.
         );
       }
 
-      final text = _extractResponseText(response.data);
+      final text = _extractCandidateText(response.data);
       if (text == null || text.trim().isEmpty) {
         throw const CloudMedicalAiException(
           'Gemini a retourne une reponse vide ou illisible.',
         );
       }
 
-      return text.trim();
+      return _cleanModelText(text);
     } on DioException catch (error) {
       throw CloudMedicalAiException(friendlyError(error));
     }
@@ -215,93 +301,55 @@ Sois clair, bref et actionnable.
     };
   }
 
-  static String? _extractResponseText(dynamic data) {
-    if (data == null) {
-      return null;
-    }
+  /// Extrait le texte de la première candidate Gemini.
+  /// Format attendu: data.candidates[0].content.parts[*].text
+  static String? _extractCandidateText(dynamic data) {
+    if (data is! Map) return null;
 
-    if (data is String) {
-      return _cleanModelText(data);
-    }
+    final candidates = data['candidates'];
+    if (candidates is! List || candidates.isEmpty) return null;
 
-    if (data is List) {
-      for (final item in data) {
-        final text = _extractResponseText(item);
-        if (text != null && text.trim().isNotEmpty) {
-          return text;
-        }
-      }
+    final first = candidates.first;
+    if (first is! Map) return null;
 
-      return const JsonEncoder.withIndent('  ').convert(data);
-    }
+    final content = first['content'];
+    if (content is! Map) return null;
 
-    if (data is Map) {
-      const paths = [
-        ['data', 'content'],
-        ['data', 'data', 'content'],
-        ['data', 'text'],
-        ['content'],
-        ['answer'],
-        ['response'],
-        ['output'],
-        ['result'],
-        ['generated_text'],
-        ['text'],
-        ['message'],
-      ];
+    final parts = content['parts'];
+    if (parts is! List) return null;
 
-      for (final path in paths) {
-        final text = _extractResponseText(_valueAt(data, path));
-        if (text != null && text.trim().isNotEmpty) {
-          return text;
-        }
-      }
-
-      return const JsonEncoder.withIndent('  ').convert(data);
-    }
-
-    return data.toString();
-  }
-
-  static Object? _valueAt(dynamic value, List<String> path) {
-    var current = value;
-
-    for (final segment in path) {
-      if (current is Map) {
-        current = current[segment];
-      } else {
-        return null;
+    final buffer = StringBuffer();
+    for (final part in parts) {
+      if (part is Map && part['text'] is String) {
+        if (buffer.isNotEmpty) buffer.write('\n');
+        buffer.write(part['text']);
       }
     }
-
-    return current;
+    final text = buffer.toString();
+    return text.isEmpty ? null : text;
   }
 
   static String? _extractProviderError(dynamic data) {
-    if (data == null) {
-      return null;
-    }
+    if (data == null) return null;
 
     if (data is String) {
       return data.trim().isEmpty ? null : data.trim();
     }
 
     if (data is Map) {
-      final directMessage = _stringAt(data, const ['message']) ??
-          _stringAt(data, const ['error', 'message']) ??
-          _stringAt(data, const ['error']);
-
-      if (directMessage != null && directMessage.trim().isNotEmpty) {
+      // Format Google: {"error": {"message": "...", "status": "..."}}
+      final error = data['error'];
+      if (error is Map) {
+        final msg = error['message'];
+        if (msg is String && msg.trim().isNotEmpty) return msg.trim();
+      }
+      final directMessage = data['message'];
+      if (directMessage is String && directMessage.trim().isNotEmpty) {
         return directMessage.trim();
       }
     }
 
     return null;
-  }
-
-  static String? _stringAt(Map data, List<String> path) {
-    final value = _valueAt(data, path);
-    return value is String ? value : null;
   }
 
   static String _cleanModelText(String text) {
@@ -332,23 +380,15 @@ final cloudMedicalAiServiceProvider = Provider<CloudMedicalAiService>((ref) {
 });
 
 Dio _createGeminiDio() {
-  const overrideBaseUrl = String.fromEnvironment('GEMINI_API_BASE_URL');
-  final baseUrl = overrideBaseUrl.isNotEmpty
-      ? overrideBaseUrl
-      : (kDebugMode && kIsWeb
-          ? ApiConstants.geminiBaseUrlDev
-          : ApiConstants.baseUrl);
-
+  // Dio brut: aucun interceptor d'auth ni base URL — on appelle Google direct.
   return Dio(
     BaseOptions(
-      baseUrl: baseUrl,
       connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 90),
-      sendTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 120),
+      sendTimeout: const Duration(seconds: 60),
       headers: const {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'X-Tenant-Identifier': ApiConstants.defaultTenantId,
       },
       validateStatus: (status) => status != null && status < 600,
     ),

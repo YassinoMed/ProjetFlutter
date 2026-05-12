@@ -235,6 +235,25 @@ class EnhancedNotificationService {
     }
   }
 
+  /// Public entry point pour déclencher une notification locale depuis le
+  /// reste de l'app (ex: événement WebSocket entrant en foreground).
+  Future<void> showLocalNotification({
+    required int id,
+    required String title,
+    required String body,
+    String type = 'CHAT',
+    Map<String, dynamic>? data,
+  }) {
+    return _showRichNotification(
+      id: id,
+      title: title,
+      body: body,
+      channelId: _resolveChannel(type),
+      category: _resolveCategory(type),
+      data: data,
+    );
+  }
+
   // ── Show Rich Local Notification ──────────────────────────
 
   Future<void> _showRichNotification({

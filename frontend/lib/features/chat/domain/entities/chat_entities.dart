@@ -102,8 +102,7 @@ class ChatMessage extends Equatable {
         timestamp,
         isMe,
         isEncrypted,
-        status
-        ,
+        status,
         isPending
       ];
 }

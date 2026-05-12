@@ -4,7 +4,9 @@ import 'package:mediconnect_pro/features/video_call/domain/entities/video_call_e
 
 abstract class VideoCallRepository {
   Future<Either<Failure, VideoCallSessionContext>> ensureTeleconsultation(
-      String appointmentId);
+    String appointmentId, {
+    VideoCallType? callType,
+  });
 
   Future<Either<Failure, VideoCallSessionContext>> startTeleconsultation(
       String teleconsultationId);

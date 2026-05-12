@@ -31,9 +31,10 @@ class TeleconsultationRemoteDataSource {
       ApiConstants.teleconsultationShow.replaceFirst('{id}', id),
     );
 
-    final data = (response.data['data'] as Map<String, dynamic>?)?['teleconsultation']
-            as Map<String, dynamic>? ??
-        const {};
+    final data =
+        (response.data['data'] as Map<String, dynamic>?)?['teleconsultation']
+                as Map<String, dynamic>? ??
+            const {};
 
     return TeleconsultationModel.fromJson(data);
   }
@@ -58,9 +59,10 @@ class TeleconsultationRemoteDataSource {
       ApiConstants.teleconsultationCancel.replaceFirst('{id}', id),
     );
 
-    final data = (response.data['data'] as Map<String, dynamic>?)?['teleconsultation']
-            as Map<String, dynamic>? ??
-        const {};
+    final data =
+        (response.data['data'] as Map<String, dynamic>?)?['teleconsultation']
+                as Map<String, dynamic>? ??
+            const {};
 
     return TeleconsultationModel.fromJson(data);
   }

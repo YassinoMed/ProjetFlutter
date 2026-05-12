@@ -16,7 +16,8 @@ class TeleconsultationParticipantEntity extends Equatable {
   });
 
   @override
-  List<Object?> get props => [userId, role, invitedAtUtc, joinedAtUtc, leftAtUtc];
+  List<Object?> get props =>
+      [userId, role, invitedAtUtc, joinedAtUtc, leftAtUtc];
 }
 
 class TeleconsultationEventEntity extends Equatable {

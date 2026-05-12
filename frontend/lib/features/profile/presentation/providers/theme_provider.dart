@@ -30,15 +30,13 @@ class ThemeNotifier extends StateNotifier<ThemeMode> {
   }
 
   Future<void> toggleTheme() async {
-    final newMode =
-        state == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+    final newMode = state == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
     await setThemeMode(newMode);
   }
 }
 
 // ── Provider ────────────────────────────────────────────────
 
-final themeNotifierProvider =
-    StateNotifierProvider<ThemeNotifier, ThemeMode>(
+final themeNotifierProvider = StateNotifierProvider<ThemeNotifier, ThemeMode>(
   (ref) => ThemeNotifier(),
 );

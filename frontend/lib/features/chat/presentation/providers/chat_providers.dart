@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mediconnect_pro/core/network/dio_client.dart';
+import 'package:mediconnect_pro/core/notifications/enhanced_notification_service.dart';
 import 'package:mediconnect_pro/core/security/e2ee_chat_crypto_service.dart';
 import 'package:mediconnect_pro/features/auth/presentation/providers/auth_provider.dart';
 import 'package:mediconnect_pro/features/chat/data/datasources/chat_remote_datasource.dart';
@@ -77,6 +78,50 @@ class ConversationsNotifier extends AsyncNotifier<List<Conversation>> {
     }
 
     state = AsyncData(_sortConversations(updated));
+
+    // Notification locale au message reçu en realtime (uniquement pour les
+    // messages entrants — incrementUnread == true). Le contenu est masqué
+    // pour préserver la confidentialité E2EE sur l'écran de verrouillage.
+    if (incrementUnread && !message.isMe) {
+      _maybeShowIncomingNotification(conversationId, message);
+    }
+  }
+
+  void _maybeShowIncomingNotification(
+    String conversationId,
+    ChatMessage message,
+  ) {
+    try {
+      final notificationService = ref.read(enhancedNotificationServiceProvider);
+      String senderName = 'Nouveau message';
+      final conversation = state.valueOrNull?.firstWhere(
+        (c) => c.id == conversationId,
+        orElse: () => Conversation(
+          id: conversationId,
+          otherMemberName: senderName,
+          lastMessage: '',
+          lastMessageTime: DateTime.now(),
+        ),
+      );
+      if (conversation != null && conversation.otherMemberName.isNotEmpty) {
+        senderName = conversation.otherMemberName;
+      }
+
+      notificationService.showLocalNotification(
+        id: message.id.hashCode,
+        title: senderName,
+        body: 'Nouveau message chiffré E2EE',
+        type: 'CHAT',
+        data: {
+          'type': 'CHAT',
+          'conversation_id': conversationId,
+          'message_id': message.id,
+          'deep_link': '/patient/chat/$conversationId',
+        },
+      );
+    } catch (_) {
+      // Notifications system optionnelles — silent failure si non initialisées.
+    }
   }
 
   void markConversationRead(String conversationId) {

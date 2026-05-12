@@ -29,16 +29,28 @@ class DeviceInfoHelper {
   /// This is a UUID stored in SecureStorage, not a hardware ID.
   /// It survives app restarts but not reinstalls.
   Future<String> getDeviceId() async {
-    // Check if we already have one
     String? deviceId = await _secureStorage.read(
-      key: AppConstants.keyBiometricDeviceId,
+      key: AppConstants.keyDeviceId,
     );
 
     if (deviceId == null || deviceId.isEmpty) {
-      // Generate a new UUID
+      final legacyDeviceId = await _secureStorage.read(
+        key: AppConstants.keyBiometricDeviceId,
+      );
+
+      if (legacyDeviceId != null && legacyDeviceId.isNotEmpty) {
+        deviceId = legacyDeviceId;
+        await _secureStorage.write(
+          key: AppConstants.keyDeviceId,
+          value: deviceId,
+        );
+      }
+    }
+
+    if (deviceId == null || deviceId.isEmpty) {
       deviceId = const Uuid().v4();
       await _secureStorage.write(
-        key: AppConstants.keyBiometricDeviceId,
+        key: AppConstants.keyDeviceId,
         value: deviceId,
       );
     }

@@ -15,10 +15,6 @@ class ApiConstants {
     'API_BASE_URL_IOS',
     defaultValue: baseUrl,
   );
-  static const String baseUrlWeb = String.fromEnvironment(
-    'API_BASE_URL_WEB',
-    defaultValue: baseUrl,
-  );
   static const String baseUrlProd = String.fromEnvironment(
     'API_BASE_URL_PROD',
     defaultValue: baseUrl,
@@ -28,14 +24,10 @@ class ApiConstants {
   // ── WebSocket (Reverb – Laravel native) ───────────────────
   static const String wsUrl = String.fromEnvironment(
     'WS_URL',
-    defaultValue: 'http://51.210.243.30:6001',
+    defaultValue: 'http://51.210.243.30:8081',
   );
   static const String wsUrlIos = String.fromEnvironment(
     'WS_URL_IOS',
-    defaultValue: wsUrl,
-  );
-  static const String wsUrlWeb = String.fromEnvironment(
-    'WS_URL_WEB',
     defaultValue: wsUrl,
   );
   static const String wsUrlProd = String.fromEnvironment(
