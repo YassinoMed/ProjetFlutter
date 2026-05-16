@@ -129,8 +129,11 @@ class TeleconsultationEndpointsTest extends TestCase
         ]);
     }
 
-    public function test_ended_teleconsultation_cannot_be_restarted(): void
+    public function test_ended_teleconsultation_can_be_restarted(): void
     {
+        // Une téléconsultation terminée peut être relancée sur le même rendez-vous:
+        // start() doit la réinitialiser (status -> scheduled, nouvelle call session)
+        // au lieu de retourner 409. Voir TeleconsultationService::start().
         [$doctor, $patient, $teleconsultation] = $this->createTeleconsultation();
         $this->startTeleconsultation($doctor, $teleconsultation);
 
@@ -141,6 +144,36 @@ class TeleconsultationEndpointsTest extends TestCase
         $this->postJson("/api/teleconsultations/{$teleconsultation->id}/end")
             ->assertOk()
             ->assertJsonPath('data.teleconsultation.status', 'ended');
+
+        $previousCallSessionId = $teleconsultation->fresh()->current_call_session_id;
+
+        $response = $this->postJson("/api/teleconsultations/{$teleconsultation->id}/start", [
+            'call_type' => 'VIDEO',
+        ])->assertOk();
+
+        // La téléconsultation est repassée en mode joinable (waiting tant que
+        // le patient n'a pas accepté la nouvelle call session). Une NOUVELLE
+        // call session a été créée par start().
+        $response->assertJsonPath('data.teleconsultation.status', 'waiting');
+
+        $refreshed = $teleconsultation->fresh();
+        $this->assertNotNull($refreshed->current_call_session_id);
+        $this->assertNotSame(
+            $previousCallSessionId,
+            $refreshed->current_call_session_id,
+            'Restarting should create a new CallSession.',
+        );
+    }
+
+    public function test_cancelled_teleconsultation_cannot_be_restarted(): void
+    {
+        // Annulation explicite = intention utilisateur, on bloque le restart.
+        [$doctor, , $teleconsultation] = $this->createTeleconsultation();
+
+        Sanctum::actingAs($doctor);
+        $this->postJson("/api/teleconsultations/{$teleconsultation->id}/cancel", [
+            'reason' => 'Doctor unavailable',
+        ])->assertOk();
 
         $this->postJson("/api/teleconsultations/{$teleconsultation->id}/start", [
             'call_type' => 'VIDEO',
