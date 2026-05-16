@@ -179,7 +179,7 @@ class DoctorHomePage extends ConsumerWidget {
               const SizedBox(height: 24),
               const ClinicalSectionHeader(title: 'Volume de consultations'),
               const SizedBox(height: 12),
-              ClinicalSurface(
+              const ClinicalSurface(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -190,7 +190,7 @@ class DoctorHomePage extends ConsumerWidget {
                           color: AppTheme.neutralGray500,
                           compact: true,
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         ClinicalStatusChip(
                           label: 'SEMAINE',
                           color: AppTheme.primaryColor,
@@ -198,8 +198,8 @@ class DoctorHomePage extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    const _DoctorBarChart(),
+                    SizedBox(height: 16),
+                    _DoctorBarChart(),
                   ],
                 ),
               ),
