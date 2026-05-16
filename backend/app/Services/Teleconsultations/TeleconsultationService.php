@@ -181,11 +181,39 @@ class TeleconsultationService
         $teleconsultation = $this->loadGraph($teleconsultation);
         $teleconsultation = $this->syncStatus($teleconsultation);
 
-        if (! in_array($teleconsultation->status?->value ?? $teleconsultation->status, [
+        $currentStatus = $teleconsultation->status?->value ?? $teleconsultation->status;
+
+        // Statuts depuis lesquels on peut (re)démarrer une téléconsultation.
+        // ACTIVE => fast path: on retourne tel quel plus bas via currentCallSession.
+        // ENDED / EXPIRED => relance autorisée (l'utilisateur veut un nouvel appel
+        //   sur le même rendez-vous; on libère l'ancienne call session terminée
+        //   et on en crée une nouvelle).
+        $startableStatuses = [
             TeleconsultationStatus::SCHEDULED->value,
             TeleconsultationStatus::WAITING->value,
-        ], true)) {
+            TeleconsultationStatus::ACTIVE->value,
+            TeleconsultationStatus::ENDED->value,
+            TeleconsultationStatus::EXPIRED->value,
+        ];
+
+        if (! in_array($currentStatus, $startableStatuses, true)) {
+            // CANCELLED reste bloqué — l'utilisateur a explicitement annulé.
             throw new ConflictHttpException('The teleconsultation cannot be started in its current state.');
+        }
+
+        // Si la téléconsultation a été terminée ou a expiré, on réinitialise pour
+        // permettre un nouveau cycle (nouvelle call session).
+        if (in_array($currentStatus, [
+            TeleconsultationStatus::ENDED->value,
+            TeleconsultationStatus::EXPIRED->value,
+        ], true)) {
+            $teleconsultation->forceFill([
+                'status' => TeleconsultationStatus::SCHEDULED->value,
+                'current_call_session_id' => null,
+                'ended_at_utc' => null,
+                'failure_reason' => null,
+            ])->save();
+            $teleconsultation = $teleconsultation->fresh(['participants', 'currentCallSession.participants']);
         }
 
         if ($teleconsultation->appointment !== null

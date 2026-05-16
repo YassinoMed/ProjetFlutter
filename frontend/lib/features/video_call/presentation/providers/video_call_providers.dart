@@ -117,8 +117,19 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
         (failure) async => _setError(failure.message),
         (teleconsultation) async {
           _applySessionContext(teleconsultation);
-          await _subscribeToTeleconsultation(
-              teleconsultation.teleconsultationId);
+
+          // La souscription Reverb sert aux events temps réel (ringing, ended,
+          // typing). Si Reverb est indisponible (mauvaise clé, serveur down),
+          // on continue quand même: LiveKit a sa propre signalisation et
+          // l'appel doit pouvoir s'établir sans Reverb.
+          try {
+            await _subscribeToTeleconsultation(
+                teleconsultation.teleconsultationId);
+          } catch (subscribeError) {
+            debugPrint(
+              'VideoCall: Reverb subscribe failed (non-blocking): $subscribeError',
+            );
+          }
 
           if (kIsWeb) {
             await _ensureLocalMedia(teleconsultation.callType);
@@ -153,8 +164,13 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
 
           var currentContext = teleconsultation;
 
+          // Le médecin peut (re)démarrer la téléconsultation depuis un statut
+          // non-actif: scheduled (jamais lancée), waiting, ended/expired (relance).
+          // Backend accepte désormais ENDED/EXPIRED en réinitialisant.
+          const startableStatuses = {'scheduled', 'waiting', 'ended', 'expired'};
           if (isDoctor &&
-              currentContext.teleconsultationStatus == 'scheduled') {
+              startableStatuses.contains(
+                  currentContext.teleconsultationStatus.toLowerCase())) {
             final startResult = await repository.startTeleconsultation(
               currentContext.teleconsultationId,
             );
@@ -536,7 +552,15 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
           }
 
           if (context.callSessionId != null) {
-            await _subscribeToCallSession(context.callSessionId!);
+            // Souscription non-bloquante: si Reverb échoue, on garde l'appel
+            // actif. Les events temps réel manquants ne cassent pas la session.
+            try {
+              await _subscribeToCallSession(context.callSessionId!);
+            } catch (subscribeError) {
+              debugPrint(
+                'VideoCall: Reverb call-session subscribe failed (non-blocking): $subscribeError',
+              );
+            }
           }
         },
       );
@@ -558,6 +582,27 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
   Future<void> _ensureLocalMedia(VideoCallType callType) async {
     if (_localStream != null) {
       return;
+    }
+
+    // Sur Web, navigator.mediaDevices n'existe que dans un secure context
+    // (HTTPS ou localhost). Si l'app est servie depuis une IP locale en HTTP
+    // (ex: http://192.168.1.173:8080), getUserMedia est tout simplement
+    // indisponible. On lève un message clair plutôt qu'une exception cryptique.
+    if (kIsWeb) {
+      try {
+        // Tentative d'accès — si le contexte n'est pas sécurisé, ça throw.
+        // ignore: unnecessary_null_comparison
+        if (navigator.mediaDevices == null) {
+          throw const _LocalMediaAccessException(
+            userMessage:
+                'Caméra/micro indisponibles. Sur Web, l’app doit être servie via '
+                'HTTPS ou localhost (contexte sécurisé). Accédez à l’app via '
+                'http://localhost:<port> au lieu d’une IP réseau.',
+          );
+        }
+      } catch (e) {
+        if (e is _LocalMediaAccessException) rethrow;
+      }
     }
 
     try {
@@ -1105,8 +1150,12 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
     if (rawMessage.contains('websocket') ||
         rawMessage.contains('connection') ||
         rawMessage.contains('failed host lookup') ||
-        rawMessage.contains('xmlhttprequest')) {
-      return 'Impossible de joindre le serveur LiveKit. Vérifiez LIVEKIT_URL et le réseau.';
+        rawMessage.contains('xmlhttprequest') ||
+        rawMessage.contains('timeout') ||
+        rawMessage.contains('refused')) {
+      return 'Serveur LiveKit injoignable. Vérifiez côté backend que LIVEKIT_URL '
+          'pointe sur une instance accessible depuis le client '
+          '(pas ws://127.0.0.1:7880 si l’app tourne dans le navigateur d’une autre machine).';
     }
 
     if (rawMessage.contains('notallowederror') ||
@@ -1117,8 +1166,8 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
     }
 
     return state.requiresVideo
-        ? 'Impossible de démarrer l’appel vidéo LiveKit.'
-        : 'Impossible de démarrer l’appel vocal LiveKit.';
+        ? 'Impossible de démarrer l’appel vidéo LiveKit. Détail: $error'
+        : 'Impossible de démarrer l’appel vocal LiveKit. Détail: $error';
   }
 
   Future<_LocalMediaAccessException> _mapLocalMediaError(Object error) async {

@@ -5,6 +5,7 @@ library;
 import 'dart:async';
 
 import 'package:dartz/dartz.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
@@ -154,14 +155,28 @@ class AuthNotifier extends AsyncNotifier<AuthStateEntity> {
         (failure) => AsyncValue<AuthStateEntity>.error(
             failure.message, StackTrace.current),
         (data) async {
-          // Only do post-login work on success
-          final biometricEnabled = await _isBiometricSessionAvailable();
+          // Le login HTTP a réussi. À partir d'ici, on ne doit JAMAIS faire
+          // échouer la session: chaque side-effect post-login est encapsulé.
+          var biometricEnabled = false;
+          try {
+            biometricEnabled = await _isBiometricSessionAvailable();
+          } catch (e) {
+            debugPrint('Auth: biometric session check failed (ignored): $e');
+          }
 
-          await ref
-              .read(secureStorageProvider)
-              .delete(key: AppConstants.keyActingDoctorUserId);
+          try {
+            await ref
+                .read(secureStorageProvider)
+                .delete(key: AppConstants.keyActingDoctorUserId);
+          } catch (e) {
+            debugPrint('Auth: clear acting doctor failed (ignored): $e');
+          }
 
-          _registerE2eeDeviceInBackground();
+          try {
+            _registerE2eeDeviceInBackground();
+          } catch (e) {
+            debugPrint('Auth: E2EE device register kickoff failed: $e');
+          }
 
           return AsyncValue.data(AuthStateEntity(
             user: data.user,
