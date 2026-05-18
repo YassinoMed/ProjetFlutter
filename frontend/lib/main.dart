@@ -145,6 +145,16 @@ class _MediConnectProAppState extends ConsumerState<MediConnectProApp> {
         }
         return;
       case 'decline':
+        final callSessionId = data['call_session_id']?.toString();
+        if (callSessionId != null && callSessionId.isNotEmpty) {
+          unawaited(
+            ref.read(videoCallRepositoryProvider).rejectCallSession(
+                  callSessionId,
+                ),
+          );
+          return;
+        }
+
         final teleconsultationId = data['teleconsultation_id']?.toString();
         if (teleconsultationId != null && teleconsultationId.isNotEmpty) {
           unawaited(

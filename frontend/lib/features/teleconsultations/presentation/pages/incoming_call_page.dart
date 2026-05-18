@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:mediconnect_pro/core/router/app_routes.dart';
 import 'package:mediconnect_pro/core/theme/app_theme.dart';
+import 'package:mediconnect_pro/features/video_call/presentation/providers/video_call_providers.dart';
 
 import '../providers/teleconsultation_providers.dart';
 
@@ -28,6 +29,7 @@ class _IncomingCallPageState extends ConsumerState<IncomingCallPage>
   late final AnimationController _pulseController;
   Timer? _countdownTimer;
   Duration? _remaining;
+  bool _isResponding = false;
 
   @override
   void initState() {
@@ -89,6 +91,7 @@ class _IncomingCallPageState extends ConsumerState<IncomingCallPage>
                   .format(teleconsultation.scheduledStartsAtUtc!.toLocal());
 
           final isStillJoinable = teleconsultation.status == 'ringing' ||
+              teleconsultation.status == 'waiting' ||
               teleconsultation.status == 'scheduled' ||
               teleconsultation.status == 'active';
 
@@ -166,15 +169,10 @@ class _IncomingCallPageState extends ConsumerState<IncomingCallPage>
                     children: [
                       Expanded(
                         child: FilledButton.icon(
-                          onPressed: !isStillJoinable
+                          onPressed: !isStillJoinable || _isResponding
                               ? null
                               : () async {
-                                  await ref
-                                      .read(teleconsultationActionsProvider)
-                                      .cancel(widget.teleconsultationId);
-                                  if (context.mounted) {
-                                    context.go(AppRoutes.teleconsultations);
-                                  }
+                                  await _rejectIncomingCall();
                                 },
                           style: FilledButton.styleFrom(
                             backgroundColor: AppTheme.errorColor,
@@ -188,16 +186,9 @@ class _IncomingCallPageState extends ConsumerState<IncomingCallPage>
                       const SizedBox(width: 16),
                       Expanded(
                         child: FilledButton.icon(
-                          onPressed: !isStillJoinable
+                          onPressed: !isStillJoinable || _isResponding
                               ? null
-                              : () {
-                                  context.go(
-                                    AppRoutes.videoCall.replaceFirst(
-                                      ':appointmentId',
-                                      appointmentId,
-                                    ),
-                                  );
-                                },
+                              : () => _acceptIncomingCall(appointmentId),
                           style: FilledButton.styleFrom(
                             backgroundColor: AppTheme.successColor,
                             foregroundColor: Colors.white,
@@ -254,5 +245,58 @@ class _IncomingCallPageState extends ConsumerState<IncomingCallPage>
     final minutes = duration.inMinutes;
     final seconds = duration.inSeconds % 60;
     return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _rejectIncomingCall() async {
+    if (_isResponding) return;
+
+    setState(() => _isResponding = true);
+
+    final callSessionId = widget.payload?['call_session_id']?.toString();
+    String? failureMessage;
+    try {
+      if (callSessionId != null && callSessionId.isNotEmpty) {
+        final result =
+            await ref.read(videoCallRepositoryProvider).rejectCallSession(
+                  callSessionId,
+                );
+        result.fold(
+          (failure) => failureMessage = failure.message,
+          (_) {},
+        );
+        if (failureMessage != null) {
+          throw failureMessage!;
+        }
+      } else {
+        await ref
+            .read(teleconsultationActionsProvider)
+            .cancel(widget.teleconsultationId);
+      }
+
+      if (mounted) {
+        context.go(AppRoutes.teleconsultations);
+      }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Impossible de refuser l’appel: $error')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isResponding = false);
+      }
+    }
+  }
+
+  void _acceptIncomingCall(String appointmentId) {
+    if (_isResponding) return;
+
+    context.go(
+      AppRoutes.videoCall.replaceFirst(
+        ':appointmentId',
+        appointmentId,
+      ),
+      extra: widget.payload,
+    );
   }
 }

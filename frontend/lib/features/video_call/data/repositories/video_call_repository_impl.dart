@@ -137,6 +137,40 @@ class VideoCallRepositoryImpl implements VideoCallRepository {
   }
 
   @override
+  Future<Either<Failure, void>> acceptCallSession(String callSessionId) async {
+    try {
+      await dio.post(
+        ApiConstants.callAccept.replaceFirst('{id}', callSessionId),
+      );
+      return const Right(null);
+    } on DioException catch (e) {
+      return Left(ServerFailure(
+        message: e.response?.data?['message']?.toString() ??
+            'Acceptation de l’appel impossible.',
+      ));
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> rejectCallSession(String callSessionId) async {
+    try {
+      await dio.post(
+        ApiConstants.callReject.replaceFirst('{id}', callSessionId),
+      );
+      return const Right(null);
+    } on DioException catch (e) {
+      return Left(ServerFailure(
+        message: e.response?.data?['message']?.toString() ??
+            'Refus de l’appel impossible.',
+      ));
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, LiveKitConnectionInfo>> getLiveKitConnection(
       String callSessionId) async {
     try {

@@ -14,6 +14,7 @@ use App\Models\CallSession;
 use App\Models\Conversation;
 use App\Models\User;
 use App\Notifications\IncomingCallSessionNotification;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
@@ -89,6 +90,10 @@ class CallSessionEndpointsTest extends TestCase
         $initiateResponse->assertJsonPath('data.call_session.current_state', 'RINGING');
 
         Notification::assertSentTo($patient, IncomingCallSessionNotification::class);
+        $this->assertFalse(
+            is_subclass_of(IncomingCallSessionNotification::class, ShouldQueue::class),
+            'Incoming call push must be sent immediately, not left behind a queue worker.',
+        );
         Event::assertDispatched(CallSessionRinging::class);
 
         Sanctum::actingAs($patient);

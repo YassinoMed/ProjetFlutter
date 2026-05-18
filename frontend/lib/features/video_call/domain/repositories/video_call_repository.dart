@@ -25,6 +25,10 @@ abstract class VideoCallRepository {
     String? reason,
   });
 
+  Future<Either<Failure, void>> acceptCallSession(String callSessionId);
+
+  Future<Either<Failure, void>> rejectCallSession(String callSessionId);
+
   Future<Either<Failure, LiveKitConnectionInfo>> getLiveKitConnection(
       String callSessionId);
 

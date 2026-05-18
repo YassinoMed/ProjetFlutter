@@ -122,8 +122,10 @@ class EnhancedNotificationService {
             actions: <DarwinNotificationAction>[
               DarwinNotificationAction.plain('accept', 'Accepter',
                   options: {DarwinNotificationActionOption.foreground}),
-              DarwinNotificationAction.plain('decline', 'Refuser',
-                  options: {DarwinNotificationActionOption.destructive}),
+              DarwinNotificationAction.plain('decline', 'Refuser', options: {
+                DarwinNotificationActionOption.destructive,
+                DarwinNotificationActionOption.foreground,
+              }),
             ],
           ),
         ],

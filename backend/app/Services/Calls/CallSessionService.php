@@ -23,6 +23,7 @@ use App\Services\Teleconsultations\TeleconsultationEventLogger;
 use App\Services\Teleconsultations\TeleconsultationStateSynchronizer;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
@@ -122,7 +123,15 @@ class CallSessionService
                 $conversation->participants
                     ->where('user_id', '!=', $actor->id)
                     ->each(function ($participant) use ($call, $actor): void {
-                        $participant->user?->notify(new IncomingCallSessionNotification($call, $actor));
+                        try {
+                            $participant->user?->notify(new IncomingCallSessionNotification($call, $actor));
+                        } catch (\Throwable $error) {
+                            Log::warning('Incoming call push notification failed.', [
+                                'call_session_id' => $call->id,
+                                'recipient_user_id' => $participant->getAttribute('user_id'),
+                                'error' => $error->getMessage(),
+                            ]);
+                        }
                     });
 
                 ExpireCallSessionJob::dispatch($call->id)->delay($call->expires_at_utc);
