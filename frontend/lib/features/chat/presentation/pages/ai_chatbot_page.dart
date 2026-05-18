@@ -1,11 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mediconnect_pro/core/constants/app_constants.dart';
-import 'package:mediconnect_pro/core/genui/genui_prompt_panel.dart';
-import 'package:mediconnect_pro/core/genui/genui_providers.dart';
+import 'package:mediconnect_pro/core/ai/cloud_medical_ai_service.dart';
+import 'package:mediconnect_pro/core/ai/gemini_key_settings_dialog.dart';
 import 'package:mediconnect_pro/core/theme/app_theme.dart';
-import 'package:mediconnect_pro/features/auth/presentation/providers/auth_provider.dart';
 
 class AiChatbotPage extends ConsumerStatefulWidget {
   const AiChatbotPage({super.key});
@@ -22,6 +22,9 @@ class _AiChatbotPageState extends ConsumerState<AiChatbotPage> {
       'Bonjour docteur. Je peux aider à préparer une réponse patient, structurer une synthèse clinique ou proposer les questions à vérifier avant décision.',
     ),
   ];
+  // Chatbot conversationnel pur (texte uniquement, sans GenUI). Voir
+  // doctor_home_page / patient_home_page / profile pour les surfaces GenUI.
+  bool _isSending = false;
 
   @override
   void dispose() {
@@ -32,16 +35,8 @@ class _AiChatbotPageState extends ConsumerState<AiChatbotPage> {
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(currentUserProvider);
-    final role = user?.role ?? AppConstants.roleDoctor;
-    final genUiConfig = GenUiSessionConfig(
-      sessionId: 'ai-chat-${user?.id ?? 'doctor'}',
-      role: role,
-    );
-    final genUiController = ref.watch(genUiSessionProvider(genUiConfig));
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final extraItems = (genUiController.hasContent ? 1 : 0) +
-        (genUiController.isLoading ? 1 : 0);
+    final extraItems = _isSending ? 1 : 0;
 
     return Scaffold(
       backgroundColor:
@@ -97,28 +92,13 @@ class _AiChatbotPageState extends ConsumerState<AiChatbotPage> {
                 if (index < _messages.length) {
                   return _AiBubble(message: _messages[index]);
                 }
-
-                final contentIndex = index - _messages.length;
-                if (genUiController.hasContent && contentIndex == 0) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: GenUiSurfaceStack(
-                      controller: genUiController,
-                      role: role,
-                    ),
-                  );
-                }
-
-                if (genUiController.isLoading) {
-                  return const _TypingBubble();
-                }
-
-                return const SizedBox.shrink();
+                // Bulle "Analyse..." pendant l'attente de la réponse Gemini.
+                return const _TypingBubble();
               },
             ),
           ),
           _SuggestionBar(onSelected: _sendPrompt),
-          _buildInput(isDark, genUiController.isLoading),
+          _buildInput(isDark, _isSending),
         ],
       ),
     );
@@ -172,45 +152,49 @@ class _AiChatbotPageState extends ConsumerState<AiChatbotPage> {
 
   Future<void> _sendPrompt(String rawPrompt) async {
     final prompt = rawPrompt.trim();
-    final user = ref.read(currentUserProvider);
-    final role = user?.role ?? AppConstants.roleDoctor;
-    final genUiConfig = GenUiSessionConfig(
-      sessionId: 'ai-chat-${user?.id ?? 'doctor'}',
-      role: role,
-    );
-    final genUiController = ref.read(genUiSessionProvider(genUiConfig));
-
-    if (prompt.isEmpty || genUiController.isLoading) {
-      return;
-    }
+    if (prompt.isEmpty || _isSending) return;
 
     setState(() {
       _messages.add(_AiMessage.user(prompt));
       _controller.clear();
+      _isSending = true;
     });
     _scrollToBottom();
 
-    final recentMessages = _messages.length > 10
+    // Historique récent borné (10 derniers) pour limiter tokens & latence.
+    final recent = _messages.length > 10
         ? _messages.sublist(_messages.length - 10)
         : List<_AiMessage>.from(_messages);
 
-    await genUiController.generate(
-      prompt: 'Réponds au dernier message médecin avec une UI GenUI utile. '
-          'Utilise AlertCard, Checklist, MedicalForm, DataTable, MetricCard ou ActionButton selon le besoin. '
-          'Dernier message: $prompt',
-      context: {
-        'screen': 'doctor_ai_chat',
-        'role': role,
-        'recentMessages': recentMessages.map((message) {
-          return {
-            'role': message.isUser ? 'user' : 'assistant',
-            'content': message.content,
-          };
-        }).toList(growable: false),
-      },
-      useCache: false,
-      force: true,
-    );
+    final service = ref.read(cloudMedicalAiServiceProvider);
+    final chatMessages = <CloudAiChatMessage>[
+      CloudAiChatMessage.system(CloudMedicalAiService.chatSystemPrompt),
+      for (final m in recent)
+        m.isUser
+            ? CloudAiChatMessage.user(m.content)
+            : CloudAiChatMessage.assistant(m.content),
+    ];
+
+    try {
+      final response = await service.chat(messages: chatMessages);
+      if (!mounted) return;
+      setState(() {
+        _messages.add(_AiMessage.assistant(response));
+        _isSending = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      final friendly = CloudMedicalAiService.friendlyError(error);
+      setState(() {
+        _messages.add(_AiMessage.assistant(friendly));
+        _isSending = false;
+      });
+      // Si l'erreur indique l'absence de clé, on propose le dialogue.
+      if (friendly.toLowerCase().contains('clé gemini')) {
+        // ignore: use_build_context_synchronously
+        unawaited(GeminiKeySettingsDialog.show(context));
+      }
+    }
 
     _scrollToBottom();
   }

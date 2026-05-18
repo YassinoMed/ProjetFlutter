@@ -64,4 +64,8 @@ class AppRoutes {
   static const String gdprSettings = '/settings/gdpr';
   static const String notifications = '/settings/notifications';
   static const String trustedDevices = '/settings/devices';
+
+  // ── Prescriptions ───────────────────────────────────────
+  static const String prescriptionCreate = '/doctor/prescriptions/new';
+  static const String prescriptionDetail = '/prescriptions/:id';
 }

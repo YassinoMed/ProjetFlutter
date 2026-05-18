@@ -22,6 +22,8 @@ import '../../features/medical_records/presentation/pages/add_record_page.dart';
 import '../../features/medical_records/presentation/pages/medical_records_page.dart';
 import '../../features/notifications/presentation/pages/notifications_page.dart';
 import '../../features/onboarding/presentation/pages/onboarding_page.dart';
+import '../../features/prescriptions/presentation/pages/prescription_create_page.dart';
+import '../../features/prescriptions/presentation/pages/prescription_detail_page.dart';
 import '../../features/profile/presentation/pages/change_password_page.dart';
 import '../../features/profile/presentation/pages/edit_profile_page.dart';
 import '../../features/profile/presentation/pages/gdpr_settings_page.dart';
@@ -205,6 +207,25 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.notifications,
         name: 'notifications',
         builder: (context, state) => const NotificationsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.prescriptionCreate,
+        name: 'prescription-create',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return PrescriptionCreatePage(
+            initialPatientId: extra?['patientId']?.toString(),
+            initialPatientName: extra?['patientName']?.toString(),
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.prescriptionDetail,
+        name: 'prescription-detail',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return PrescriptionDetailPage(prescriptionId: id);
+        },
       ),
       GoRoute(
         path: AppRoutes.patientRecords,

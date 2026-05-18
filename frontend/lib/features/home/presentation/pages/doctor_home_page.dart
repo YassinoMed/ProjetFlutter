@@ -180,6 +180,18 @@ class DoctorHomePage extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 24),
+              // Action rapide « Créer ordonnance » — accès direct au flow
+              // de prescription numérique.
+              OutlinedButton.icon(
+                onPressed: () => context.push(AppRoutes.prescriptionCreate),
+                icon: const Icon(Icons.medical_information_outlined),
+                label: const Text('Créer une ordonnance numérique'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                  foregroundColor: AppTheme.primaryColor,
+                ),
+              ),
+              const SizedBox(height: 24),
               GenUiPromptPanel(
                 sessionId: 'doctor-home-${user?.id ?? 'anonymous'}',
                 role: user?.role ?? AppConstants.roleDoctor,

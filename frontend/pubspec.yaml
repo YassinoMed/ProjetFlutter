@@ -70,6 +70,9 @@ dependencies:
   # Empêche l'écran de se verrouiller pendant un appel (caméra/micro
   # seraient sinon suspendus par l'OS, cassant la session WebRTC).
   wakelock_plus: ^1.2.8
+  # Génération + impression/partage d'ordonnances médicales en PDF.
+  pdf: ^3.11.0
+  printing: ^5.13.0
   image_picker: ^1.1.2
   file_picker: ^8.1.6
   path: ^1.9.1
