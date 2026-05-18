@@ -1,6 +1,14 @@
-/// GenUI Transport Adapter — Proxy via Laravel Backend
-/// La clé Gemini n'est JAMAIS exposée côté client.
-/// Le backend Laravel gère l'authentification, le rate-limiting et le relay.
+/// GenUI Transport Adapter
+///
+/// Deux modes (transparents pour l'appelant):
+///   1) Direct Gemini  — si une clé est configurée dans GeminiKeyStorage
+///      (saisie utilisateur via Profil > Préférences > Clé API Gemini).
+///      Le client appelle generativelanguage.googleapis.com directement.
+///   2) Fallback backend — si pas de clé locale, on POSTe vers
+///      `/genui/stream` côté Laravel (configuration historique).
+///
+/// Le mode direct est plus robuste pour la démo et pour les setups où le
+/// backend n'a pas (encore) sa propre clé Gemini.
 library;
 
 import 'dart:async';
@@ -12,6 +20,7 @@ import 'package:flutter/foundation.dart';
 import 'package:genui/genui.dart';
 import 'package:logger/logger.dart';
 
+import '../ai/gemini_key_storage.dart';
 import '../constants/api_constants.dart';
 
 final _logger = Logger(printer: PrettyPrinter(methodCount: 0));
@@ -19,9 +28,18 @@ final _logger = Logger(printer: PrettyPrinter(methodCount: 0));
 /// Transport adapter qui envoie les messages au backend Laravel
 /// qui fait le relay vers Gemini avec la clé API côté serveur.
 class LaravelGenUITransport {
+  static const String _geminiModel =
+      String.fromEnvironment('GEMINI_MODEL', defaultValue: 'gemini-2.5-flash');
+  static const String _geminiBase =
+      'https://generativelanguage.googleapis.com/v1beta';
+
   final Dio _dio;
+  // Dio dédié aux appels Gemini direct (pas d'auth interceptor, pas de
+  // base URL backend). Réutilise les mêmes timeouts SSE-friendly.
+  final Dio _directDio;
   final A2uiTransportAdapter _adapter;
   final String Function() _systemPromptProvider;
+  final GeminiKeyStorage? _keyStorage;
   final List<Map<String, String>> _conversationHistory = [];
   final _sseBuffer = StringBuffer();
 
@@ -33,21 +51,28 @@ class LaravelGenUITransport {
   LaravelGenUITransport({
     required Dio dio,
     required String Function() systemPromptProvider,
+    GeminiKeyStorage? keyStorage,
   })  : _dio = dio,
+        _directDio = _createDirectDio(),
         _systemPromptProvider = systemPromptProvider,
+        _keyStorage = keyStorage,
         _adapter = A2uiTransportAdapter();
 
   LaravelGenUITransport._withAdapter({
     required Dio dio,
     required String Function() systemPromptProvider,
     required A2uiTransportAdapter adapter,
+    GeminiKeyStorage? keyStorage,
   })  : _dio = dio,
+        _directDio = _createDirectDio(),
         _systemPromptProvider = systemPromptProvider,
+        _keyStorage = keyStorage,
         _adapter = adapter;
 
   factory LaravelGenUITransport.withConversationAdapter({
     required Dio dio,
     required String Function() systemPromptProvider,
+    GeminiKeyStorage? keyStorage,
   }) {
     late LaravelGenUITransport transport;
     final adapter = A2uiTransportAdapter(
@@ -58,9 +83,23 @@ class LaravelGenUITransport {
       dio: dio,
       systemPromptProvider: systemPromptProvider,
       adapter: adapter,
+      keyStorage: keyStorage,
     );
 
     return transport;
+  }
+
+  static Dio _createDirectDio() {
+    return Dio(BaseOptions(
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 120),
+      sendTimeout: const Duration(seconds: 30),
+      headers: const {
+        'Accept': 'text/event-stream',
+        'Content-Type': 'application/json',
+      },
+      validateStatus: (status) => status != null && status < 600,
+    ));
   }
 
   /// L'adaptateur A2UI sous-jacent, à passer au Conversation.
@@ -132,22 +171,47 @@ class LaravelGenUITransport {
         return;
       }
 
-      final response = await _dio.post<ResponseBody>(
-        ApiConstants.genuiStream,
-        data: {
-          'message': normalizedMessage,
-          'system_prompt': systemPrompt,
-          'history': _conversationHistory.length > 20
-              ? _conversationHistory.sublist(_conversationHistory.length - 20)
-              : _conversationHistory,
-          if (patientContext != null) 'context': patientContext,
-        },
-        options: Options(
-          responseType: ResponseType.stream,
-          receiveTimeout: const Duration(seconds: 120),
-          sendTimeout: const Duration(seconds: 30),
-        ),
-      );
+      // Branche direct Gemini si une clé est configurée localement.
+      // Sinon fallback historique vers le backend Laravel.
+      final localKey = await _keyStorage?.getApiKey() ?? '';
+      final Response<ResponseBody> response;
+      if (localKey.isNotEmpty) {
+        response = await _directDio.post<ResponseBody>(
+          '$_geminiBase/models/$_geminiModel:streamGenerateContent'
+          '?alt=sse&key=$localKey',
+          data: _buildGeminiRequestBody(
+            userMessage: normalizedMessage,
+            systemPrompt: systemPrompt,
+            patientContext: patientContext,
+          ),
+          options: Options(
+            responseType: ResponseType.stream,
+            receiveTimeout: const Duration(seconds: 120),
+            sendTimeout: const Duration(seconds: 30),
+            headers: const {
+              'Accept': 'text/event-stream',
+              'Content-Type': 'application/json',
+            },
+          ),
+        );
+      } else {
+        response = await _dio.post<ResponseBody>(
+          ApiConstants.genuiStream,
+          data: {
+            'message': normalizedMessage,
+            'system_prompt': systemPrompt,
+            'history': _conversationHistory.length > 20
+                ? _conversationHistory.sublist(_conversationHistory.length - 20)
+                : _conversationHistory,
+            if (patientContext != null) 'context': patientContext,
+          },
+          options: Options(
+            responseType: ResponseType.stream,
+            receiveTimeout: const Duration(seconds: 120),
+            sendTimeout: const Duration(seconds: 30),
+          ),
+        );
+      }
 
       final stream = response.data?.stream;
       if (stream == null) {
@@ -277,11 +341,41 @@ class LaravelGenUITransport {
     try {
       final decoded = jsonDecode(data);
       if (decoded is Map) {
+        // Erreur Gemini standard: { "error": { "message": "..." } }
         final error = decoded['error'];
+        if (error is Map) {
+          final msg = error['message'];
+          if (msg is String && msg.trim().isNotEmpty) {
+            return _alertA2uiMessage(msg.trim());
+          }
+        }
         if (error is String && error.trim().isNotEmpty) {
           return _alertA2uiMessage(error.trim());
         }
 
+        // Format Gemini streamGenerateContent:
+        // {"candidates":[{"content":{"parts":[{"text":"..."}]}}]}
+        final candidates = decoded['candidates'];
+        if (candidates is List && candidates.isNotEmpty) {
+          final first = candidates.first;
+          if (first is Map) {
+            final content = first['content'];
+            if (content is Map) {
+              final parts = content['parts'];
+              if (parts is List) {
+                final buffer = StringBuffer();
+                for (final part in parts) {
+                  if (part is Map && part['text'] is String) {
+                    buffer.write(part['text']);
+                  }
+                }
+                if (buffer.isNotEmpty) return buffer.toString();
+              }
+            }
+          }
+        }
+
+        // Format backend historique (proxy LLM chunks).
         for (final key in const ['text', 'delta', 'content']) {
           final value = decoded[key];
           if (value is String) return value;
@@ -292,6 +386,70 @@ class LaravelGenUITransport {
     }
 
     return data;
+  }
+
+  /// Construit le payload Gemini direct (streamGenerateContent).
+  /// L'historique de conversation est mappé vers le format `contents`,
+  /// le prompt système vers `systemInstruction`, et le contexte patient
+  /// est injecté comme premier message utilisateur.
+  Map<String, dynamic> _buildGeminiRequestBody({
+    required String userMessage,
+    required String systemPrompt,
+    Map<String, dynamic>? patientContext,
+  }) {
+    final contents = <Map<String, dynamic>>[];
+
+    // Historique borné aux 20 derniers échanges (économie tokens + latence).
+    final recentHistory = _conversationHistory.length > 20
+        ? _conversationHistory.sublist(_conversationHistory.length - 20)
+        : _conversationHistory;
+
+    for (final msg in recentHistory) {
+      final role = msg['role'] == 'assistant' ? 'model' : 'user';
+      final content = msg['content']?.trim() ?? '';
+      if (content.isEmpty) continue;
+      contents.add({
+        'role': role,
+        'parts': [
+          {'text': content}
+        ],
+      });
+    }
+
+    // Le dernier message est déjà dans _conversationHistory (ajouté plus haut
+    // par sendToLaravel). On le re-trace pas, contents[-1] est userMessage.
+
+    // Si on a un contexte patient, on l'ajoute en preamble user message.
+    if (patientContext != null && patientContext.isNotEmpty) {
+      contents.insert(0, {
+        'role': 'user',
+        'parts': [
+          {
+            'text': 'Contexte patient JSON (référence): '
+                '${jsonEncode(patientContext)}',
+          }
+        ],
+      });
+      contents.insert(1, {
+        'role': 'model',
+        'parts': [
+          {'text': 'Compris, j\'utiliserai ce contexte.'}
+        ],
+      });
+    }
+
+    return {
+      'contents': contents,
+      'systemInstruction': {
+        'parts': [
+          {'text': systemPrompt},
+        ],
+      },
+      'generationConfig': {
+        'temperature': 0.7,
+        'maxOutputTokens': 1024,
+      },
+    };
   }
 
   String _cacheKey(

@@ -10,6 +10,7 @@ import 'package:genui/genui.dart';
 import 'package:logger/logger.dart';
 import 'package:logging/logging.dart' as logging;
 
+import '../ai/gemini_key_storage.dart';
 import 'laravel_transport.dart';
 import 'mediconnect_catalog.dart';
 import 'system_prompts.dart';
@@ -27,6 +28,7 @@ class GenUIService {
 
   final Dio _dio;
   final String _role;
+  final GeminiKeyStorage? _keyStorage;
 
   /// Callback quand une nouvelle surface est ajoutée
   final void Function(String surfaceId)? onSurfaceAdded;
@@ -48,13 +50,15 @@ class GenUIService {
   GenUIService({
     required Dio dio,
     required String role,
+    GeminiKeyStorage? keyStorage,
     this.onSurfaceAdded,
     this.onSurfaceRemoved,
     this.onError,
     this.onTextReceived,
     this.onWaitingChanged,
   })  : _dio = dio,
-        _role = role {
+        _role = role,
+        _keyStorage = keyStorage {
     _initialize();
   }
 
@@ -95,6 +99,7 @@ class GenUIService {
     transport = LaravelGenUITransport.withConversationAdapter(
       dio: _dio,
       systemPromptProvider: () => promptBuilder.systemPromptJoined(),
+      keyStorage: _keyStorage,
     );
 
     // 4. Créer la Conversation

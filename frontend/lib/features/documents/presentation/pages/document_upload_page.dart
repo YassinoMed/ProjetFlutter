@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/ai/cloud_medical_ai_service.dart';
+import '../../../../core/ai/gemini_key_settings_dialog.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../appointments/presentation/providers/appointment_providers.dart';
@@ -823,12 +824,30 @@ class _CloudAnalysisCard extends StatelessWidget {
           const SizedBox(height: 10),
           if (isLoading)
             const LinearProgressIndicator()
-          else if (error != null)
+          else if (error != null) ...[
             Text(
               error!,
               style: AppTheme.bodySmall.copyWith(color: AppTheme.warningColor),
-            )
-          else if (hasAnalysis)
+            ),
+            // Bouton d'action contextuel: si l'erreur évoque la clé Gemini
+            // manquante, on propose d'ouvrir le dialogue de configuration
+            // directement depuis ici (au lieu de demander à l'utilisateur
+            // de naviguer vers Profil > Préférences).
+            if (error!.toLowerCase().contains('clé gemini')) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FilledButton.tonalIcon(
+                  onPressed: () async {
+                    final saved = await GeminiKeySettingsDialog.show(context);
+                    if (saved == true && onRetry != null) onRetry!();
+                  },
+                  icon: const Icon(Icons.vpn_key_outlined, size: 18),
+                  label: const Text('Configurer la clé'),
+                ),
+              ),
+            ],
+          ] else if (hasAnalysis)
             Text(
               analysis!,
               style: AppTheme.bodySmall,

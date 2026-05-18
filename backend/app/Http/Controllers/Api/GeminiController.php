@@ -20,8 +20,10 @@ class GeminiController extends Controller
         ]);
 
         try {
-            $textResult = $this->generateText(
-                prompt: $payload['prompt'],
+            $textResult = $this->generateFromParts(
+                parts: [
+                    ['text' => $payload['prompt']],
+                ],
                 temperature: (float) ($payload['temperature'] ?? 0.7),
                 maxTokens: (int) ($payload['max_tokens'] ?? 900),
             );
@@ -33,6 +35,50 @@ class GeminiController extends Controller
             'type' => 'text',
             'content' => $textResult,
         ], 'Réponse Gemini générée.');
+    }
+
+    public function document(Request $request): JsonResponse
+    {
+        $payload = $request->validate([
+            'prompt' => ['required', 'string', 'min:1', 'max:60000'],
+            'inline_data' => ['sometimes', 'array'],
+            'inline_data.mime_type' => [
+                'required_with:inline_data',
+                'string',
+                'in:application/pdf,image/png,image/jpeg,image/webp,image/heic,image/heif',
+            ],
+            'inline_data.data' => ['required_with:inline_data', 'string', 'max:26000000'],
+            'temperature' => ['sometimes', 'numeric', 'min:0', 'max:2'],
+            'max_tokens' => ['sometimes', 'integer', 'min:1', 'max:8192'],
+        ]);
+
+        $parts = [
+            ['text' => $payload['prompt']],
+        ];
+
+        if (isset($payload['inline_data'])) {
+            $parts[] = [
+                'inline_data' => [
+                    'mime_type' => $payload['inline_data']['mime_type'],
+                    'data' => $payload['inline_data']['data'],
+                ],
+            ];
+        }
+
+        try {
+            $textResult = $this->generateFromParts(
+                parts: $parts,
+                temperature: (float) ($payload['temperature'] ?? 0.3),
+                maxTokens: (int) ($payload['max_tokens'] ?? 1600),
+            );
+        } catch (Throwable) {
+            return $this->respondError('Impossible de contacter Gemini pour analyser le document.', 502);
+        }
+
+        return $this->respondSuccess([
+            'type' => 'text',
+            'content' => $textResult,
+        ], 'Analyse documentaire Gemini générée.');
     }
 
     public function genuiStream(Request $request): JsonResponse|StreamedResponse
@@ -49,8 +95,10 @@ class GeminiController extends Controller
         ]);
 
         try {
-            $textResult = $this->generateText(
-                prompt: $this->buildGenUiPrompt($payload),
+            $textResult = $this->generateFromParts(
+                parts: [
+                    ['text' => $this->buildGenUiPrompt($payload)],
+                ],
                 temperature: (float) ($payload['temperature'] ?? 0.35),
                 maxTokens: (int) ($payload['max_tokens'] ?? 4096),
             );
@@ -83,7 +131,10 @@ class GeminiController extends Controller
         ]);
     }
 
-    private function generateText(string $prompt, float $temperature, int $maxTokens): string
+    /**
+     * @param  array<int, array<string, mixed>>  $parts
+     */
+    private function generateFromParts(array $parts, float $temperature, int $maxTokens): string
     {
         $apiKey = trim((string) config('services.gemini.api_key'));
         if ($apiKey === '') {
@@ -103,9 +154,7 @@ class GeminiController extends Controller
                 'contents' => [
                     [
                         'role' => 'user',
-                        'parts' => [
-                            ['text' => $prompt],
-                        ],
+                        'parts' => $parts,
                     ],
                 ],
                 'generationConfig' => [

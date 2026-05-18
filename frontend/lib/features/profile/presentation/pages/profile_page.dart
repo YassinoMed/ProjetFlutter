@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/ai/gemini_key_settings_dialog.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/genui/genui_prompt_panel.dart';
 import '../../../../core/router/app_routes.dart';
@@ -217,6 +218,13 @@ class ProfilePage extends ConsumerWidget {
                     icon: Icons.notifications_outlined,
                     title: 'Notifications',
                     onTap: () => context.push(AppRoutes.notifications),
+                  ),
+                  _DividerLine(),
+                  _ProfileTile(
+                    icon: Icons.smart_toy_outlined,
+                    title: 'Clé API Gemini',
+                    subtitle: 'Configurer l\'analyse IA des documents',
+                    onTap: () => GeminiKeySettingsDialog.show(context),
                   ),
                 ],
               ),

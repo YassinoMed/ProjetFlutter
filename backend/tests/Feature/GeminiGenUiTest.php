@@ -7,6 +7,45 @@ use Tests\TestCase;
 
 class GeminiGenUiTest extends TestCase
 {
+    public function test_document_analysis_sends_inline_data_to_gemini(): void
+    {
+        config()->set('services.gemini.api_key', 'test-key');
+        config()->set('services.gemini.model', 'gemini-2.5-flash');
+
+        Http::fake([
+            'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent*' => Http::response([
+                'candidates' => [
+                    [
+                        'content' => [
+                            'parts' => [
+                                [
+                                    'text' => 'Synthèse clinique générée.',
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ]),
+        ]);
+
+        $response = $this->postJson('/api/gemini/document', [
+            'prompt' => 'Analyse ce document médical.',
+            'inline_data' => [
+                'mime_type' => 'application/pdf',
+                'data' => base64_encode('fake-pdf'),
+            ],
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('data.type', 'text')
+            ->assertJsonPath('data.content', 'Synthèse clinique générée.');
+
+        Http::assertSent(fn ($request) => data_get($request->data(), 'contents.0.parts.0.text') === 'Analyse ce document médical.'
+            && data_get($request->data(), 'contents.0.parts.1.inline_data.mime_type') === 'application/pdf'
+        );
+    }
+
     public function test_genui_stream_proxies_gemini_response_as_sse(): void
     {
         config()->set('services.gemini.api_key', 'test-key');

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:genui/genui.dart';
 
+import '../ai/gemini_key_storage.dart';
 import '../network/dio_client.dart';
 import 'genui_service.dart';
 
@@ -31,9 +32,11 @@ class GenUiSessionConfig {
 final genUiSessionProvider = ChangeNotifierProvider.autoDispose
     .family<GenUiSessionController, GenUiSessionConfig>((ref, config) {
   final dio = ref.watch(dioProvider);
+  final keyStorage = ref.watch(geminiKeyStorageProvider);
   final controller = GenUiSessionController(
     dio: dio,
     role: config.role,
+    keyStorage: keyStorage,
   );
 
   ref.onDispose(controller.dispose);
@@ -43,6 +46,7 @@ final genUiSessionProvider = ChangeNotifierProvider.autoDispose
 class GenUiSessionController extends ChangeNotifier {
   final Dio _dio;
   final String _role;
+  final GeminiKeyStorage? _keyStorage;
   late GenUIService _service;
 
   final List<String> _surfaceIds = [];
@@ -56,8 +60,10 @@ class GenUiSessionController extends ChangeNotifier {
   GenUiSessionController({
     required Dio dio,
     required String role,
+    GeminiKeyStorage? keyStorage,
   })  : _dio = dio,
-        _role = role {
+        _role = role,
+        _keyStorage = keyStorage {
     _createService();
   }
 
@@ -131,6 +137,7 @@ class GenUiSessionController extends ChangeNotifier {
     _service = GenUIService(
       dio: _dio,
       role: _role,
+      keyStorage: _keyStorage,
       onSurfaceAdded: (surfaceId) {
         if (!_surfaceIds.contains(surfaceId)) {
           _surfaceIds.add(surfaceId);
@@ -142,8 +149,13 @@ class GenUiSessionController extends ChangeNotifier {
         _notify();
       },
       onTextReceived: (text) {
-        if (text.trim().isNotEmpty) {
-          _textFragments.add(text.trim());
+        // En streaming direct Gemini, le texte conversationnel et les blocs
+        // ```json``` (consommés par le SurfaceController pour rendre les
+        // widgets dynamiques) sont entrelacés dans la même réponse. On les
+        // strippe ici pour n'afficher dans le chat que la prose lisible.
+        final cleaned = _stripGenUiFences(text);
+        if (cleaned.isNotEmpty) {
+          _textFragments.add(cleaned);
           _notify();
         }
       },
@@ -163,6 +175,28 @@ class GenUiSessionController extends ChangeNotifier {
     if (!_isDisposed) {
       notifyListeners();
     }
+  }
+
+  /// Retire les blocs de code Markdown (```json … ```), les fences ouvertes
+  /// non encore refermées pendant le streaming, et normalise les retours à
+  /// la ligne pour n'afficher dans le chat que la prose lisible.
+  ///
+  /// Gemini renvoie des morceaux qui peuvent contenir partiellement un bloc
+  /// JSON : on les filtre de façon idempotente pour éviter le flash de
+  /// markup brut côté UI.
+  static final RegExp _fencedBlock =
+      RegExp(r'```[a-zA-Z0-9_-]*\s*[\s\S]*?```', multiLine: true);
+  static final RegExp _danglingOpenFence =
+      RegExp(r'```[a-zA-Z0-9_-]*\s*[\s\S]*$', multiLine: true);
+
+  static String _stripGenUiFences(String text) {
+    if (text.isEmpty) return '';
+    var cleaned = text.replaceAll(_fencedBlock, '');
+    // Élimine les fences ouvertes en fin de chunk (streaming partiel).
+    cleaned = cleaned.replaceAll(_danglingOpenFence, '');
+    // Compacte les sauts de ligne multiples laissés par le strip.
+    cleaned = cleaned.replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
+    return cleaned;
   }
 
   @override

@@ -6,14 +6,15 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Service IA appelant **directement** l'API Google Generative Language
-/// depuis le client Flutter (aucun relay backend).
+import '../constants/api_constants.dart';
+import '../network/dio_client.dart';
+import 'gemini_key_storage.dart';
+
+/// Service IA Gemini pour chat médical et analyse documentaire.
 ///
-/// ⚠️ Sécurité: la clé Gemini est embarquée dans le binaire/bundle JS via
-/// `--dart-define=GEMINI_API_KEY=...`. Sur Flutter Web, n'importe qui peut
-/// l'extraire du bundle téléchargé. Restreindre la clé dans Google Cloud
-/// Console (API restricted → generativelanguage.googleapis.com,
-/// HTTP referrer / IP ranges) avant tout déploiement.
+/// Par défaut, les appels passent par le backend Laravel afin que la clé
+/// Gemini reste dans `backend/.env`. Si une clé locale est configurée dans
+/// [GeminiKeyStorage], elle sert d'override côté client pour les démos.
 class CloudAiChatMessage {
   final String role;
   final String content;
@@ -49,10 +50,6 @@ class CloudMedicalAiService {
   static const maxTokens = 900;
   static const temperature = 0.7;
 
-  /// Clé Gemini fournie au build via `--dart-define=GEMINI_API_KEY=...`.
-  static const String _apiKey =
-      String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
-
   /// Modèle Gemini, surchargeable via `--dart-define=GEMINI_MODEL=...`.
   static const String _model =
       String.fromEnvironment('GEMINI_MODEL', defaultValue: 'gemini-2.5-flash');
@@ -75,11 +72,17 @@ Ne remplace pas le jugement medical. En cas de signe de gravite, conseille une e
 Sois clair, bref et actionnable.
 ''';
 
-  final Dio _dio;
+  final Dio _backendDio;
+  final Dio _directDio;
+  final GeminiKeyStorage _keyStorage;
 
-  const CloudMedicalAiService(this._dio);
+  const CloudMedicalAiService(
+    this._backendDio,
+    this._directDio,
+    this._keyStorage,
+  );
 
-  bool get hasApiKey => _apiKey.trim().isNotEmpty;
+  Future<bool> hasApiKey() => _keyStorage.hasKey();
 
   /// Analyse un document à partir d'un texte déjà extrait (ex: ML Kit OCR).
   Future<String> analyzeDocument({
@@ -190,17 +193,22 @@ Sois clair, bref et actionnable.
   // ── HTTP ───────────────────────────────────────────────────
 
   Future<String> _generate({required List<Map<String, dynamic>> parts}) async {
-    if (!hasApiKey) {
-      throw const CloudMedicalAiException(
-        'Clé Gemini absente. Lancez l\'app avec '
-        '--dart-define=GEMINI_API_KEY=<votre-clé>.',
-      );
+    final apiKey = await _keyStorage.getApiKey();
+    if (apiKey.isNotEmpty) {
+      return _generateDirect(parts: parts, apiKey: apiKey);
     }
 
-    const url = '$_apiBase/models/$_model:generateContent?key=$_apiKey';
+    return _generateViaBackend(parts: parts);
+  }
+
+  Future<String> _generateDirect({
+    required List<Map<String, dynamic>> parts,
+    required String apiKey,
+  }) async {
+    final url = '$_apiBase/models/$_model:generateContent?key=$apiKey';
 
     try {
-      final response = await _dio.post<dynamic>(
+      final response = await _directDio.post<dynamic>(
         url,
         data: {
           'contents': [
@@ -231,6 +239,48 @@ Sois clair, bref et actionnable.
       }
 
       final text = _extractCandidateText(response.data);
+      if (text == null || text.trim().isEmpty) {
+        throw const CloudMedicalAiException(
+          'Gemini a retourne une reponse vide ou illisible.',
+        );
+      }
+
+      return _cleanModelText(text);
+    } on DioException catch (error) {
+      throw CloudMedicalAiException(friendlyError(error));
+    }
+  }
+
+  Future<String> _generateViaBackend({
+    required List<Map<String, dynamic>> parts,
+  }) async {
+    final prompt = _extractPrompt(parts);
+    if (prompt == null || prompt.isEmpty) {
+      throw const CloudMedicalAiException('Prompt Gemini vide.');
+    }
+
+    final inlineData = _extractInlineData(parts);
+    final endpoint = inlineData == null
+        ? ApiConstants.geminiChat
+        : ApiConstants.geminiDocument;
+
+    try {
+      final response = await _backendDio.post<dynamic>(
+        endpoint,
+        data: {
+          'prompt': prompt,
+          'temperature': inlineData == null ? temperature : 0.3,
+          'max_tokens': inlineData == null ? maxTokens : 1600,
+          if (inlineData != null) 'inline_data': inlineData,
+        },
+        options: Options(
+          receiveTimeout: const Duration(seconds: 120),
+          sendTimeout: const Duration(seconds: 60),
+          headers: const {'Content-Type': 'application/json'},
+        ),
+      );
+
+      final text = _extractApiEnvelopeText(response.data);
       if (text == null || text.trim().isEmpty) {
         throw const CloudMedicalAiException(
           'Gemini a retourne une reponse vide ou illisible.',
@@ -299,6 +349,47 @@ Sois clair, bref et actionnable.
       'assistant' => 'Assistant',
       _ => 'Utilisateur',
     };
+  }
+
+  static String? _extractPrompt(List<Map<String, dynamic>> parts) {
+    for (final part in parts) {
+      final text = part['text'];
+      if (text is String && text.trim().isNotEmpty) {
+        return text.trim();
+      }
+    }
+    return null;
+  }
+
+  static Map<String, dynamic>? _extractInlineData(
+    List<Map<String, dynamic>> parts,
+  ) {
+    for (final part in parts) {
+      final inlineData = part['inline_data'];
+      if (inlineData is Map) {
+        return Map<String, dynamic>.from(inlineData);
+      }
+    }
+    return null;
+  }
+
+  static String? _extractApiEnvelopeText(dynamic data) {
+    if (data is Map) {
+      final envelopeData = data['data'];
+      if (envelopeData is Map) {
+        final content = envelopeData['content'];
+        if (content is String && content.trim().isNotEmpty) {
+          return content.trim();
+        }
+      }
+
+      final content = data['content'];
+      if (content is String && content.trim().isNotEmpty) {
+        return content.trim();
+      }
+    }
+
+    return _extractCandidateText(data);
   }
 
   /// Extrait le texte de la première candidate Gemini.
@@ -376,7 +467,11 @@ Sois clair, bref et actionnable.
 }
 
 final cloudMedicalAiServiceProvider = Provider<CloudMedicalAiService>((ref) {
-  return CloudMedicalAiService(_createGeminiDio());
+  return CloudMedicalAiService(
+    ref.watch(dioProvider),
+    _createGeminiDio(),
+    ref.watch(geminiKeyStorageProvider),
+  );
 });
 
 Dio _createGeminiDio() {
