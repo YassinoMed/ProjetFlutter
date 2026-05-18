@@ -12,7 +12,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mediconnect_pro/core/errors/failures.dart';
 import 'package:mediconnect_pro/core/network/dio_client.dart';
-import 'package:mediconnect_pro/core/network/network_info.dart';
 import 'package:mediconnect_pro/core/security/biometric_service.dart';
 import 'package:mediconnect_pro/core/security/e2ee_chat_crypto_service.dart';
 import 'package:mediconnect_pro/core/security/secure_storage_service.dart';
@@ -36,8 +35,6 @@ class _MockBiometricService extends Mock implements BiometricService {}
 class _MockE2eeCrypto extends Mock implements E2eeChatCryptoService {}
 
 class _MockDio extends Mock implements Dio {}
-
-class _MockNetworkInfo extends Mock implements NetworkInfo {}
 
 class _MockLoginUseCase extends Mock implements LoginUseCase {}
 
@@ -175,7 +172,7 @@ void main() {
     test('succès HTTP -> AsyncData avec isAuthenticated=true', () async {
       const token = '80|abcdef';
       when(() => loginUseCase(any())).thenAnswer(
-        (_) async => Right<Failure, ({User user, String token})>(
+        (_) async => const Right<Failure, ({User user, String token})>(
           (user: _testUser, token: token),
         ),
       );
@@ -247,7 +244,7 @@ void main() {
         () async {
       const token = '80|abcdef';
       when(() => loginUseCase(any())).thenAnswer(
-        (_) async => Right<Failure, ({User user, String token})>(
+        (_) async => const Right<Failure, ({User user, String token})>(
           (user: _testUser, token: token),
         ),
       );
