@@ -15,6 +15,7 @@ import '../../../appointments/domain/entities/appointment_entity.dart';
 import '../../../appointments/presentation/providers/appointment_providers.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../notifications/presentation/pages/notifications_page.dart';
+import '../../../waiting_room/presentation/providers/waiting_room_providers.dart';
 
 class DoctorHomePage extends ConsumerWidget {
   const DoctorHomePage({super.key});
@@ -180,16 +181,26 @@ class DoctorHomePage extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              // Action rapide « Créer ordonnance » — accès direct au flow
-              // de prescription numérique.
-              OutlinedButton.icon(
-                onPressed: () => context.push(AppRoutes.prescriptionCreate),
-                icon: const Icon(Icons.medical_information_outlined),
-                label: const Text('Créer une ordonnance numérique'),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(48),
-                  foregroundColor: AppTheme.primaryColor,
-                ),
+              // Actions rapides « Salle d'attente » + « Ordonnance »
+              Row(
+                children: [
+                  Expanded(
+                    child: _WaitingRoomQuickAction(),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () =>
+                          context.push(AppRoutes.prescriptionCreate),
+                      icon: const Icon(Icons.medical_information_outlined),
+                      label: const Text('Ordonnance'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                        foregroundColor: AppTheme.primaryColor,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 24),
               GenUiPromptPanel(
@@ -529,6 +540,32 @@ class _NotificationsBell extends StatelessWidget {
         child: const Icon(Icons.notifications_rounded),
       ),
       onPressed: () => context.push(AppRoutes.notifications),
+    );
+  }
+}
+
+/// Bouton « Salle d'attente » avec compteur live du nombre de patients
+/// en attente pour le médecin connecté.
+class _WaitingRoomQuickAction extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider);
+    final waiting = user == null
+        ? const []
+        : ref.watch(waitingPatientsForDoctorProvider(user.id));
+    final count = waiting.length;
+    return FilledButton.tonalIcon(
+      onPressed: () => context.push(AppRoutes.waitingRoomDoctor),
+      icon: Badge(
+        isLabelVisible: count > 0,
+        label: Text('$count'),
+        backgroundColor: AppTheme.errorColor,
+        child: const Icon(Icons.event_seat_outlined),
+      ),
+      label: const Text('Salle d\'attente'),
+      style: FilledButton.styleFrom(
+        minimumSize: const Size.fromHeight(48),
+      ),
     );
   }
 }

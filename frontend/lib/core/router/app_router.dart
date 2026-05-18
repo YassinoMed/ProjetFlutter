@@ -36,6 +36,8 @@ import '../../features/teleconsultations/presentation/pages/teleconsultation_det
 import '../../features/teleconsultations/presentation/pages/teleconsultations_page.dart';
 import '../../features/video_call/domain/entities/video_call_entity.dart';
 import '../../features/video_call/presentation/pages/video_call_page.dart';
+import '../../features/waiting_room/presentation/pages/waiting_room_doctor_page.dart';
+import '../../features/waiting_room/presentation/pages/waiting_room_patient_page.dart';
 import '../constants/app_constants.dart';
 import 'app_routes.dart';
 import 'shell_routes.dart';
@@ -248,6 +250,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final id = state.pathParameters['id']!;
           return ConsultationReportDetailPage(reportId: id);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.waitingRoomDoctor,
+        name: 'waiting-room-doctor',
+        builder: (context, state) => const WaitingRoomDoctorPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.waitingRoomPatient,
+        name: 'waiting-room-patient',
+        builder: (context, state) {
+          final sessionId = state.pathParameters['sessionId']!;
+          return WaitingRoomPatientPage(sessionId: sessionId);
         },
       ),
       GoRoute(

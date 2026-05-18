@@ -74,4 +74,8 @@ class AppRoutes {
       '/doctor/consultation-reports/new';
   static const String consultationReportDetail =
       '/consultation-reports/:id';
+
+  // ── Waiting room ────────────────────────────────────────
+  static const String waitingRoomDoctor = '/doctor/waiting-room';
+  static const String waitingRoomPatient = '/patient/waiting-room/:sessionId';
 }

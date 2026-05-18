@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:mediconnect_pro/core/router/app_routes.dart';
 import 'package:mediconnect_pro/features/auth/presentation/providers/auth_provider.dart';
 import 'package:mediconnect_pro/features/consultation_reports/presentation/providers/consultation_report_providers.dart';
+import 'package:mediconnect_pro/features/waiting_room/presentation/providers/waiting_room_providers.dart';
 
 import '../providers/teleconsultation_providers.dart';
 
@@ -64,15 +65,12 @@ class TeleconsultationDetailPage extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: () => context.push(
-                  AppRoutes.videoCall.replaceFirst(
-                    ':appointmentId',
-                    teleconsultation.appointmentId,
-                  ),
-                ),
-                icon: const Icon(Icons.video_camera_front_rounded),
-                label: const Text('Ouvrir l appel'),
+              // Si l'utilisateur est le patient, on lui propose de rejoindre
+              // d'abord la salle d'attente (le médecin doit l'admettre avant
+              // que l'appel ne démarre). Sinon (médecin), accès direct à
+              // l'appel.
+              _PatientOrDoctorEntryButton(
+                teleconsultation: teleconsultation,
               ),
               const SizedBox(height: 12),
               OutlinedButton.icon(
@@ -162,6 +160,57 @@ class TeleconsultationDetailPage extends ConsumerWidget {
     if (user.id != teleconsultation.doctorUserId) return false;
     final s = teleconsultation.status?.toString().toLowerCase() ?? '';
     return s == 'ended' || s == 'completed';
+  }
+}
+
+/// Bouton d'entrée dans l'appel adapté au rôle :
+///   - Médecin : "Ouvrir l'appel" (accès direct)
+///   - Patient : "Rejoindre la salle d'attente" → flux d'admission
+class _PatientOrDoctorEntryButton extends ConsumerWidget {
+  final dynamic teleconsultation;
+  const _PatientOrDoctorEntryButton({required this.teleconsultation});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider);
+    final isDoctor =
+        user != null && user.id == teleconsultation.doctorUserId;
+
+    if (isDoctor) {
+      return FilledButton.icon(
+        onPressed: () => context.push(
+          AppRoutes.videoCall.replaceFirst(
+            ':appointmentId',
+            teleconsultation.appointmentId,
+          ),
+        ),
+        icon: const Icon(Icons.video_camera_front_rounded),
+        label: const Text('Ouvrir l\'appel'),
+      );
+    }
+
+    // Patient → flux salle d'attente
+    return FilledButton.icon(
+      onPressed: () {
+        if (user == null) return;
+        final session =
+            ref.read(waitingRoomStoreProvider.notifier).join(
+                  appointmentId: teleconsultation.appointmentId,
+                  teleconsultationId: teleconsultation.id,
+                  patientId: user.id,
+                  patientName: user.name,
+                  patientAvatarUrl: user.avatarUrl,
+                  doctorId: teleconsultation.doctorUserId,
+                  doctorName: 'Médecin', // backend pourra enrichir
+                );
+        context.push(
+          AppRoutes.waitingRoomPatient
+              .replaceFirst(':sessionId', session.id),
+        );
+      },
+      icon: const Icon(Icons.event_seat_outlined),
+      label: const Text('Rejoindre la salle d\'attente'),
+    );
   }
 }
 
