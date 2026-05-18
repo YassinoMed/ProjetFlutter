@@ -14,7 +14,11 @@ import '../../../../shared/widgets/error_display.dart';
 import '../../../appointments/domain/entities/appointment_entity.dart';
 import '../../../appointments/presentation/providers/appointment_providers.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../chat/domain/entities/chat_entities.dart';
+import '../../../dashboard/presentation/providers/dashboard_providers.dart';
+import '../../../documents/domain/entities/document_entity.dart';
 import '../../../notifications/presentation/pages/notifications_page.dart';
+import '../../../prescriptions/domain/entities/prescription_entity.dart';
 
 class PatientHomePage extends ConsumerWidget {
   const PatientHomePage({super.key});
@@ -25,6 +29,7 @@ class PatientHomePage extends ConsumerWidget {
     final appointmentsAsync = ref.watch(myAppointmentsProvider);
     final doctorsAsync = ref.watch(doctorSearchProvider);
     final appointments = appointmentsAsync.valueOrNull ?? const <Appointment>[];
+    final dashboard = ref.watch(patientDashboardProvider);
 
     return Scaffold(
       body: SafeArea(
@@ -84,7 +89,11 @@ class PatientHomePage extends ConsumerWidget {
                     );
                   }
 
-                  return _PatientHeroCard(appointment: upcoming.first);
+                  return _PatientHeroCard(
+                    appointment: upcoming.first,
+                    canJoinTeleconsultation:
+                        dashboard.canJoinNextTeleconsultation,
+                  );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (err, st) => ErrorDisplay(
@@ -99,7 +108,7 @@ class PatientHomePage extends ConsumerWidget {
                   Expanded(
                     child: _QuickAccessCard(
                       icon: Icons.search_rounded,
-                      title: 'Trouver\nun médecin',
+                      title: 'Prendre\nRDV',
                       color: AppTheme.primaryColor,
                       onTap: () => context.push(AppRoutes.doctorSearch),
                     ),
@@ -108,7 +117,7 @@ class PatientHomePage extends ConsumerWidget {
                   Expanded(
                     child: _QuickAccessCard(
                       icon: Icons.folder_open_rounded,
-                      title: 'Journal\npatient',
+                      title: 'Historique\nmédical',
                       color: AppTheme.successColor,
                       onTap: () => context.push(AppRoutes.patientRecords),
                     ),
@@ -117,9 +126,31 @@ class PatientHomePage extends ConsumerWidget {
                   Expanded(
                     child: _QuickAccessCard(
                       icon: Icons.chat_bubble_outline_rounded,
-                      title: 'Messages\nsécurisés',
+                      title: 'Contacter\nmédecin',
                       color: AppTheme.chatColor,
                       onTap: () => context.go(AppRoutes.patientChat),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _QuickAccessCard(
+                      icon: Icons.upload_file_rounded,
+                      title: 'Importer\ndocument',
+                      color: AppTheme.warningColor,
+                      onTap: () => context.push(AppRoutes.documentUpload),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _QuickAccessCard(
+                      icon: Icons.qr_code_2_rounded,
+                      title: 'QR code\nd’urgence',
+                      color: AppTheme.errorColor,
+                      onTap: () => context.push(AppRoutes.emergencyQr),
                     ),
                   ),
                 ],
@@ -134,6 +165,32 @@ class PatientHomePage extends ConsumerWidget {
                     'Reste non diagnostique et oriente vers les écrans utiles.',
                 contextData: _patientHomeContext(user, appointments),
                 icon: Icons.health_and_safety_outlined,
+              ),
+              const SizedBox(height: 24),
+              _DashboardPreviewSection(
+                title: 'Documents récents',
+                emptyMessage: 'Aucun document récent.',
+                children: dashboard.recentDocuments
+                    .map((document) => _RecentDocumentTile(document: document))
+                    .toList(growable: false),
+              ),
+              const SizedBox(height: 24),
+              _DashboardPreviewSection(
+                title: 'Ordonnances récentes',
+                emptyMessage: 'Aucune ordonnance enregistrée.',
+                children: dashboard.recentPrescriptions
+                    .map((prescription) =>
+                        _RecentPrescriptionTile(prescription: prescription))
+                    .toList(growable: false),
+              ),
+              const SizedBox(height: 24),
+              _DashboardPreviewSection(
+                title: 'Messages récents',
+                emptyMessage: 'Aucun message récent.',
+                children: dashboard.recentConversations
+                    .map((conversation) =>
+                        _RecentConversationTile(conversation: conversation))
+                    .toList(growable: false),
               ),
               const SizedBox(height: 24),
               const ClinicalSectionHeader(title: 'Activité consultations'),
@@ -262,8 +319,12 @@ class PatientHomePage extends ConsumerWidget {
 
 class _PatientHeroCard extends StatelessWidget {
   final Appointment appointment;
+  final bool canJoinTeleconsultation;
 
-  const _PatientHeroCard({required this.appointment});
+  const _PatientHeroCard({
+    required this.appointment,
+    required this.canJoinTeleconsultation,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -313,13 +374,20 @@ class _PatientHeroCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => context.go(AppRoutes.patientAppointments),
+                    onPressed: canJoinTeleconsultation
+                        ? () => context.push(
+                              AppRoutes.videoCall.replaceFirst(
+                                  ':appointmentId', appointment.id),
+                            )
+                        : () => context.go(AppRoutes.patientAppointments),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppTheme.primaryColor,
                       backgroundColor: Colors.white,
                       side: BorderSide.none,
                     ),
-                    child: const Text('Consulter'),
+                    child: Text(
+                      canJoinTeleconsultation ? 'Rejoindre' : 'Consulter',
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -389,6 +457,127 @@ class _QuickAccessCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _DashboardPreviewSection extends StatelessWidget {
+  final String title;
+  final String emptyMessage;
+  final List<Widget> children;
+
+  const _DashboardPreviewSection({
+    required this.title,
+    required this.emptyMessage,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClinicalSectionHeader(title: title),
+        const SizedBox(height: 12),
+        if (children.isEmpty)
+          ClinicalSurface(
+            elevated: false,
+            child: Text(
+              emptyMessage,
+              style: AppTheme.bodySmall.copyWith(
+                color: AppTheme.neutralGray500,
+              ),
+            ),
+          )
+        else
+          ...children.map(
+            (child) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: child,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _RecentDocumentTile extends StatelessWidget {
+  final MedicalDocument document;
+
+  const _RecentDocumentTile({required this.document});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClinicalSurface(
+      onTap: () => context.push(
+        AppRoutes.documentDetail.replaceFirst(':id', document.id),
+      ),
+      child: ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: const Icon(Icons.description_outlined),
+        title:
+            Text(document.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+        subtitle: Text(document.documentType ?? document.processingStatus),
+        trailing: const Icon(Icons.chevron_right_rounded),
+      ),
+    );
+  }
+}
+
+class _RecentPrescriptionTile extends StatelessWidget {
+  final Prescription prescription;
+
+  const _RecentPrescriptionTile({required this.prescription});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClinicalSurface(
+      onTap: () => context.push(
+        AppRoutes.prescriptionDetail.replaceFirst(':id', prescription.id),
+      ),
+      child: ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: const Icon(Icons.medication_outlined),
+        title: Text(prescription.publicReference),
+        subtitle: Text(prescription.doctorName),
+        trailing: const Icon(Icons.chevron_right_rounded),
+      ),
+    );
+  }
+}
+
+class _RecentConversationTile extends StatelessWidget {
+  final Conversation conversation;
+
+  const _RecentConversationTile({required this.conversation});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClinicalSurface(
+      onTap: () => context.push(
+        AppRoutes.chatDetail.replaceFirst(':conversationId', conversation.id),
+      ),
+      child: ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: ClinicalAvatar(
+          name: conversation.otherMemberName,
+          imageUrl: conversation.otherMemberAvatar,
+          radius: 20,
+        ),
+        title: Text(conversation.otherMemberName),
+        subtitle: Text(
+          conversation.lastMessage,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: conversation.unreadCount == 0
+            ? const Icon(Icons.chevron_right_rounded)
+            : ClinicalStatusChip(
+                label: '${conversation.unreadCount}',
+                color: AppTheme.chatColor,
+                compact: true,
+              ),
       ),
     );
   }

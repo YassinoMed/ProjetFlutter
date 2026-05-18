@@ -73,6 +73,7 @@ dependencies:
   # Génération + impression/partage d'ordonnances médicales en PDF.
   pdf: ^3.11.0
   printing: ^5.13.0
+  qr: ^3.0.2
   image_picker: ^1.1.2
   file_picker: ^8.1.6
   path: ^1.9.1

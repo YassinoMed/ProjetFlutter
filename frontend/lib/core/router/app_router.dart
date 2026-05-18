@@ -17,13 +17,17 @@ import '../../features/chat/presentation/pages/ai_chatbot_page.dart';
 import '../../features/chat/presentation/pages/chat_detail_page.dart';
 import '../../features/consultation_reports/presentation/pages/consultation_report_create_page.dart';
 import '../../features/consultation_reports/presentation/pages/consultation_report_detail_page.dart';
+import '../../features/document_analysis/presentation/pages/document_analysis_page.dart';
 import '../../features/documents/presentation/pages/document_detail_page.dart';
 import '../../features/documents/presentation/pages/document_upload_page.dart';
 import '../../features/documents/presentation/pages/documents_page.dart';
+import '../../features/emergency_qr/presentation/pages/emergency_qr_page.dart';
+import '../../features/gdpr_export/presentation/pages/gdpr_export_page.dart';
 import '../../features/medical_records/presentation/pages/add_record_page.dart';
 import '../../features/medical_records/presentation/pages/medical_records_page.dart';
 import '../../features/notifications/presentation/pages/notifications_page.dart';
 import '../../features/onboarding/presentation/pages/onboarding_page.dart';
+import '../../features/pre_consultation/presentation/pages/pre_consultation_questionnaire_page.dart';
 import '../../features/prescriptions/presentation/pages/prescription_create_page.dart';
 import '../../features/prescriptions/presentation/pages/prescription_detail_page.dart';
 import '../../features/profile/presentation/pages/change_password_page.dart';
@@ -35,6 +39,8 @@ import '../../features/teleconsultations/presentation/pages/incoming_call_page.d
 import '../../features/teleconsultations/presentation/pages/teleconsultation_detail_page.dart';
 import '../../features/teleconsultations/presentation/pages/teleconsultations_page.dart';
 import '../../features/video_call/domain/entities/video_call_entity.dart';
+import '../../features/video_call/presentation/pages/incoming_call_page.dart';
+import '../../features/video_call/presentation/pages/outgoing_call_page.dart';
 import '../../features/video_call/presentation/pages/video_call_page.dart';
 import '../../features/waiting_room/presentation/pages/waiting_room_doctor_page.dart';
 import '../../features/waiting_room/presentation/pages/waiting_room_patient_page.dart';
@@ -208,9 +214,64 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+        path: AppRoutes.documentAnalysis,
+        name: 'document-analysis',
+        builder: (context, state) {
+          final documentId = state.pathParameters['id']!;
+          return DocumentAnalysisPage(documentId: documentId);
+        },
+      ),
+      GoRoute(
         path: AppRoutes.notifications,
         name: 'notifications',
         builder: (context, state) => const NotificationsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.preConsultationQuestionnaire,
+        name: 'pre-consultation-questionnaire',
+        builder: (context, state) {
+          final appointmentId = state.pathParameters['appointmentId']!;
+          return PreConsultationQuestionnairePage(
+            appointmentId: appointmentId,
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.emergencyQr,
+        name: 'emergency-qr',
+        builder: (context, state) => const EmergencyQrPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.gdprExport,
+        name: 'gdpr-export',
+        builder: (context, state) => const GdprExportPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.outgoingCall,
+        name: 'outgoing-call',
+        builder: (context, state) {
+          final appointmentId = state.pathParameters['appointmentId']!;
+          final extra = state.extra as Map<String, dynamic>?;
+          return OutgoingCallPage(
+            appointmentId: appointmentId,
+            patientName: extra?['patientName']?.toString() ?? 'Patient',
+            patientAvatarUrl: extra?['patientAvatarUrl']?.toString(),
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.incomingCall,
+        name: 'incoming-call',
+        builder: (context, state) {
+          final appointmentId = state.pathParameters['appointmentId']!;
+          final extra = state.extra as Map<String, dynamic>?;
+          return IncomingVideoCallPage(
+            appointmentId: appointmentId,
+            doctorName: extra?['doctorName']?.toString() ?? 'Médecin',
+            specialty: extra?['specialty']?.toString() ?? 'Téléconsultation',
+            doctorAvatarUrl: extra?['doctorAvatarUrl']?.toString(),
+          );
+        },
       ),
       GoRoute(
         path: AppRoutes.prescriptionCreate,

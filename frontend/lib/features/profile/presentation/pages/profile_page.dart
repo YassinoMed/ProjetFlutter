@@ -234,7 +234,7 @@ class ProfilePage extends ConsumerWidget {
             const BiometricSettingsCard(),
             const SizedBox(height: 24),
             ElevatedButton.icon(
-              onPressed: () {},
+              onPressed: () => context.push(AppRoutes.gdprExport),
               icon: const Icon(Icons.download_rounded),
               label: const Text('Exporter données RGPD'),
             ),

@@ -2,8 +2,10 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/error_display.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -216,6 +218,14 @@ class _DocumentDetailContentState
           _SectionCard(
             title: 'Traitement IA',
             child: _ProcessingPipelineSection(document: document),
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: () => context.push(
+              AppRoutes.documentAnalysis.replaceFirst(':id', document.id),
+            ),
+            icon: const Icon(Icons.psychology_alt_outlined),
+            label: const Text('Voir l’analyse IA'),
           ),
           const SizedBox(height: 16),
           _SectionCard(

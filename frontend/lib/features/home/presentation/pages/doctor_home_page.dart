@@ -14,6 +14,7 @@ import '../../../../shared/widgets/error_display.dart';
 import '../../../appointments/domain/entities/appointment_entity.dart';
 import '../../../appointments/presentation/providers/appointment_providers.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../dashboard/presentation/providers/dashboard_providers.dart';
 import '../../../notifications/presentation/pages/notifications_page.dart';
 import '../../../waiting_room/presentation/providers/waiting_room_providers.dart';
 
@@ -25,6 +26,7 @@ class DoctorHomePage extends ConsumerWidget {
     final user = ref.watch(authNotifierProvider).valueOrNull?.user;
     final appointmentsAsync = ref.watch(myAppointmentsProvider);
     final appointments = appointmentsAsync.valueOrNull ?? const <Appointment>[];
+    final dashboard = ref.watch(doctorDashboardProvider);
 
     return Scaffold(
       body: SafeArea(
@@ -100,6 +102,28 @@ class DoctorHomePage extends ConsumerWidget {
                               label: 'En attente',
                               color: AppTheme.successColor,
                               icon: Icons.check_circle_outline_rounded,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _DoctorMetricCard(
+                              value: '${dashboard.waitingPatients.length}',
+                              label: 'Salle d’attente',
+                              color: AppTheme.warningColor,
+                              icon: Icons.event_seat_outlined,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _DoctorMetricCard(
+                              value: '${dashboard.documentsToReview.length}',
+                              label: 'Docs à valider',
+                              color: AppTheme.chatColor,
+                              icon: Icons.fact_check_outlined,
                             ),
                           ),
                         ],
@@ -197,6 +221,39 @@ class DoctorHomePage extends ConsumerWidget {
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size.fromHeight(48),
                         foregroundColor: AppTheme.primaryColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => context.go(AppRoutes.doctorChat),
+                      icon: Badge(
+                        isLabelVisible: dashboard.unreadMessagesCount > 0,
+                        label: Text('${dashboard.unreadMessagesCount}'),
+                        backgroundColor: AppTheme.errorColor,
+                        child: const Icon(Icons.mark_chat_unread_outlined),
+                      ),
+                      label: const Text('Messages'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                        foregroundColor: AppTheme.chatColor,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => context.push(AppRoutes.documents),
+                      icon: const Icon(Icons.folder_copy_outlined),
+                      label: const Text('Documents'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                        foregroundColor: AppTheme.warningColor,
                       ),
                     ),
                   ),

@@ -64,6 +64,7 @@ class AppRoutes {
   static const String gdprSettings = '/settings/gdpr';
   static const String notifications = '/settings/notifications';
   static const String trustedDevices = '/settings/devices';
+  static const String gdprExport = '/settings/gdpr/export';
 
   // ── Prescriptions ───────────────────────────────────────
   static const String prescriptionCreate = '/doctor/prescriptions/new';
@@ -72,10 +73,17 @@ class AppRoutes {
   // ── Consultation reports ────────────────────────────────
   static const String consultationReportCreate =
       '/doctor/consultation-reports/new';
-  static const String consultationReportDetail =
-      '/consultation-reports/:id';
+  static const String consultationReportDetail = '/consultation-reports/:id';
 
   // ── Waiting room ────────────────────────────────────────
   static const String waitingRoomDoctor = '/doctor/waiting-room';
   static const String waitingRoomPatient = '/patient/waiting-room/:sessionId';
+
+  // ── PFE priority workflows ──────────────────────────────
+  static const String preConsultationQuestionnaire =
+      '/appointments/:appointmentId/questionnaire';
+  static const String emergencyQr = '/patient/emergency-qr';
+  static const String outgoingCall = '/video-call/outgoing/:appointmentId';
+  static const String incomingCall = '/video-call/incoming/:appointmentId';
+  static const String documentAnalysis = '/documents/:id/analysis';
 }

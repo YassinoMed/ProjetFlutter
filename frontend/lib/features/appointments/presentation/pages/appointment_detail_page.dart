@@ -7,6 +7,7 @@ import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../pre_consultation/presentation/providers/pre_consultation_questionnaire_providers.dart';
 import '../../data/repositories/appointment_repository_impl.dart';
 import '../../domain/entities/appointment_entity.dart';
 import '../providers/appointment_providers.dart';
@@ -48,6 +49,9 @@ class _AppointmentDetailPageState extends ConsumerState<AppointmentDetailPage> {
     final isVideo = appointment?.type == AppointmentType.video;
     final isPast =
         appointment != null && appointment.dateTime.isBefore(DateTime.now());
+    final questionnaire = ref.watch(
+      preConsultationQuestionnaireByAppointmentProvider(widget.appointmentId),
+    );
     final canUseVideoCall = !isSecretary &&
         appointment?.status == AppointmentStatus.confirmed &&
         !isPast;
@@ -246,6 +250,20 @@ class _AppointmentDetailPageState extends ConsumerState<AppointmentDetailPage> {
 
                       const SizedBox(height: 24),
 
+                      _QuestionnaireCard(
+                        appointment: appointment,
+                        isCareTeam: isCareTeam,
+                        questionnaireExists: questionnaire != null,
+                        onOpen: () => context.push(
+                          AppRoutes.preConsultationQuestionnaire.replaceFirst(
+                            ':appointmentId',
+                            widget.appointmentId,
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
                       if (_canConfirm(appointment, isCareTeam))
                         Padding(
                           padding: const EdgeInsets.only(bottom: 12),
@@ -330,8 +348,26 @@ class _AppointmentDetailPageState extends ConsumerState<AppointmentDetailPage> {
                             color: Colors.transparent,
                             child: InkWell(
                               onTap: () {
-                                context.push(AppRoutes.videoCall.replaceFirst(
-                                    ':appointmentId', widget.appointmentId));
+                                if (isDoctor) {
+                                  context.push(
+                                    AppRoutes.outgoingCall.replaceFirst(
+                                      ':appointmentId',
+                                      widget.appointmentId,
+                                    ),
+                                    extra: {
+                                      'patientName':
+                                          appointment.patientName ?? 'Patient',
+                                    },
+                                  );
+                                  return;
+                                }
+
+                                context.push(
+                                  AppRoutes.videoCall.replaceFirst(
+                                    ':appointmentId',
+                                    widget.appointmentId,
+                                  ),
+                                );
                               },
                               borderRadius: BorderRadius.circular(16),
                               child: Padding(
@@ -658,6 +694,71 @@ class _StatusBadge extends StatelessWidget {
           fontSize: 12,
           fontWeight: FontWeight.w700,
         ),
+      ),
+    );
+  }
+}
+
+class _QuestionnaireCard extends StatelessWidget {
+  final Appointment appointment;
+  final bool isCareTeam;
+  final bool questionnaireExists;
+  final VoidCallback onOpen;
+
+  const _QuestionnaireCard({
+    required this.appointment,
+    required this.isCareTeam,
+    required this.questionnaireExists,
+    required this.onOpen,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final canFill = !isCareTeam &&
+        appointment.status != AppointmentStatus.cancelled &&
+        appointment.dateTime.isAfter(
+          DateTime.now().subtract(const Duration(hours: 2)),
+        );
+
+    final title = isCareTeam
+        ? questionnaireExists
+            ? 'Questionnaire patient disponible'
+            : 'Questionnaire patient non rempli'
+        : questionnaireExists
+            ? 'Modifier mon questionnaire'
+            : 'Remplir le questionnaire';
+
+    final subtitle = isCareTeam
+        ? 'Préparation utile avant la consultation.'
+        : 'Partagez motif, symptômes, douleur et contexte avant le rendez-vous.';
+
+    return Card(
+      elevation: 0,
+      color: AppTheme.primaryColor.withValues(alpha: 0.06),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        leading: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: AppTheme.primaryColor.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: const Icon(
+            Icons.assignment_outlined,
+            color: AppTheme.primaryColor,
+          ),
+        ),
+        title: Text(title, style: AppTheme.titleSmall),
+        subtitle: Text(
+          subtitle,
+          style: AppTheme.bodySmall.copyWith(color: AppTheme.neutralGray600),
+        ),
+        trailing: (canFill || questionnaireExists)
+            ? const Icon(Icons.chevron_right_rounded)
+            : null,
+        onTap: (canFill || questionnaireExists) ? onOpen : null,
       ),
     );
   }

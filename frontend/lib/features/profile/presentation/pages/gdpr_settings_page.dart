@@ -2,10 +2,12 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:mediconnect_pro/core/constants/app_constants.dart';
 import 'package:mediconnect_pro/core/genui/genui_prompt_panel.dart';
 import 'package:mediconnect_pro/core/rgpd/rgpd_service.dart';
+import 'package:mediconnect_pro/core/router/app_routes.dart';
 import 'package:mediconnect_pro/core/theme/app_theme.dart';
 import 'package:mediconnect_pro/features/auth/presentation/providers/auth_provider.dart';
 import 'package:mediconnect_pro/shared/widgets/clinical_ui.dart';
@@ -133,7 +135,7 @@ class _GdprSettingsPageState extends ConsumerState<GdprSettingsPage> {
                     child: Column(
                       children: [
                         ListTile(
-                          onTap: () => _exportData(context),
+                          onTap: () => context.push(AppRoutes.gdprExport),
                           leading: Container(
                             width: 42,
                             height: 42,
@@ -221,40 +223,6 @@ class _GdprSettingsPageState extends ConsumerState<GdprSettingsPage> {
           const SnackBar(
             content: Text('Préférence mise à jour'),
             duration: Duration(seconds: 1),
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _exportData(BuildContext context) async {
-    setState(() => _isLoading = true);
-    final service = ref.read(rgpdServiceProvider);
-    final result = await service.exportData();
-    setState(() => _isLoading = false);
-
-    result.fold(
-      (failure) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: ${failure.message}')),
-        );
-      },
-      (_) {
-        if (!mounted) return;
-        showDialog<void>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Export terminé'),
-            content: const Text(
-              'Vos données ont été préparées avec succès.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Fermer'),
-              ),
-            ],
           ),
         );
       },
