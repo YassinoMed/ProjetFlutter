@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/genui/genui_prompt_panel.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/clinical_ui.dart';
@@ -21,6 +23,7 @@ class DoctorHomePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authNotifierProvider).valueOrNull?.user;
     final appointmentsAsync = ref.watch(myAppointmentsProvider);
+    final appointments = appointmentsAsync.valueOrNull ?? const <Appointment>[];
 
     return Scaffold(
       body: SafeArea(
@@ -177,6 +180,17 @@ class DoctorHomePage extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 24),
+              GenUiPromptPanel(
+                sessionId: 'doctor-home-${user?.id ?? 'anonymous'}',
+                role: user?.role ?? AppConstants.roleDoctor,
+                title: 'Brief clinique',
+                prompt:
+                    'Génère un briefing médecin pour l’écran d’accueil avec MetricCard, AppointmentCard pour les prochains rendez-vous, Checklist et ActionButton. '
+                    'Ne donne aucun diagnostic.',
+                contextData: _doctorHomeContext(user, appointments),
+                icon: Icons.medical_services_outlined,
+              ),
+              const SizedBox(height: 24),
               const ClinicalSectionHeader(title: 'Volume de consultations'),
               const SizedBox(height: 12),
               const ClinicalSurface(
@@ -243,6 +257,48 @@ class DoctorHomePage extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Map<String, dynamic> _doctorHomeContext(
+    dynamic user,
+    List<Appointment> appointments,
+  ) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final todayAppointments = appointments.where((appointment) {
+      final day = DateTime(
+        appointment.dateTime.year,
+        appointment.dateTime.month,
+        appointment.dateTime.day,
+      );
+      return day == today;
+    }).toList()
+      ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+
+    return {
+      'user': {
+        'name': user?.name,
+        'role': user?.role,
+        'speciality': user?.speciality,
+      },
+      'counts': {
+        'todayAppointments': todayAppointments.length,
+        'pendingAppointments': appointments
+            .where((item) => item.status == AppointmentStatus.pending)
+            .length,
+      },
+      'todayQueue': todayAppointments.take(5).map((appointment) {
+        return {
+          'appointmentId': appointment.id,
+          'patientName': appointment.patientName,
+          'dateTime': appointment.dateTime.toIso8601String(),
+          'status': appointment.status.name,
+          'type': appointment.type == AppointmentType.video
+              ? 'teleconsultation'
+              : 'consultation',
+        };
+      }).toList(growable: false),
+    };
   }
 }
 

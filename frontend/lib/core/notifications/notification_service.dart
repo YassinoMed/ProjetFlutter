@@ -1,4 +1,5 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NotificationService {
@@ -30,7 +31,7 @@ class NotificationService {
 
     // Get Token
     final String? token = await _fcm.getToken();
-    print('FCM Token: $token');
+    debugPrint('FCM Token: $token');
   }
 
   void _handleMessage(RemoteMessage message) {

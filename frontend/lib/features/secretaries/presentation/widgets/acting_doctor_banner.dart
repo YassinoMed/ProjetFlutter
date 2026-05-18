@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../domain/entities/doctor_secretary_delegation_entity.dart';
 import '../providers/secretary_providers.dart';
 
 class ActingDoctorBanner extends ConsumerWidget {

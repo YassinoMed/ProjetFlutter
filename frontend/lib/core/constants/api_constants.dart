@@ -104,6 +104,7 @@ class ApiConstants {
   static const String e2eeDevices = '/e2ee/devices';
   static const String e2eePeerBundle = '/e2ee/users/{userId}/bundle';
   static const String geminiChat = '/gemini/chat';
+  static const String genuiStream = '/genui/stream';
 
   // ── WebRTC Signaling ──────────────────────────────────────
   static const String webrtcIceServers = '/webrtc/ice-servers';

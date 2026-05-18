@@ -1,5 +1,5 @@
 /// Failure classes for Clean Architecture error handling
-/// Uses Either<Failure, T> pattern from dartz
+/// Uses `Either<Failure, T>` pattern from dartz
 library;
 
 import 'package:equatable/equatable.dart';

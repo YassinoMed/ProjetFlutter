@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/genui/genui_prompt_panel.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/validators.dart';
@@ -189,6 +190,27 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                       ),
                     ),
                   ],
+                ),
+
+                const SizedBox(height: 24),
+
+                GenUiPromptPanel(
+                  sessionId: 'auth-register-${_selectedRole}_$_currentStep',
+                  role: _selectedRole,
+                  title: 'Aide inscription',
+                  prompt:
+                      'Génère une aide contextuelle très courte pour l’étape d’inscription courante. '
+                      'Utilise Checklist et AlertCard. Mentionne uniquement les champs utiles, sans inventer de règle.',
+                  contextData: {
+                    'screen': 'register',
+                    'step': _currentStep,
+                    'selectedRole': _selectedRole,
+                    'acceptedTerms': _acceptTerms,
+                    'hasSpeciality':
+                        _specialityController.text.trim().isNotEmpty,
+                    'hasLicense': _licenseController.text.trim().isNotEmpty,
+                  },
+                  compact: true,
                 ),
 
                 const SizedBox(height: 24),

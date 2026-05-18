@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/genui/genui_prompt_panel.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/validators.dart';
@@ -388,6 +389,26 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                   ),
                                   const SizedBox(height: 20),
                                   _SecurityBadge(isDark: isDark),
+                                  const SizedBox(height: 16),
+                                  GenUiPromptPanel(
+                                    sessionId: 'auth-login-assist',
+                                    role: AppConstants.rolePatient,
+                                    title: 'Aide connexion',
+                                    prompt:
+                                        'Génère une courte aide de connexion sécurisée pour cet écran. '
+                                        'Utilise AlertCard pour les points de sécurité et Checklist pour les vérifications. '
+                                        'Ne demande jamais le mot de passe.',
+                                    contextData: {
+                                      'screen': 'login',
+                                      'biometricAvailable': _biometricAvailable,
+                                      'biometricShown': _showBiometricButton,
+                                      'identifierAlreadyFilled':
+                                          _emailController.text
+                                              .trim()
+                                              .isNotEmpty,
+                                    },
+                                    compact: true,
+                                  ),
                                   const SizedBox(height: 18),
                                   TextButton(
                                     onPressed: () =>

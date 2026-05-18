@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/genui/genui_prompt_panel.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/clinical_ui.dart';
@@ -22,6 +24,7 @@ class PatientHomePage extends ConsumerWidget {
     final user = ref.watch(authNotifierProvider).valueOrNull?.user;
     final appointmentsAsync = ref.watch(myAppointmentsProvider);
     final doctorsAsync = ref.watch(doctorSearchProvider);
+    final appointments = appointmentsAsync.valueOrNull ?? const <Appointment>[];
 
     return Scaffold(
       body: SafeArea(
@@ -122,6 +125,17 @@ class PatientHomePage extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 24),
+              GenUiPromptPanel(
+                sessionId: 'patient-home-${user?.id ?? 'anonymous'}',
+                role: user?.role ?? AppConstants.rolePatient,
+                title: 'Brief santé',
+                prompt:
+                    'Génère un brief patient pour l’écran d’accueil avec MetricCard, AppointmentCard si un rendez-vous arrive, Checklist et ActionButton. '
+                    'Reste non diagnostique et oriente vers les écrans utiles.',
+                contextData: _patientHomeContext(user, appointments),
+                icon: Icons.health_and_safety_outlined,
+              ),
+              const SizedBox(height: 24),
               const ClinicalSectionHeader(title: 'Activité consultations'),
               const SizedBox(height: 12),
               ClinicalSurface(
@@ -209,6 +223,40 @@ class PatientHomePage extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Map<String, dynamic> _patientHomeContext(
+    dynamic user,
+    List<Appointment> appointments,
+  ) {
+    final now = DateTime.now();
+    final upcoming = appointments
+        .where((appointment) => appointment.dateTime.isAfter(now))
+        .toList()
+      ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+
+    return {
+      'user': {
+        'name': user?.name,
+        'role': user?.role,
+      },
+      'counts': {
+        'upcomingAppointments': upcoming.length,
+        'totalAppointments': appointments.length,
+      },
+      'nextAppointments': upcoming.take(3).map((appointment) {
+        return {
+          'appointmentId': appointment.id,
+          'doctorName': appointment.doctor?.fullName,
+          'specialty': appointment.doctor?.specialty,
+          'dateTime': appointment.dateTime.toIso8601String(),
+          'status': appointment.status.name,
+          'type': appointment.type == AppointmentType.video
+              ? 'teleconsultation'
+              : 'consultation',
+        };
+      }).toList(growable: false),
+    };
   }
 }
 

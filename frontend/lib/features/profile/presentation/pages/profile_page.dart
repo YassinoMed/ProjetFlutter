@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/genui/genui_prompt_panel.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/clinical_ui.dart';
@@ -86,6 +88,33 @@ class ProfilePage extends ConsumerWidget {
                   ),
                 ],
               ),
+            ),
+            const SizedBox(height: 18),
+            GenUiPromptPanel(
+              sessionId: 'profile-${user?.id ?? 'anonymous'}',
+              role: user?.role ?? AppConstants.rolePatient,
+              title: 'Assistant profil',
+              prompt:
+                  'Génère un résumé de profil et de réglages utiles avec PatientInfoCard, StatusBadge, Checklist et ActionButton. '
+                  'Ne montre pas de données sensibles inutiles.',
+              contextData: {
+                'screen': 'profile',
+                'user': {
+                  'name': user?.name,
+                  'role': user?.role,
+                  'emailVerified': user?.emailVerified,
+                  'speciality': user?.speciality,
+                  'hasAvatar': (user?.avatarUrl ?? '').isNotEmpty,
+                },
+                'settings': [
+                  'profile',
+                  'gdpr',
+                  'password',
+                  'notifications',
+                  'devices',
+                ],
+              },
+              icon: Icons.manage_accounts_outlined,
             ),
             const SizedBox(height: 18),
             ClinicalSurface(

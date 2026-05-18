@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/genui/genui_prompt_panel.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/device_info_helper.dart';
@@ -159,6 +161,8 @@ class _TrustedDevicesPageState extends ConsumerState<TrustedDevicesPage> {
 
   @override
   Widget build(BuildContext context) {
+    final user = ref.watch(currentUserProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Appareils de confiance'),
@@ -213,134 +217,151 @@ class _TrustedDevicesPageState extends ConsumerState<TrustedDevicesPage> {
                     )
                   : RefreshIndicator(
                       onRefresh: _loadDevices,
-                      child: ListView.builder(
+                      child: ListView(
                         padding: const EdgeInsets.all(16),
-                        itemCount: _devices.length,
-                        itemBuilder: (context, index) {
-                          final device = _devices[index];
-                          final biometricsEnabled =
-                              device['biometrics_enabled'] == true;
-                          final isCurrentDevice =
-                              device['current_device'] == true;
-                          final lastSeenAt =
-                              device['last_used_at'] as String? ??
-                                  device['last_login_at'] as String?;
-
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.surface,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: Theme.of(context)
-                                    .dividerColor
-                                    .withValues(alpha: 0.2),
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.04),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              leading: Container(
-                                width: 48,
-                                height: 48,
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primaryColor.withValues(
-                                    alpha: 0.1,
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(
-                                  _platformIcon(device['platform'] as String?),
-                                  color: AppTheme.primaryColor,
-                                ),
-                              ),
-                              title: Text(
-                                device['device_name'] as String? ??
-                                    'Appareil inconnu',
-                                style: AppTheme.labelLarge,
-                              ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(height: 4),
-                                  if (isCurrentDevice)
-                                    Padding(
-                                      padding: const EdgeInsets.only(bottom: 4),
-                                      child: Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.verified_user_rounded,
-                                            size: 14,
-                                            color: AppTheme.successColor,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            'Appareil actuel',
-                                            style: AppTheme.bodySmall.copyWith(
-                                              color: AppTheme.successColor,
-                                              fontSize: 11,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  if (biometricsEnabled)
-                                    Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.fingerprint_rounded,
-                                          size: 14,
-                                          color: AppTheme.primaryColor,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          'Empreinte activée',
-                                          style: AppTheme.bodySmall.copyWith(
-                                            color: AppTheme.primaryColor,
-                                            fontSize: 11,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  if (lastSeenAt != null)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 2),
-                                      child: Text(
-                                        'Derniere activite: ${_formatDate(lastSeenAt)}',
-                                        style: AppTheme.bodySmall.copyWith(
-                                          color: AppTheme.neutralGray500,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              trailing: IconButton(
-                                icon: const Icon(
-                                  Icons.remove_circle_outline,
-                                  color: Colors.red,
-                                ),
-                                tooltip: 'Révoquer cet appareil',
-                                onPressed: () => _revokeDevice(
-                                  device['id'] as String,
-                                  device['device_name'] as String? ??
-                                      'Appareil',
-                                ),
-                              ),
-                            ),
-                          );
-                        },
+                        children: [
+                          GenUiPromptPanel(
+                            sessionId:
+                                'trusted-devices-${user?.id ?? 'anonymous'}',
+                            role: user?.role ?? AppConstants.rolePatient,
+                            title: 'Aide sécurité',
+                            prompt:
+                                'Génère une aide courte pour la gestion des appareils de confiance avec MetricCard, Checklist et AlertCard. '
+                                'Insiste sur la révocation en cas de perte.',
+                            contextData: {
+                              'screen': 'trusted_devices',
+                              'deviceCount': _devices.length,
+                              'currentDeviceCount': _devices
+                                  .where((device) =>
+                                      device['current_device'] == true)
+                                  .length,
+                              'biometricDeviceCount': _devices
+                                  .where((device) =>
+                                      device['biometrics_enabled'] == true)
+                                  .length,
+                            },
+                            icon: Icons.devices_outlined,
+                            compact: true,
+                          ),
+                          const SizedBox(height: 16),
+                          ..._devices.map(_buildDeviceTile),
+                        ],
                       ),
                     ),
+    );
+  }
+
+  Widget _buildDeviceTile(Map<String, dynamic> device) {
+    final biometricsEnabled = device['biometrics_enabled'] == true;
+    final isCurrentDevice = device['current_device'] == true;
+    final lastSeenAt =
+        device['last_used_at'] as String? ?? device['last_login_at'] as String?;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.2),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 8,
+        ),
+        leading: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: AppTheme.primaryColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            _platformIcon(device['platform'] as String?),
+            color: AppTheme.primaryColor,
+          ),
+        ),
+        title: Text(
+          device['device_name'] as String? ?? 'Appareil inconnu',
+          style: AppTheme.labelLarge,
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            if (isCurrentDevice)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.verified_user_rounded,
+                      size: 14,
+                      color: AppTheme.successColor,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Appareil actuel',
+                      style: AppTheme.bodySmall.copyWith(
+                        color: AppTheme.successColor,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            if (biometricsEnabled)
+              Row(
+                children: [
+                  const Icon(
+                    Icons.fingerprint_rounded,
+                    size: 14,
+                    color: AppTheme.primaryColor,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Empreinte activée',
+                    style: AppTheme.bodySmall.copyWith(
+                      color: AppTheme.primaryColor,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            if (lastSeenAt != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  'Derniere activite: ${_formatDate(lastSeenAt)}',
+                  style: AppTheme.bodySmall.copyWith(
+                    color: AppTheme.neutralGray500,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        trailing: IconButton(
+          icon: const Icon(
+            Icons.remove_circle_outline,
+            color: Colors.red,
+          ),
+          tooltip: 'Révoquer cet appareil',
+          onPressed: () => _revokeDevice(
+            device['id'] as String,
+            device['device_name'] as String? ?? 'Appareil',
+          ),
+        ),
+      ),
     );
   }
 

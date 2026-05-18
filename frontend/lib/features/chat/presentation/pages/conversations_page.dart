@@ -5,10 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/genui/genui_prompt_panel.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/clinical_ui.dart';
 import '../../../../shared/widgets/error_display.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/chat_entities.dart';
 import '../providers/chat_providers.dart';
 
@@ -22,6 +25,7 @@ class ConversationsPage extends ConsumerWidget {
     final isDoctorChat = currentPath.startsWith(AppRoutes.doctorChat);
     final detailRoute =
         isDoctorChat ? AppRoutes.doctorChatDetail : AppRoutes.chatDetail;
+    final user = ref.watch(currentUserProvider);
 
     return Scaffold(
       body: SafeArea(
@@ -63,6 +67,34 @@ class ConversationsPage extends ConsumerWidget {
                     label: 'E2E CHIFFRÉ',
                     color: AppTheme.successColor,
                     icon: Icons.lock_rounded,
+                    compact: true,
+                  ),
+                  const SizedBox(height: 16),
+                  GenUiPromptPanel(
+                    sessionId: 'conversations-${user?.id ?? 'anonymous'}',
+                    role: user?.role ?? AppConstants.rolePatient,
+                    title: 'Assistant messages',
+                    prompt:
+                        'Génère une synthèse de messagerie sécurisée avec MetricCard, Checklist et ActionButton. '
+                        'Ne révèle pas de contenu sensible et ne donne pas de diagnostic.',
+                    contextData: {
+                      'screen': 'conversations',
+                      'conversationCount': conversations.length,
+                      'unreadCount': conversations.fold<int>(
+                        0,
+                        (total, item) => total + item.unreadCount,
+                      ),
+                      'recentConversations': conversations.take(5).map((item) {
+                        return {
+                          'conversationId': item.id,
+                          'otherMemberName': item.otherMemberName,
+                          'lastMessageTime':
+                              item.lastMessageTime.toIso8601String(),
+                          'unreadCount': item.unreadCount,
+                        };
+                      }).toList(growable: false),
+                    },
+                    icon: Icons.mark_chat_unread_outlined,
                     compact: true,
                   ),
                   const SizedBox(height: 16),

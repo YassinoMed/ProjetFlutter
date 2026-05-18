@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
-import 'package:mediconnect_pro/core/theme/app_theme.dart';
 import 'package:mediconnect_pro/core/router/app_routes.dart';
+import 'package:mediconnect_pro/core/theme/app_theme.dart';
 import 'package:mediconnect_pro/features/appointments/presentation/providers/appointment_providers.dart';
 import 'package:mediconnect_pro/shared/widgets/error_display.dart';
 
@@ -43,7 +42,7 @@ class DoctorDetailPage extends ConsumerWidget {
                     fit: StackFit.expand,
                     children: [
                       Container(
-                        color: AppTheme.primaryColor.withOpacity(0.1),
+                        color: AppTheme.primaryColor.withValues(alpha: 0.1),
                         child: doctor.avatarUrl != null
                             ? Image.network(doctor.avatarUrl!,
                                 fit: BoxFit.cover,
@@ -59,7 +58,7 @@ class DoctorDetailPage extends ConsumerWidget {
                             end: Alignment.bottomCenter,
                             colors: [
                               Colors.transparent,
-                              Colors.black.withOpacity(0.7),
+                              Colors.black.withValues(alpha: 0.7),
                             ],
                           ),
                         ),
@@ -84,7 +83,8 @@ class DoctorDetailPage extends ConsumerWidget {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
-                              color: AppTheme.primaryColor.withOpacity(0.1),
+                              color:
+                                  AppTheme.primaryColor.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
@@ -145,10 +145,10 @@ class DoctorDetailPage extends ConsumerWidget {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.purple.withOpacity(0.1),
+                            color: Colors.purple.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                                color: Colors.purple.withOpacity(0.3)),
+                                color: Colors.purple.withValues(alpha: 0.3)),
                           ),
                           child: const Row(
                             children: [
@@ -235,9 +235,9 @@ class _InfoCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.05),
+          color: color.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.1)),
+          border: Border.all(color: color.withValues(alpha: 0.1)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

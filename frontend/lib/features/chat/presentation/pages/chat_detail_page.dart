@@ -7,11 +7,14 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:mediconnect_pro/core/constants/app_constants.dart';
+import 'package:mediconnect_pro/core/genui/genui_prompt_panel.dart';
 import 'package:mediconnect_pro/core/network/websocket_service.dart';
 import 'package:mediconnect_pro/core/router/app_routes.dart';
 import 'package:mediconnect_pro/core/security/encrypted_attachment_service.dart';
 import 'package:mediconnect_pro/core/theme/app_theme.dart';
 import 'package:mediconnect_pro/core/voice/voice_service.dart';
+import 'package:mediconnect_pro/features/auth/presentation/providers/auth_provider.dart';
 import 'package:mediconnect_pro/features/chat/domain/entities/chat_entities.dart';
 import 'package:mediconnect_pro/features/chat/presentation/providers/chat_providers.dart';
 import 'package:mediconnect_pro/features/video_call/domain/entities/video_call_entity.dart';
@@ -66,8 +69,10 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
   @override
   Widget build(BuildContext context) {
     final messagesAsync = ref.watch(messagesProvider(widget.conversationId));
+    final messages = messagesAsync.valueOrNull ?? const <ChatMessage>[];
     final conversations =
         ref.watch(conversationsProvider).valueOrNull ?? const <Conversation>[];
+    final user = ref.watch(currentUserProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     Conversation? conversation;
     for (final item in conversations) {
@@ -152,6 +157,36 @@ class _ChatDetailPageState extends ConsumerState<ChatDetailPage>
               ),
             ),
           ).animate().fadeIn(duration: 500.ms),
+          if (messages.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: GenUiPromptPanel(
+                sessionId: 'chat-detail-${widget.conversationId}',
+                role: user?.role ?? AppConstants.rolePatient,
+                title: 'Aide réponse',
+                prompt:
+                    'Génère une aide de réponse pour cette conversation chiffrée avec Checklist, AlertCard et ActionButton. '
+                    'Ne réécris pas tout le fil, ne diagnostique pas, et rappelle la validation médicale si nécessaire.',
+                contextData: {
+                  'screen': 'chat_detail',
+                  'conversationId': widget.conversationId,
+                  'interlocutor': conversation?.otherMemberName,
+                  'recentMessages': messages.take(8).map((message) {
+                    return {
+                      'fromCurrentUser': message.isMe,
+                      'timestamp': message.timestamp.toIso8601String(),
+                      'status': message.status.name,
+                      'content': message.content.length > 700
+                          ? '${message.content.substring(0, 700)}...'
+                          : message.content,
+                    };
+                  }).toList(growable: false),
+                },
+                icon: Icons.quickreply_outlined,
+                compact: true,
+                cache: false,
+              ),
+            ),
           Expanded(
             child: messagesAsync.when(
               data: (messages) {

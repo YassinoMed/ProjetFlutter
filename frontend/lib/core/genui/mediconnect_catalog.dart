@@ -16,6 +16,7 @@ class MediConnectCatalog {
 
   static Catalog get catalog => Catalog(
         [
+          ...BasicCatalogItems.asCatalog().items,
           appointmentCard,
           patientInfoCard,
           medicalForm,
@@ -26,9 +27,15 @@ class MediConnectCatalog {
           alertCard,
           metricCard,
         ],
+        functions: BasicCatalogItems.asCatalog().functions,
         catalogId: 'com.mediconnect.catalog',
-        systemPromptFragments: const [
-          "Utilise ces widgets pour générer l'UI. Préfère toujours un widget "
+        systemPromptFragments: [
+          BasicCatalogItems.basicCatalogRules,
+          "Utilise ces widgets pour générer l'UI MediConnect. Tu peux "
+              'composer les composants métier avec les widgets de layout '
+              'standard du SDK (Column, Row, Card, Text, Button, Tabs, '
+              'ChoicePicker, TextField, CheckBox, Slider, DateTimeInput, '
+              'Image, AudioPlayer, Video, Modal). Préfère toujours un widget '
               'visuel à du texte brut pour présenter des informations '
               'médicales.',
         ],
@@ -42,6 +49,7 @@ class MediConnectCatalog {
     name: 'AppointmentCard',
     dataSchema: S.object(
       properties: {
+        'appointmentId': S.string(description: 'Identifiant du rendez-vous'),
         'doctorName': S.string(description: 'Nom du médecin'),
         'specialty': S.string(description: 'Spécialité médicale'),
         'date': S.string(description: 'Date du RDV (format: dd/MM/yyyy)'),
@@ -58,6 +66,7 @@ class MediConnectCatalog {
     widgetBuilder: (ctx) {
       final json = ctx.data as Map<String, Object?>;
       final doctorName = json['doctorName'] as String? ?? '';
+      final appointmentId = json['appointmentId'] as String?;
       final specialty = json['specialty'] as String? ?? '';
       final date = json['date'] as String? ?? '';
       final time = json['time'] as String? ?? '';
@@ -82,7 +91,7 @@ class MediConnectCatalog {
             surfaceId: ctx.surfaceId,
             sourceComponentId: ctx.id,
             name: 'appointmentTapped',
-            context: {'appointmentId': ctx.id},
+            context: {'appointmentId': appointmentId ?? ctx.id},
           ),
         ),
         child: Column(
@@ -165,9 +174,8 @@ class MediConnectCatalog {
       final name = json['name'] as String? ?? '';
       final age = json['age'] as int?;
       final bloodType = json['bloodType'] as String?;
-      final allergies = (json['allergies'] as List?)?.cast<String>() ?? [];
-      final medications =
-          (json['currentMedications'] as List?)?.cast<String>() ?? [];
+      final allergies = _asStringList(json['allergies']);
+      final medications = _asStringList(json['currentMedications']);
 
       return ClinicalSurface(
         child: Column(
@@ -268,8 +276,7 @@ class MediConnectCatalog {
     widgetBuilder: (ctx) {
       final json = ctx.data as Map<String, Object?>;
       final title = json['title'] as String? ?? 'Formulaire';
-      final fields =
-          (json['fields'] as List?)?.cast<Map<String, Object?>>() ?? [];
+      final fields = _asMapList(json['fields']);
       final submitLabel = json['submitLabel'] as String? ?? 'Envoyer';
 
       return ClinicalSurface(
@@ -429,9 +436,10 @@ class MediConnectCatalog {
     widgetBuilder: (ctx) {
       final json = ctx.data as Map<String, Object?>;
       final title = json['title'] as String?;
-      final columns = (json['columns'] as List?)?.cast<String>() ?? [];
+      final columns = _asStringList(json['columns']);
       final rows = (json['rows'] as List?)
-              ?.map((r) => (r as List).cast<String>())
+              ?.whereType<List>()
+              .map((r) => r.map((cell) => cell.toString()).toList())
               .toList() ??
           [];
 
@@ -487,8 +495,7 @@ class MediConnectCatalog {
     widgetBuilder: (ctx) {
       final json = ctx.data as Map<String, Object?>;
       final title = json['title'] as String? ?? '';
-      final items =
-          (json['items'] as List?)?.cast<Map<String, Object?>>() ?? [];
+      final items = _asMapList(json['items']);
 
       return ClinicalSurface(
         child: Column(
@@ -671,4 +678,18 @@ class MediConnectCatalog {
       );
     },
   );
+
+  static List<String> _asStringList(Object? value) {
+    if (value is! List) return const [];
+    return value.map((item) => item.toString()).toList(growable: false);
+  }
+
+  static List<Map<String, Object?>> _asMapList(Object? value) {
+    if (value is! List) return const [];
+    return value
+        .whereType<Map>()
+        .map(
+            (item) => item.map((key, value) => MapEntry(key.toString(), value)))
+        .toList(growable: false);
+  }
 }

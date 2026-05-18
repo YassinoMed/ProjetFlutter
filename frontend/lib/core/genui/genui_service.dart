@@ -37,6 +37,12 @@ class GenUIService {
   /// Callback pour les erreurs
   final void Function(String error)? onError;
 
+  /// Callback quand du texte conversationnel est reçu
+  final void Function(String text)? onTextReceived;
+
+  /// Callback quand l'état d'attente change
+  final void Function(bool isWaiting)? onWaitingChanged;
+
   StreamSubscription? _eventsSub;
 
   GenUIService({
@@ -45,6 +51,8 @@ class GenUIService {
     this.onSurfaceAdded,
     this.onSurfaceRemoved,
     this.onError,
+    this.onTextReceived,
+    this.onWaitingChanged,
   })  : _dio = dio,
         _role = role {
     _initialize();
@@ -72,13 +80,22 @@ class GenUIService {
       _ => MediConnectPrompts.patientPrompt,
     };
 
-    promptBuilder = PromptBuilder.chat(
+    promptBuilder = PromptBuilder.custom(
       catalog: catalog,
-      systemPromptFragments: [systemPrompt],
+      allowedOperations: SurfaceOperations.all(dataModel: true),
+      systemPromptFragments: [
+        PromptFragments.currentDate(prefix: 'Contexte: '),
+        PromptFragments.acknowledgeUser(prefix: 'Règle: '),
+        PromptFragments.requireAtLeastOneSubmitElement(prefix: 'Règle: '),
+        systemPrompt,
+      ],
     );
 
     // 3. Créer le transport vers Laravel
-    transport = LaravelGenUITransport(dio: _dio);
+    transport = LaravelGenUITransport.withConversationAdapter(
+      dio: _dio,
+      systemPromptProvider: () => promptBuilder.systemPromptJoined(),
+    );
 
     // 4. Créer la Conversation
     conversation = Conversation(
@@ -93,6 +110,12 @@ class GenUIService {
           onSurfaceAdded?.call(event.surfaceId);
         } else if (event is ConversationSurfaceRemoved) {
           onSurfaceRemoved?.call(event.surfaceId);
+        } else if (event is ConversationContentReceived) {
+          onTextReceived?.call(event.text);
+        } else if (event is ConversationWaiting) {
+          onWaitingChanged?.call(true);
+        } else if (event is ConversationError) {
+          onError?.call(event.error.toString());
         }
       },
       onError: (error) {
@@ -105,17 +128,22 @@ class GenUIService {
   Future<void> sendMessage(
     String text, {
     Map<String, dynamic>? patientContext,
+    String? cacheKey,
+    bool useCache = false,
   }) async {
     if (text.trim().isEmpty) return;
 
     try {
-      await transport.sendToLaravel(
-        userMessage: text.trim(),
-        systemPrompt: promptBuilder.systemPromptJoined(),
-        patientContext: patientContext,
+      transport.configureNextRequest(
+        context: patientContext,
+        cacheKey: cacheKey,
+        useCache: useCache,
       );
+      await conversation.sendRequest(ChatMessage.user(text.trim()));
     } catch (e) {
       onError?.call("Erreur lors de l'envoi du message: $e");
+    } finally {
+      onWaitingChanged?.call(false);
     }
   }
 

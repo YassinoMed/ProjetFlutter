@@ -7,18 +7,18 @@ import 'package:dartz/dartz.dart';
 import '../errors/failures.dart';
 
 /// Base use case with parameters
-abstract class UseCase<Type, Params> {
-  Future<Either<Failure, Type>> call(Params params);
+abstract class UseCase<Result, Params> {
+  Future<Either<Failure, Result>> call(Params params);
 }
 
 /// Use case with no parameters
-abstract class UseCaseNoParams<Type> {
-  Future<Either<Failure, Type>> call();
+abstract class UseCaseNoParams<Result> {
+  Future<Either<Failure, Result>> call();
 }
 
 /// Use case with stream return
-abstract class StreamUseCase<Type, Params> {
-  Stream<Either<Failure, Type>> call(Params params);
+abstract class StreamUseCase<Result, Params> {
+  Stream<Either<Failure, Result>> call(Params params);
 }
 
 /// No parameters marker class

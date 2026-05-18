@@ -3,8 +3,11 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:mediconnect_pro/core/constants/app_constants.dart';
+import 'package:mediconnect_pro/core/genui/genui_prompt_panel.dart';
 import 'package:mediconnect_pro/core/rgpd/rgpd_service.dart';
 import 'package:mediconnect_pro/core/theme/app_theme.dart';
+import 'package:mediconnect_pro/features/auth/presentation/providers/auth_provider.dart';
 import 'package:mediconnect_pro/shared/widgets/clinical_ui.dart';
 
 class GdprSettingsPage extends ConsumerStatefulWidget {
@@ -23,6 +26,8 @@ class _GdprSettingsPageState extends ConsumerState<GdprSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final user = ref.watch(currentUserProvider);
+
     return Scaffold(
       body: SafeArea(
         child: _isLoading
@@ -51,6 +56,21 @@ class _GdprSettingsPageState extends ConsumerState<GdprSettingsPage> {
                     style: AppTheme.bodyMedium.copyWith(
                       color: AppTheme.neutralGray500,
                     ),
+                  ),
+                  const SizedBox(height: 18),
+                  GenUiPromptPanel(
+                    sessionId: 'settings-gdpr-${user?.id ?? 'anonymous'}',
+                    role: user?.role ?? AppConstants.rolePatient,
+                    title: 'Aide confidentialité',
+                    prompt:
+                        'Génère une aide RGPD concise pour cet écran avec AlertCard, Checklist et ActionButton. '
+                        'Explique les choix sans jargon et sans conseil juridique.',
+                    contextData: {
+                      'screen': 'gdpr_settings',
+                      'consents': _consents,
+                    },
+                    icon: Icons.privacy_tip_outlined,
+                    compact: true,
                   ),
                   const SizedBox(height: 18),
                   ...ConsentType.all.map((type) => Padding(

@@ -4939,28 +4939,3 @@ class $AppDatabaseManager {
   $$CachedUsersTableTableManager get cachedUsers =>
       $$CachedUsersTableTableManager(_db, _db.cachedUsers);
 }
-
-// **************************************************************************
-// RiverpodGenerator
-// **************************************************************************
-
-String _$appDatabaseHash() => r'7aae63de4f12449b78b46ad95a8e69b18b15328d';
-
-/// Provider for the encrypted database
-///
-/// Copied from [appDatabase].
-@ProviderFor(appDatabase)
-final appDatabaseProvider = AutoDisposeFutureProvider<AppDatabase>.internal(
-  appDatabase,
-  name: r'appDatabaseProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$appDatabaseHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef AppDatabaseRef = AutoDisposeFutureProviderRef<AppDatabase>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

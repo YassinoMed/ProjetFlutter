@@ -85,6 +85,7 @@ if (! app()->environment('testing')) {
 // Public in local/dev so Flutter Web can use the local Laravel proxy without
 // depending on the remote Sanctum token. Keep throttling enabled.
 Route::post('/gemini/chat', [GeminiController::class, 'chat'])->middleware('throttle:api');
+Route::post('/genui/stream', [GeminiController::class, 'genuiStream'])->middleware('throttle:api');
 
 // ── Authenticated Routes ─────────────────────────────────────
 Route::middleware(['auth:sanctum', 'throttle:api'])->group(function (): void {

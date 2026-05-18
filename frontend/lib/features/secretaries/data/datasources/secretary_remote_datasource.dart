@@ -56,7 +56,7 @@ class SecretaryRemoteDataSourceImpl implements SecretaryRemoteDataSource {
     int expiresInHours = 72,
   }) async {
     final response = await dio.post(
-      ApiConstants.doctorSecretaries + '/invite',
+      '${ApiConstants.doctorSecretaries}/invite',
       data: {
         'email': email,
         'first_name': firstName,
