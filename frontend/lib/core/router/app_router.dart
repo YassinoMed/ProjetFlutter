@@ -15,6 +15,8 @@ import '../../features/auth/presentation/pages/trusted_devices_page.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/chat/presentation/pages/ai_chatbot_page.dart';
 import '../../features/chat/presentation/pages/chat_detail_page.dart';
+import '../../features/consultation_reports/presentation/pages/consultation_report_create_page.dart';
+import '../../features/consultation_reports/presentation/pages/consultation_report_detail_page.dart';
 import '../../features/documents/presentation/pages/document_detail_page.dart';
 import '../../features/documents/presentation/pages/document_upload_page.dart';
 import '../../features/documents/presentation/pages/documents_page.dart';
@@ -225,6 +227,27 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final id = state.pathParameters['id']!;
           return PrescriptionDetailPage(prescriptionId: id);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.consultationReportCreate,
+        name: 'consultation-report-create',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>;
+          return ConsultationReportCreatePage(
+            teleconsultationId: extra['teleconsultationId'] as String,
+            patientId: extra['patientId'] as String,
+            patientName: extra['patientName'] as String,
+            consultationAt: extra['consultationAt'] as DateTime?,
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.consultationReportDetail,
+        name: 'consultation-report-detail',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return ConsultationReportDetailPage(reportId: id);
         },
       ),
       GoRoute(

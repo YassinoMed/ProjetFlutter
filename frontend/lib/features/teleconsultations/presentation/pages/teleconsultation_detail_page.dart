@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:mediconnect_pro/core/router/app_routes.dart';
+import 'package:mediconnect_pro/features/auth/presentation/providers/auth_provider.dart';
+import 'package:mediconnect_pro/features/consultation_reports/presentation/providers/consultation_report_providers.dart';
 
 import '../providers/teleconsultation_providers.dart';
 
@@ -92,6 +94,20 @@ class TeleconsultationDetailPage extends ConsumerWidget {
                 icon: const Icon(Icons.cancel_outlined),
                 label: const Text('Annuler'),
               ),
+              // Compte rendu post-consultation : visible uniquement pour
+              // le médecin et seulement quand la téléconsultation est
+              // terminée (statut ended/completed). Label/route adaptés
+              // selon que le compte rendu existe déjà ou non.
+              if (_canCreateReport(ref, teleconsultation)) ...[
+                const SizedBox(height: 12),
+                _ConsultationReportAction(
+                  teleconsultationId: teleconsultation.id,
+                  patientId: teleconsultation.patientUserId,
+                  patientName: 'Patient ${teleconsultation.patientUserId}',
+                  consultationAt: teleconsultation.endedAtUtc ??
+                      teleconsultation.startedAtUtc,
+                ),
+              ],
               const SizedBox(height: 24),
               Text(
                 'Historique',
@@ -137,6 +153,63 @@ class TeleconsultationDetailPage extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(child: Text(error.toString())),
       ),
+    );
+  }
+
+  bool _canCreateReport(WidgetRef ref, dynamic teleconsultation) {
+    final user = ref.read(currentUserProvider);
+    if (user == null) return false;
+    if (user.id != teleconsultation.doctorUserId) return false;
+    final s = teleconsultation.status?.toString().toLowerCase() ?? '';
+    return s == 'ended' || s == 'completed';
+  }
+}
+
+class _ConsultationReportAction extends ConsumerWidget {
+  final String teleconsultationId;
+  final String patientId;
+  final String patientName;
+  final DateTime? consultationAt;
+
+  const _ConsultationReportAction({
+    required this.teleconsultationId,
+    required this.patientId,
+    required this.patientName,
+    this.consultationAt,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final existing = ref.watch(
+      consultationReportByTeleconsultationProvider(teleconsultationId),
+    );
+    final hasReport = existing != null;
+
+    return FilledButton.tonalIcon(
+      onPressed: () {
+        if (hasReport) {
+          context.push(
+            AppRoutes.consultationReportDetail
+                .replaceFirst(':id', existing.id),
+          );
+        } else {
+          context.push(
+            AppRoutes.consultationReportCreate,
+            extra: {
+              'teleconsultationId': teleconsultationId,
+              'patientId': patientId,
+              'patientName': patientName,
+              'consultationAt': consultationAt,
+            },
+          );
+        }
+      },
+      icon: Icon(
+        hasReport
+            ? Icons.assignment_turned_in_outlined
+            : Icons.assignment_add,
+      ),
+      label: Text(hasReport ? 'Voir le compte rendu' : 'Créer un compte rendu'),
     );
   }
 }

@@ -68,4 +68,10 @@ class AppRoutes {
   // ── Prescriptions ───────────────────────────────────────
   static const String prescriptionCreate = '/doctor/prescriptions/new';
   static const String prescriptionDetail = '/prescriptions/:id';
+
+  // ── Consultation reports ────────────────────────────────
+  static const String consultationReportCreate =
+      '/doctor/consultation-reports/new';
+  static const String consultationReportDetail =
+      '/consultation-reports/:id';
 }
