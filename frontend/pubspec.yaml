@@ -67,6 +67,9 @@ dependencies:
   package_info_plus: ^8.1.2
   path_provider: ^2.1.5
   url_launcher: ^6.3.1
+  # Empêche l'écran de se verrouiller pendant un appel (caméra/micro
+  # seraient sinon suspendus par l'OS, cassant la session WebRTC).
+  wakelock_plus: ^1.2.8
   image_picker: ^1.1.2
   file_picker: ^8.1.6
   path: ^1.9.1

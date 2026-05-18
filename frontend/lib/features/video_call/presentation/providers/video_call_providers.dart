@@ -12,6 +12,7 @@ import 'package:mediconnect_pro/features/video_call/data/repositories/video_call
 import 'package:mediconnect_pro/features/video_call/data/services/call_permission_service.dart';
 import 'package:mediconnect_pro/features/video_call/domain/entities/video_call_entity.dart';
 import 'package:mediconnect_pro/features/video_call/domain/repositories/video_call_repository.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 final videoCallRepositoryProvider = Provider<VideoCallRepository>((ref) {
   final dio = ref.watch(dioProvider);
@@ -606,13 +607,29 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
     }
 
     try {
+      // Contraintes audio renforcées pour qualité d'appel:
+      //   - echoCancellation : supprime l'écho hardware (haut-parleur -> micro)
+      //   - noiseSuppression : filtre bruit ambiant (clavier, ventilo, rue)
+      //   - autoGainControl  : normalise le volume voix
+      //   - sampleRate 48000 + channelCount 1 : format Opus standard,
+      //     latence/CPU minimaux, qualité voix optimale
+      // Ces flags sont normalement actifs par défaut sur Chrome desktop mais
+      // ne le sont PAS sur Chrome Android < 100 et plusieurs WebView. Forcer
+      // explicitement évite des sessions noisy/echoey en production.
       _localStream = await navigator.mediaDevices.getUserMedia({
-        'audio': true,
+        'audio': {
+          'echoCancellation': true,
+          'noiseSuppression': true,
+          'autoGainControl': true,
+          'sampleRate': 48000,
+          'channelCount': 1,
+        },
         'video': callType.requiresVideo
             ? {
                 'facingMode': 'user',
-                'width': {'ideal': 1280},
-                'height': {'ideal': 720},
+                'width': {'ideal': 1280, 'max': 1920},
+                'height': {'ideal': 720, 'max': 1080},
+                'frameRate': {'ideal': 24, 'max': 30},
               }
             : false,
       });
@@ -648,10 +665,45 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
         await _disconnectLiveKitRoom();
         await _releaseLocalPreviewStream();
 
+        // RoomOptions optimisées pour qualité d'appel téléconsultation:
+        //   - adaptiveStream : adapte la qualité reçue à la taille du renderer
+        //     (économise bande passante quand la PiP locale est petite)
+        //   - dynacast        : LiveKit coupe les layers simulcast non
+        //     consommés, réduit le CPU/upload
+        //   - defaultAudioPublishOptions:
+        //       * dtx=true : Discontinuous Transmission, on n'envoie pas
+        //         d'audio pendant les silences -> ~50% bande passante en moins
+        //       * red=true : redundancy encoding, résilience aux pertes UDP
+        //         (très utile sur 4G/WiFi instable)
+        //   - defaultVideoPublishOptions:
+        //       * simulcast=true : publie 3 layers (low/medium/high), le SFU
+        //         distribue le bon layer selon les conditions réseau du
+        //         destinataire -> moins de gel sur réseaux lents
+        //       * videoEncoding plafonné à 720p @ 1.7 Mbps pour rester sous
+        //         le quota Free Tier LiveKit Cloud et garder une marge UL
+        const audioOptions = lk.AudioPublishOptions(
+          dtx: true,
+          red: true,
+        );
+
+        const videoOptions = lk.VideoPublishOptions(
+          simulcast: true,
+          videoEncoding: lk.VideoEncoding(
+            maxBitrate: 1_700_000,
+            maxFramerate: 30,
+          ),
+          videoSimulcastLayers: [
+            lk.VideoParametersPresets.h180_169,
+            lk.VideoParametersPresets.h360_169,
+          ],
+        );
+
         final room = lk.Room(
           roomOptions: const lk.RoomOptions(
             adaptiveStream: true,
             dynacast: true,
+            defaultAudioPublishOptions: audioOptions,
+            defaultVideoPublishOptions: videoOptions,
           ),
         );
         final listener = room.createListener();
@@ -687,6 +739,15 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
             );
           }
           _startDurationTimer();
+          // Empêche l'écran de se verrouiller pendant l'appel.
+          // Sans ça, sur iOS et certains Android l'OS suspend caméra/micro
+          // après le timeout d'inactivité, ce qui casse la session WebRTC.
+          // Pas supporté sur Web (le navigateur gère son propre wake lock).
+          if (!kIsWeb) {
+            await WakelockPlus.enable().catchError((Object e) {
+              debugPrint('VideoCall: wakelock enable failed (ignored): $e');
+            });
+          }
 
           return true;
         } catch (error) {
@@ -1306,6 +1367,15 @@ class VideoCallNotifier extends StateNotifier<VideoCallEntity> {
     _liveKitListener = null;
     _liveKitLocalVideoTrack = null;
     _liveKitRemoteVideoTrack = null;
+
+    // Libère le verrou écran dès qu'on quitte la room (succès ou échec).
+    // Sans ça l'écran resterait allumé jusqu'au dispose, ce qui draine la
+    // batterie inutilement après la fin de l'appel.
+    if (!kIsWeb) {
+      await WakelockPlus.disable().catchError((Object e) {
+        debugPrint('VideoCall: wakelock disable failed (ignored): $e');
+      });
+    }
 
     if (room == null) {
       await listener?.dispose();
