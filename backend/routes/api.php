@@ -11,21 +11,27 @@ use App\Http\Controllers\Api\DeviceTokenController;
 use App\Http\Controllers\Api\DoctorController;
 use App\Http\Controllers\Api\DoctorSecretaryController;
 use App\Http\Controllers\Api\DocumentController;
+use App\Http\Controllers\Api\DocumentSharingController;
 use App\Http\Controllers\Api\E2eeKeyController;
+use App\Http\Controllers\Api\EmergencyMedicalInfoController;
 use App\Http\Controllers\Api\EncryptedAttachmentController;
 use App\Http\Controllers\Api\FcmTokenController;
+use App\Http\Controllers\Api\GdprExportController;
 use App\Http\Controllers\Api\GeminiController;
 use App\Http\Controllers\Api\MeDelegationController;
 use App\Http\Controllers\Api\MedicalRecordMetadataController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\Ops\HealthController;
 use App\Http\Controllers\Api\Ops\MetricsController;
+use App\Http\Controllers\Api\PatientConsentController;
+use App\Http\Controllers\Api\PreConsultationQuestionnaireController;
 use App\Http\Controllers\Api\PresenceController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\RgpdController;
 use App\Http\Controllers\Api\ScheduleController;
 use App\Http\Controllers\Api\SecretaryInvitationController;
 use App\Http\Controllers\Api\TeleconsultationController;
+use App\Http\Controllers\Api\WaitingRoomController;
 use App\Http\Controllers\Api\WebRtcController;
 use App\Http\Controllers\Api\WebRtcSignalingController;
 use App\Models\Tenant;
@@ -87,6 +93,27 @@ if (! app()->environment('testing')) {
 Route::post('/gemini/chat', [GeminiController::class, 'chat'])->middleware('throttle:api');
 Route::post('/gemini/document', [GeminiController::class, 'document'])->middleware('throttle:api');
 Route::post('/genui/stream', [GeminiController::class, 'genuiStream'])->middleware('throttle:api');
+
+// ── A2UI catalog fallback ───────────────────────────────────
+// Sert le catalogue A2UI v0.9 que le client Flutter peut récupérer si la
+// référence externe `https://a2ui.org/specification/v0_9/standard_catalog.json`
+// est inaccessible. Le client s'enregistre localement via MediConnectCatalog
+// (lib/core/genui/mediconnect_catalog.dart, catalogId=com.mediconnect.catalog)
+// — cette route reste utile pour debug + future migration multi-tenants
+// du catalogue.
+Route::get('/a2ui/catalog', function () {
+    $path = storage_path('app/a2ui-catalog.json');
+    if (! file_exists($path)) {
+        return response()->json([
+            'catalogId' => 'com.mediconnect.catalog',
+            'version' => 'v0.9',
+            'items' => [],
+            'note' => 'Catalog stub. Override by placing the real JSON at storage/app/a2ui-catalog.json.',
+        ], 200);
+    }
+
+    return response()->file($path, ['Content-Type' => 'application/json']);
+})->middleware('throttle:api');
 
 // ── Authenticated Routes ─────────────────────────────────────
 Route::middleware(['auth:sanctum', 'throttle:api'])->group(function (): void {
@@ -221,6 +248,47 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function (): void {
     Route::get('/rgpd/export', [RgpdController::class, 'export'])->middleware('throttle:rgpd');
     Route::post('/rgpd/consent', [RgpdController::class, 'consent'])->middleware('throttle:rgpd');
     Route::delete('/rgpd/forget', [RgpdController::class, 'forget'])->middleware('throttle:rgpd');
+
+    // ── Pre-consultation questionnaire ───────────────────
+    Route::get('/appointments/{appointment}/questionnaire', [PreConsultationQuestionnaireController::class, 'show']);
+    Route::post('/appointments/{appointment}/questionnaire', [PreConsultationQuestionnaireController::class, 'store']);
+    Route::put('/questionnaires/{questionnaire}', [PreConsultationQuestionnaireController::class, 'update']);
+    Route::delete('/questionnaires/{questionnaire}', [PreConsultationQuestionnaireController::class, 'destroy']);
+
+    // ── Emergency QR ─────────────────────────────────────
+    Route::get('/me/emergency-info', [EmergencyMedicalInfoController::class, 'show']);
+    Route::post('/me/emergency-info', [EmergencyMedicalInfoController::class, 'store']);
+    Route::put('/me/emergency-info', [EmergencyMedicalInfoController::class, 'update']);
+    Route::post('/me/emergency-info/enable', [EmergencyMedicalInfoController::class, 'enable']);
+    Route::post('/me/emergency-info/disable', [EmergencyMedicalInfoController::class, 'disable']);
+
+    // ── GDPR Export persistence ──────────────────────────
+    Route::post('/me/gdpr-export', [GdprExportController::class, 'request'])->middleware('throttle:rgpd');
+    Route::get('/me/gdpr-export/history', [GdprExportController::class, 'history'])->middleware('throttle:rgpd');
+    Route::get('/me/gdpr-export/{id}/download', [GdprExportController::class, 'download'])->middleware('throttle:rgpd');
+
+    // ── Waiting room ─────────────────────────────────────
+    Route::post('/appointments/{appointment}/waiting-room/join', [WaitingRoomController::class, 'join']);
+    Route::get('/doctor/waiting-room', [WaitingRoomController::class, 'doctorIndex']);
+    Route::post('/waiting-room/{session}/admit', [WaitingRoomController::class, 'admit']);
+    Route::post('/waiting-room/{session}/reject', [WaitingRoomController::class, 'reject']);
+    Route::post('/waiting-room/{session}/cancel', [WaitingRoomController::class, 'cancel']);
+    Route::post('/waiting-room/{session}/expire', [WaitingRoomController::class, 'expire']);
+
+    // ── Granular patient consents ───────────────────────
+    Route::get('/me/consents', [PatientConsentController::class, 'index']);
+    Route::post('/me/consents', [PatientConsentController::class, 'store']);
+    Route::put('/me/consents/{consent}', [PatientConsentController::class, 'update']);
+    Route::delete('/me/consents/{consent}', [PatientConsentController::class, 'destroy']);
+
+    Route::get('/doctors/{doctor}/shared-documents', [DocumentSharingController::class, 'sharedDocuments']);
+    Route::post('/documents/{document}/share-with-doctor', [DocumentSharingController::class, 'shareWithDoctor']);
+    Route::delete('/documents/{document}/revoke-doctor/{doctor}', [DocumentSharingController::class, 'revokeDoctor']);
 });
 
 Route::post('/secretary/invitations/accept', [SecretaryInvitationController::class, 'accept'])->middleware('throttle:auth-register');
+
+// ── Public emergency QR (read-only via opaque token) ───────
+Route::get('/emergency/{publicToken}', [EmergencyMedicalInfoController::class, 'publicShow'])
+    ->middleware('throttle:rgpd')
+    ->where('publicToken', '[A-Za-z0-9]{16,128}');

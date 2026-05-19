@@ -369,7 +369,9 @@ class LaravelGenUITransport {
                     buffer.write(part['text']);
                   }
                 }
-                if (buffer.isNotEmpty) return buffer.toString();
+                if (buffer.isNotEmpty) {
+                  return _rewriteCatalogIds(buffer.toString());
+                }
               }
             }
           }
@@ -378,14 +380,35 @@ class LaravelGenUITransport {
         // Format backend historique (proxy LLM chunks).
         for (final key in const ['text', 'delta', 'content']) {
           final value = decoded[key];
-          if (value is String) return value;
+          if (value is String) return _rewriteCatalogIds(value);
         }
       }
     } catch (_) {
       // Plain SSE data is valid: the backend may proxy raw LLM chunks.
     }
 
-    return data;
+    return _rewriteCatalogIds(data);
+  }
+
+  /// Remplace les références à des catalogues A2UI standards externes (que
+  /// le LLM injecte spontanément malgré le system prompt) par notre
+  /// catalogue local enregistré dans le [SurfaceController]. Sans cette
+  /// réécriture, le SurfaceController lève
+  /// `Catalog with id "https://a2ui.org/..." not found` lors du rendu.
+  ///
+  /// On gère les deux conventions JSON (clé entre quotes simples ou
+  /// doubles) ainsi que la variante `catalog_id`.
+  static final RegExp _externalCatalogId = RegExp(
+    r'("catalogId"|"catalog_id"|\\"catalogId\\"|\\"catalog_id\\")\s*:\s*\\?"https?://[^"\\]*a2ui[^"\\]*"',
+  );
+  static const String _localCatalogId = '"com.mediconnect.catalog"';
+
+  String _rewriteCatalogIds(String input) {
+    if (!input.contains('a2ui')) return input;
+    return input.replaceAllMapped(_externalCatalogId, (m) {
+      final keyToken = m.group(1) ?? '"catalogId"';
+      return '$keyToken: $_localCatalogId';
+    });
   }
 
   /// Construit le payload Gemini direct (streamGenerateContent).

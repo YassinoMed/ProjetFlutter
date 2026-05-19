@@ -38,6 +38,16 @@ class MediConnectCatalog {
               'Image, AudioPlayer, Video, Modal). Préfère toujours un widget '
               'visuel à du texte brut pour présenter des informations '
               'médicales.',
+          // Catalog ID strict: forcer le modèle à utiliser uniquement le
+          // catalogue enregistré localement. Sans cette contrainte, le LLM
+          // référence parfois `https://a2ui.org/specification/v0_9/standard_catalog.json`,
+          // ce qui provoque `Catalog with id "..." not found` côté
+          // SurfaceController. Le transport applique une réécriture
+          // défensive en complément (voir laravel_transport._rewriteCatalogIds).
+          'IMPORTANT: utilise EXCLUSIVEMENT '
+              '`"catalogId": "com.mediconnect.catalog"` dans toutes les '
+              'opérations createSurface. Ne référence JAMAIS '
+              '`https://a2ui.org/...` ou un autre identifiant de catalogue.',
         ],
       );
 

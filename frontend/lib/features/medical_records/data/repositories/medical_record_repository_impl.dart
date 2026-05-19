@@ -28,10 +28,20 @@ class MedicalRecordRepositoryImpl implements MedicalRecordRepository {
       );
 
       final List<dynamic> data = response.data['data'] ?? [];
-      final records = data
-          .map((json) =>
-              MedicalRecordModel.fromJson(json as Map<String, dynamic>))
-          .toList();
+      // Déduplication par ID — défensif : certaines réponses paginées du
+      // backend peuvent contenir des doublons lors de chevauchements de
+      // curseurs (page n+1 inclut le dernier item de la page n). Sans
+      // cette dédup, la page « Stockage local chiffré AES-256 » affichait
+      // la même ordonnance deux fois à l'écran.
+      final seen = <String>{};
+      final records = <MedicalRecord>[];
+      for (final json in data) {
+        if (json is! Map<String, dynamic>) continue;
+        final record = MedicalRecordModel.fromJson(json);
+        if (seen.add(record.id)) {
+          records.add(record);
+        }
+      }
 
       return Right(records);
     } on DioException catch (e) {
